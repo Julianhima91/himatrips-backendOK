@@ -1,0 +1,22 @@
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+
+class Origin extends Model
+{
+    protected $guarded = [];
+
+    public function airports(): HasMany
+    {
+        return $this->hasMany(Airport::class);
+    }
+
+    public function destinations(): BelongsToMany
+    {
+        return $this->belongsToMany(Destination::class)->using(DestinationOrigin::class)->withPivot('live_search');
+    }
+}
