@@ -11,6 +11,8 @@
         "laravel/framework": "^10.10",
         "laravel/sanctum": "^3.3",
         "laravel/tinker": "^2.8",
+        "ricorocks-digital-agency/soap": "*",
+        "saloonphp/xml-wrangler": "*",
         "sammyjo20/laravel-haystack": "^2.2",
         "staudenmeir/eloquent-has-many-deep": "^1.19"
     },

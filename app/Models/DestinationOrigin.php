@@ -2,14 +2,16 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasManyThrough;
+use Illuminate\Database\Eloquent\Relations\Pivot;
 
-class DestinationOrigin extends Model
+class DestinationOrigin extends Pivot
 {
     protected $guarded = [];
+
+    protected $table = 'destination_origins';
 
     public $incrementing = true;
 

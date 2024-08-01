@@ -12,7 +12,7 @@ class Hotel extends Model
 
     public function destinations(): BelongsToMany
     {
-        return $this->belongsToMany(Destination::class);
+        return $this->belongsToMany(Destination::class, 'destination_hotel');
     }
 
     public function hotelPhotos(): HasMany
