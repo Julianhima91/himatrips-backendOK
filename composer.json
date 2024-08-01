@@ -14,6 +14,7 @@
         "ricorocks-digital-agency/soap": "*",
         "saloonphp/xml-wrangler": "*",
         "sammyjo20/laravel-haystack": "^2.2",
+        "spatie/laravel-query-builder": "^6.0",
         "staudenmeir/eloquent-has-many-deep": "^1.19"
     },
     "require-dev": {

@@ -1,0 +1,110 @@
+<?php
+
+namespace App\Jobs;
+
+use App\Http\Integrations\GoFlightIntegration\Requests\RetrieveFlightsRequest;
+use App\Http\Integrations\GoFlightIntegration\Requests\RetrieveIncompleteFlights;
+use Illuminate\Bus\Batchable;
+use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Foundation\Bus\Dispatchable;
+use Illuminate\Queue\InteractsWithQueue;
+use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Cache;
+
+class LiveSearchFlights implements ShouldQueue
+{
+    use Batchable, Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+
+    protected $date;
+
+    protected $origin;
+
+    protected $destination;
+
+    public int $tries = 2;
+
+    protected $adults;
+
+    protected $children;
+
+    protected $infants;
+
+    /**
+     * Create a new job instance.
+     */
+    public function __construct($date, $origin_airport, $destination_airport, $adults, $children, $infants)
+    {
+        $this->date = $date;
+        $this->origin = $origin_airport;
+        $this->destination = $destination_airport;
+        $this->adults = $adults;
+        $this->children = $children;
+        $this->infants = $infants;
+    }
+
+    /**
+     * Execute the job.
+     */
+    public function handle(): void
+    {
+        $request = new RetrieveFlightsRequest;
+
+        $request->query()->merge([
+            'fromEntityId' => $this->origin->rapidapi_id,
+            'toEntityId' => $this->destination->rapidapi_id,
+            'departDate' => $this->date,
+            'adults' => $this->adults,
+            'children' => $this->children,
+            'infants' => $this->infants,
+        ]);
+
+        try {
+            $response = $request->send();
+        } catch (\Exception $e) {
+            //if its the first attempt, retry
+            if ($this->attempts() == 1) {
+                $this->release(1);
+            }
+
+            $this->fail($e);
+        }
+
+        //check if context is set, and if it is incomplete, then we have to hit another endpoint
+        if (isset($response->json()['data']['context']['status']) && $response->json()['data']['context']['status'] == 'incomplete') {
+            $response = $this->getIncompleteResults($response->json()['data']['context']['sessionId']);
+        }
+
+        try {
+            $itineraries = $response->dtoOrFail();
+
+            if ($itineraries->isEmpty()) {
+                ray('empty itineraries');
+                $this->release(1);
+            }
+        } catch (\Exception $e) {
+            $this->fail($e);
+        }
+
+        //put it in cache
+        cache()->put($this->batchId.'_flight_'.$this->date, $itineraries, now()->addMinutes(5));
+    }
+
+    private function getIncompleteResults($session)
+    {
+
+        $request = new RetrieveIncompleteFlights($this->adults, $this->children, $this->infants);
+
+        $request->query()->merge([
+            'sessionId' => $session,
+        ]);
+
+        $response = $request->send();
+
+        if (isset($response->json()['context']['status']) && $response->json()['context']['status'] == 'incomplete') {
+            return $this->getIncompleteResults($session);
+        }
+
+        return $response;
+    }
+}

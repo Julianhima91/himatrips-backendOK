@@ -1,5 +1,8 @@
 <?php
 
+use App\Http\Controllers\Api\DestinationController;
+use App\Http\Controllers\Api\OriginController;
+use App\Http\Controllers\Api\PackageController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -17,3 +20,20 @@ use Illuminate\Support\Facades\Route;
 Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
     return $request->user();
 });
+
+Route::get('/origins', [OriginController::class, 'index']);
+
+Route::post('/packages/search', [PackageController::class, 'search']);
+Route::get('/packages/{package}', [PackageController::class, 'show']);
+Route::post('/packages/available-dates', [PackageController::class, 'getAvailableDates']);
+Route::post('/packages/available-nights', [PackageController::class, 'getAvailableNights']);
+
+Route::post('/live-search', [PackageController::class, 'liveSearch']);
+Route::post('/live-search-paginated', [PackageController::class, 'paginateLiveSearch']);
+Route::post('/filter-data', [PackageController::class, 'getFilterData']);
+
+Route::get('/destinations', [DestinationController::class, 'index']);
+Route::get('/destinations/all', [DestinationController::class, 'indexAll']);
+Route::get('/destinations/{destination}/packages', [DestinationController::class, 'showPackagesForDestination']);
+Route::get('/destinations/{origin}/plain', [DestinationController::class, 'showDestinationsForOriginPlain']);
+Route::get('/destinations/{origin}', [DestinationController::class, 'showDestinationsForOrigin']);
