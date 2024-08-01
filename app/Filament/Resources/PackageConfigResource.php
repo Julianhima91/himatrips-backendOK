@@ -117,6 +117,7 @@ class PackageConfigResource extends Resource
 
                 Forms\Components\TextInput::make('commission_amount')
                     ->label('Commission Amount')
+                    ->numeric()
                     ->placeholder('Commission Amount')
                     ->required(),
 

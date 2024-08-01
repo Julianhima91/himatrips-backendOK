@@ -11,6 +11,8 @@ class DestinationOrigin extends Pivot
 {
     protected $guarded = [];
 
+    protected $table = 'destination_origins';
+
     public $incrementing = true;
 
     public function destination(): BelongsTo
