@@ -10,7 +10,7 @@ use Filament\Tables\Table;
 
 class OriginsRelationManager extends RelationManager
 {
-    protected static string $relationship = 'destinationOrigin';
+    protected static string $relationship = 'origins';
 
     public function form(Form $form): Form
     {
@@ -38,12 +38,11 @@ class OriginsRelationManager extends RelationManager
             ->actions([
                 Tables\Actions\EditAction::make(),
                 Tables\Actions\DetachAction::make(),
-                Tables\Actions\DeleteAction::make(),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DetachBulkAction::make(),
-                    Tables\Actions\DeleteBulkAction::make(),
+                    //                    Tables\Actions\DetachBulkAction::make(),
+                    //                    Tables\Actions\DeleteBulkAction::make(),
                 ]),
             ])
             ->emptyStateActions([

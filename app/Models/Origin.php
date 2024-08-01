@@ -17,6 +17,6 @@ class Origin extends Model
 
     public function destinations(): BelongsToMany
     {
-        return $this->belongsToMany(Destination::class)->using(DestinationOrigin::class)->withPivot('live_search');
+        return $this->belongsToMany(Destination::class, 'destination_origins')->using(DestinationOrigin::class)->withPivot('live_search');
     }
 }

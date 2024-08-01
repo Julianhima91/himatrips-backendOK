@@ -85,6 +85,11 @@ class DestinationResource extends Resource
                             ->image()
                             ->panelLayout('square'),
                     ]),
+                Forms\Components\Section::make('Hotels')->schema([
+                    Forms\Components\Select::make('hotels')
+                        ->relationship('hotels', 'name')
+                        ->multiple(),
+                ]),
             ]);
     }
 

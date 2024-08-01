@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Filament\Resources\DestinationResource\RelationManagers;
+namespace App\Filament\Resources\OriginResource\RelationManagers;
 
 use Filament\Forms;
 use Filament\Forms\Form;
@@ -8,15 +8,15 @@ use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Tables;
 use Filament\Tables\Table;
 
-class AirportsRelationManager extends RelationManager
+class DestinationsRelationManager extends RelationManager
 {
-    protected static string $relationship = 'airports';
+    protected static string $relationship = 'destinations';
 
     public function form(Form $form): Form
     {
         return $form
             ->schema([
-                Forms\Components\TextInput::make('codeIataAirport')
+                Forms\Components\TextInput::make('city')
                     ->required()
                     ->maxLength(255),
             ]);
@@ -25,12 +25,9 @@ class AirportsRelationManager extends RelationManager
     public function table(Table $table): Table
     {
         return $table
-            ->recordTitleAttribute('codeIataAirport')
+            ->recordTitleAttribute('city')
             ->columns([
-                Tables\Columns\TextColumn::make('codeIataAirport')
-                    ->label('IATA Code'),
-                Tables\Columns\TextColumn::make('nameAirport')
-                    ->label('Name'),
+                Tables\Columns\TextColumn::make('city'),
             ])
             ->filters([
                 //
@@ -42,9 +39,12 @@ class AirportsRelationManager extends RelationManager
                 Tables\Actions\DetachAction::make(),
             ])
             ->bulkActions([
+                Tables\Actions\BulkActionGroup::make([
+                    Tables\Actions\DetachBulkAction::make(),
+                ]),
             ])
             ->emptyStateActions([
-                Tables\Actions\AssociateAction::make(),
+                Tables\Actions\AttachAction::make(),
             ]);
     }
 }

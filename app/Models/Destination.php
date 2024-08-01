@@ -13,7 +13,7 @@ class Destination extends Model
 
     public function hotels(): BelongsToMany
     {
-        return $this->belongsToMany(Hotel::class);
+        return $this->belongsToMany(Hotel::class, 'destination_hotel');
     }
 
     public function airports(): BelongsToMany
@@ -23,7 +23,7 @@ class Destination extends Model
 
     public function origins(): BelongsToMany
     {
-        return $this->belongsToMany(Origin::class)->using(DestinationOrigin::class);
+        return $this->belongsToMany(Origin::class, 'destination_origins')->using(DestinationOrigin::class);
     }
 
     public function destinationOrigin(): HasMany
