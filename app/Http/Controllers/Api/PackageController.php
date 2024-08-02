@@ -64,7 +64,7 @@ class PackageController extends Controller
         //here we need parameters for the flight and the hotel which will be
         //hotel: checkin_date, nights, destination, adults, children
 
-        //        ray()->newScreen();
+        ray()->newScreen();
 
         $return_date = Carbon::parse($request->date)->addDays($request->nights)->format('Y-m-d');
 
@@ -84,7 +84,7 @@ class PackageController extends Controller
             ])->then(function ($batch) use ($date, $return_date, $destination) {
                 // All jobs completed successfully
 
-                //                ray('Jobs completed successfully');
+                ray('Jobs completed successfully');
 
                 $outbound_flight = Cache::get($batch->id.'_flight_'.$date);
 

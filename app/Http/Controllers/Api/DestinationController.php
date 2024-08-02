@@ -17,7 +17,7 @@ class DestinationController extends Controller
 
         $destinations = Destination::where('show_in_homepage', true)
             ->withCount('packages')
-//            ->withMin('packages', 'total_price')
+            ->withMin('packages', 'total_price')
             ->with('destinationPhotos')
             ->take(12)
             ->get();
