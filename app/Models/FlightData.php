@@ -9,8 +9,6 @@ class FlightData extends Model
 {
     protected $guarded = [];
 
-    protected $table = 'flights_data';
-
     protected $casts = [
         'departure' => 'datetime',
         'arrival' => 'datetime',
