@@ -22,24 +22,25 @@ class HotelSeeder extends Seeder
         $batchSize = 500;
         $rows = [];
 
-        while (($data = fgetcsv($handle, 1000, '|')) !== false) {
+        while (($data = fgetcsv($handle, 1000, ',')) !== false) {
             $rows[] = [
-                'country_id' => $data[0],
-                'country' => $data[1],
-                'iso_code' => $data[2],
-                'city_id' => $data[3],
-                'city' => $data[4],
-                'hotel_id' => $data[5],
-                'name' => $data[6],
-                'address' => $data[7],
-                'phone' => $data[8],
-                'fax' => $data[9],
-                'stars' => $data[10],
-                'stars_id' => $data[11],
-                'longitude' => $data[12],
-                'latitude' => $data[13],
-                'is_apartment' => $data[14] == 'False' ? 0 : 1,
-                'giata_code' => $data[15],
+                'id' => $data[0],
+                'country_id' => $data[16],
+                'country' => $data[15],
+                'iso_code' => $data[14],
+                'city_id' => $data[12],
+                'city' => $data[13],
+                'hotel_id' => $data[1],
+                'name' => $data[2],
+                'address' => $data[3],
+                'phone' => $data[4],
+                'fax' => $data[5],
+                'stars' => $data[6],
+                'stars_id' => $data[7],
+                'longitude' => $data[8],
+                'latitude' => $data[9],
+                'is_apartment' => $data[10] == 'False' ? 0 : 1,
+                'giata_code' => $data[11],
                 // 'destination_id' => ... // You can set this if needed
                 'created_at' => now(),
                 'updated_at' => now(),
