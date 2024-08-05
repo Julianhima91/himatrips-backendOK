@@ -54,9 +54,12 @@ class LiveSearchHotels implements ShouldQueue
      */
     public function handle(): void
     {
-
         //get the hotel IDs
-        $hotelIds = Hotel::where('destination_id', $this->destination)->pluck('hotel_id');
+        //        $hotelIds = Hotel::where('destination_id', $this->destination)->pluck('hotel_id');
+
+        $hotelIds = Hotel::whereHas('destinations', function ($query) {
+            $query->where('destination_id', $this->destination);
+        })->pluck('hotel_id');
 
         //implode the array to form strings like this   <HotelId>226</HotelId>
         $hotelIds = implode('', array_map(function ($hotelId) {
@@ -66,7 +69,7 @@ class LiveSearchHotels implements ShouldQueue
         try {
             $response = $this->getHotelData($hotelIds, $this->checkin_date, $this->nights, $this->adults, $this->children, $this->infants);
         } catch (\Exception $e) {
-            //if its the first time, we retry
+            //if it's the first time, we retry
             if ($this->attempts() == 1) {
                 addBreadcrumb('message', 'Hotel Attempts', ['attempts' => $this->attempts()]);
                 $this->release(1);

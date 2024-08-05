@@ -12,7 +12,7 @@ class Airport extends Model
 
     public function destinations(): BelongsToMany
     {
-        return $this->belongsToMany(Destination::class);
+        return $this->belongsToMany(Destination::class, 'destination_airport');
     }
 
     public function origin(): BelongsTo
