@@ -76,6 +76,7 @@ class LiveSearchFlights implements ShouldQueue
         }
 
         try {
+            //            dd($response->json());
             $itineraries = $response->dtoOrFail();
 
             if ($itineraries->isEmpty()) {
