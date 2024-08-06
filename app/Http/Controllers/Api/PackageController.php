@@ -72,7 +72,6 @@ class PackageController extends Controller
 
         //get the airports here
         $origin_airport = Airport::query()->where('origin_id', $request->origin)->first();
-        //        $destination_airport = Airport::where('destination_id', $request->destination)->first();
         $destination_airport = Airport::query()->whereHas('destinations', function ($query) use ($request) {
             $query->where('destination_id', $request->destination_id);
         })->first();
@@ -81,7 +80,7 @@ class PackageController extends Controller
 
         try {
             $batch = Bus::batch([
-                //                [new LiveSearchFlights($request->date, $origin_airport, $destination_airport, $request->adults, $request->children, $request->infants)],
+                [new LiveSearchFlights($request->date, $origin_airport, $destination_airport, $request->adults, $request->children, $request->infants)],
                 [new LiveSearchFlights($return_date, $destination_airport, $origin_airport, $request->adults, $request->children, $request->infants)],
                 [new LiveSearchHotels($request->date, $request->nights, $request->destination_id, $request->adults, $request->children, $request->infants)],
             ])->then(function ($batch) use ($date, $return_date, $destination) {
