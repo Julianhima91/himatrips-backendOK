@@ -26,6 +26,7 @@ return new class extends Migration
             $table->json('extra_data')->nullable();
             $table->json('segments')->nullable();
             $table->unsignedBigInteger('package_config_id')->nullable();
+            $table->boolean('return_flight')->default(false);
             $table->timestamps();
         });
     }
