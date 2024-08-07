@@ -6,6 +6,7 @@ use App\Events\LiveSearchCompleted;
 use App\Events\LiveSearchFailed;
 use App\Http\Controllers\Controller;
 use App\Jobs\LiveSearchFlights;
+use App\Jobs\LiveSearchFlightsApi2;
 use App\Jobs\LiveSearchHotels;
 use App\Models\Airport;
 use App\Models\Destination;
@@ -64,6 +65,18 @@ class PackageController extends Controller
         //here we need parameters for the flight and the hotel which will be
         //hotel: checkin_date, nights, destination, adults, children
 
+        $request->validate([
+            'nights' => 'required|integer',
+            'date' => 'required|date|date_format:Y-m-d',
+            'from_airport' => 'required|string|exists:airports,id',
+            'to_airport' => 'required|string|exists:airports,id',
+            'origin_id' => 'required|string|exists:origins,id',
+            'destination_id' => 'required|string|exists:destinations,id',
+            'adults' => 'required|integer',
+            'children' => 'required|integer',
+            'infants' => 'required|integer',
+        ]);
+
         ray()->newScreen();
 
         $return_date = Carbon::parse($request->date)->addDays($request->nights)->format('Y-m-d');
@@ -78,11 +91,15 @@ class PackageController extends Controller
 
         $destination = Destination::where('id', $request->destination_id)->first();
 
+        $fromAirport = Airport::query()->find($request->from_airport);
+        $toAirport = Airport::query()->find($request->to_airport);
+
         try {
             $batch = Bus::batch([
-                [new LiveSearchFlights($request->date, $origin_airport, $destination_airport, $request->adults, $request->children, $request->infants)],
-                [new LiveSearchFlights($return_date, $destination_airport, $origin_airport, $request->adults, $request->children, $request->infants)],
-                [new LiveSearchHotels($request->date, $request->nights, $request->destination_id, $request->adults, $request->children, $request->infants)],
+                [new LiveSearchFlightsApi2($fromAirport, $toAirport, $date, $return_date, $origin_airport, $destination_airport, $request->adults, $request->children, $request->infants)],
+                //                [new LiveSearchFlights($request->date, $origin_airport, $destination_airport, $request->adults, $request->children, $request->infants)],
+                //                [new LiveSearchFlights($return_date, $destination_airport, $origin_airport, $request->adults, $request->children, $request->infants)],
+                //                [new LiveSearchHotels($request->date, $request->nights, $request->destination_id, $request->adults, $request->children, $request->infants)],
             ])->then(function ($batch) use ($date, $return_date, $destination) {
                 // All jobs completed successfully
 
