@@ -30,12 +30,15 @@ class LiveSearchFlights implements ShouldQueue
 
     protected $infants;
 
+    protected $return_date;
+
     /**
      * Create a new job instance.
      */
-    public function __construct($date, $origin_airport, $destination_airport, $adults, $children, $infants)
+    public function __construct($date, $return_date, $origin_airport, $destination_airport, $adults, $children, $infants)
     {
         $this->date = $date;
+        $this->return_date = $return_date;
         $this->origin = $origin_airport;
         $this->destination = $destination_airport;
         $this->adults = $adults;
@@ -54,6 +57,7 @@ class LiveSearchFlights implements ShouldQueue
             'fromEntityId' => $this->origin->rapidapi_id,
             'toEntityId' => $this->destination->rapidapi_id,
             'departDate' => $this->date,
+            'returnDate' => $this->return_date,
             'adults' => $this->adults,
             'children' => $this->children,
             'infants' => $this->infants,
@@ -88,6 +92,7 @@ class LiveSearchFlights implements ShouldQueue
 
         //put it in cache
         cache()->put($this->batchId.'_flight_'.$this->date, $itineraries, now()->addMinutes(5));
+        cache()->put($this->batchId.'_flight_'.$this->return_date, $itineraries, now()->addMinutes(5));
     }
 
     private function getIncompleteResults($session)

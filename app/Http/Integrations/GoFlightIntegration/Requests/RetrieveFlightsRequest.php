@@ -32,7 +32,7 @@ class RetrieveFlightsRequest extends SoloRequest
      */
     public function resolveEndpoint(): string
     {
-        return 'https://sky-scanner3.p.rapidapi.com/flights/search-one-way';
+        return 'https://sky-scanner3.p.rapidapi.com/flights/search-roundtrip';
     }
 
     protected function defaultQuery(): array

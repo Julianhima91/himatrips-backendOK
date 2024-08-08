@@ -97,8 +97,8 @@ class PackageController extends Controller
         try {
             $batch = Bus::batch([
                 [new LiveSearchFlightsApi2($fromAirport, $toAirport, $date, $return_date, $origin_airport, $destination_airport, $request->adults, $request->children, $request->infants)],
-                [new LiveSearchFlights($request->date, $origin_airport, $destination_airport, $request->adults, $request->children, $request->infants)],
-                [new LiveSearchFlights($return_date, $destination_airport, $origin_airport, $request->adults, $request->children, $request->infants)],
+                [new LiveSearchFlights($request->date, $return_date, $origin_airport, $destination_airport, $request->adults, $request->children, $request->infants)],
+                //                [new LiveSearchFlights($return_date, $destination_airport, $origin_airport, $request->adults, $request->children, $request->infants)],
                 [new LiveSearchHotels($request->date, $request->nights, $request->destination_id, $request->adults, $request->children, $request->infants)],
             ])->then(function ($batch) use ($date, $return_date, $destination) {
                 // All jobs completed successfully
