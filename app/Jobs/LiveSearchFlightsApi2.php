@@ -57,6 +57,11 @@ class LiveSearchFlightsApi2 implements ShouldQueue
      */
     public function handle(): void
     {
+        if (! Cache::get('job_completed')) {
+            // Set the shared state to true, signaling that this job has completed
+            Cache::put('job_completed', true);
+        }
+
         $request = new RetrieveFlightsApi2Request;
 
         $request->query()->merge([
@@ -97,7 +102,7 @@ class LiveSearchFlightsApi2 implements ShouldQueue
         }
 
         //put it in cache
-        cache()->put($this->batchId.'_flight_'.$this->date, $itineraries, now()->addMinutes(5));
+        cache()->put('flight_'.$this->date, $itineraries, now()->addMinutes(5));
     }
 
     private function getIncompleteResults($session)
