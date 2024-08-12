@@ -3,7 +3,7 @@
 namespace App\Jobs;
 
 use App\Http\Integrations\GoFlightIntegration\Requests\RetrieveFlightsApi2Request;
-use App\Http\Integrations\GoFlightIntegration\Requests\RetrieveIncompleteFlights;
+use App\Http\Integrations\GoFlightIntegration\Requests\RetrieveIncompleteFlights2;
 use Illuminate\Bus\Batchable;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -57,11 +57,6 @@ class LiveSearchFlightsApi2 implements ShouldQueue
      */
     public function handle(): void
     {
-        if (! Cache::get('job_completed')) {
-            // Set the shared state to true, signaling that this job has completed
-            Cache::put('job_completed', true);
-        }
-
         $request = new RetrieveFlightsApi2Request;
 
         $request->query()->merge([
@@ -94,7 +89,8 @@ class LiveSearchFlightsApi2 implements ShouldQueue
             $itineraries = $response->dtoOrFail();
 
             if ($itineraries->isEmpty()) {
-                ray('empty itineraries');
+                ray('empty itineraries 2');
+                ray($itineraries);
                 $this->release(1);
             }
         } catch (\Exception $e) {
@@ -103,11 +99,15 @@ class LiveSearchFlightsApi2 implements ShouldQueue
 
         //put it in cache
         cache()->put('flight_'.$this->date, $itineraries, now()->addMinutes(5));
+        cache()->put('flight_'.$this->return_date, $itineraries, now()->addMinutes(5));
+        if (! Cache::get('job_completed')) {
+            Cache::put('job_completed', true);
+        }
     }
 
     private function getIncompleteResults($session)
     {
-        $request = new RetrieveIncompleteFlights($this->adults, $this->children, $this->infants);
+        $request = new RetrieveIncompleteFlights2($this->adults, $this->children, $this->infants);
 
         $request->query()->merge([
             'sessionId' => $session,

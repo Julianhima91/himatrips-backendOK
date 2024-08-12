@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Events\LiveSearchCompleted;
 use App\Events\LiveSearchFailed;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Livesearch\LivesearchRequest;
 use App\Jobs\LiveSearchFlights;
 use App\Jobs\LiveSearchFlightsApi2;
 use App\Jobs\LiveSearchHotels;
@@ -24,6 +25,7 @@ use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 class PackageController extends Controller
 {
@@ -60,23 +62,8 @@ class PackageController extends Controller
         return response()->json(['data' => $packages], 200);
     }
 
-    public function liveSearch(Request $request)
+    public function liveSearch(LivesearchRequest $request)
     {
-        //here we need parameters for the flight and the hotel which will be
-        //hotel: checkin_date, nights, destination, adults, children
-
-        $request->validate([
-            'nights' => 'required|integer',
-            'date' => 'required|date|date_format:Y-m-d',
-            'from_airport' => 'required|string|exists:airports,id',
-            'to_airport' => 'required|string|exists:airports,id',
-            'origin_id' => 'required|string|exists:origins,id',
-            'destination_id' => 'required|string|exists:destinations,id',
-            'adults' => 'required|integer',
-            'children' => 'required|integer',
-            'infants' => 'required|integer',
-        ]);
-
         ray()->newScreen();
 
         $return_date = Carbon::parse($request->date)->addDays($request->nights)->format('Y-m-d');
@@ -91,28 +78,25 @@ class PackageController extends Controller
 
         $destination = Destination::where('id', $request->destination_id)->first();
 
-        $fromAirport = Airport::query()->find($request->from_airport);
-        $toAirport = Airport::query()->find($request->to_airport);
-
         try {
-            Cache::put('job_completed', false, now()->addMinutes(10));
+            Cache::put('job_completed', false, now()->addMinutes(1));
+            Cache::put('hotel_job_completed', false, now()->addMinutes(1));
 
             $jobs = [
-                new LiveSearchFlightsApi2($fromAirport, $toAirport, $date, $return_date, $origin_airport, $destination_airport, $request->adults, $request->children, $request->infants),
+                new LiveSearchFlightsApi2($origin_airport, $destination_airport, $date, $return_date, $origin_airport, $destination_airport, $request->adults, $request->children, $request->infants),
                 new LiveSearchFlights($request->date, $return_date, $origin_airport, $destination_airport, $request->adults, $request->children, $request->infants),
                 new LiveSearchHotels($request->date, $request->nights, $request->destination_id, $request->adults, $request->children, $request->infants),
             ];
 
             foreach ($jobs as $job) {
-                // Dispatch each job
                 Bus::dispatch($job);
             }
 
             // Continuously check the shared state until one job completes
             while (true) {
-                if (Cache::get('job_completed')) {
+                if (Cache::get('job_completed') && Cache::get('hotel_job_completed')) {
                     // One job has completed, break the loop
-                    ray('job completed!!!!!!!!!!!!!!!!!');
+                    ray('job completed');
 
                     $outbound_flight = Cache::get('flight_'.$date);
 
@@ -178,9 +162,11 @@ class PackageController extends Controller
                         ['price', 'asc'],
                     ]);
 
+                    $batchId = Str::orderedUuid();
+
                     //if collection is empty return early and broadcast failure
                     if ($outbound_flight->isEmpty()) {
-                        broadcast(new LiveSearchFailed('No flights found', '$batchId'));
+                        broadcast(new LiveSearchFailed('No flights found', $batchId));
 
                         return;
                     }
@@ -262,7 +248,7 @@ class PackageController extends Controller
 
                     //if collection is empty return early and broadcast failure
                     if ($inbound_flight->isEmpty()) {
-                        broadcast(new LiveSearchFailed('No flights found', '$batchId'));
+                        broadcast(new LiveSearchFailed('No flights found', $batchId));
 
                         return;
                     }
@@ -329,7 +315,7 @@ class PackageController extends Controller
                             'inbound_flight_id' => $inbound_flight_hydrated->id,
                             'commission' => $commission,
                             'total_price' => $first_offer->total_price_for_this_offer,
-                            'batch_id' => '$batchId',
+                            'batch_id' => $batchId,
                         ]);
 
                         $package_ids[] = $package->id;
@@ -352,7 +338,7 @@ class PackageController extends Controller
                         ->paginate(10);
 
                     //fire off event
-                    broadcast(new LiveSearchCompleted($packages, '$batchId', $minTotalPrice, $maxTotalPrice));
+                    broadcast(new LiveSearchCompleted($packages, $batchId, $minTotalPrice, $maxTotalPrice));
 
                     break;
                 }
@@ -364,7 +350,7 @@ class PackageController extends Controller
         }
 
         return response()->json(['message' => 'Live search started', 'data' => [
-            'batch_id' => 'test',
+            'batch_id' => $batchId,
         ]], 200);
     }
 
