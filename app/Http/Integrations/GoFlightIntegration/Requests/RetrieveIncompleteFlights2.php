@@ -4,35 +4,48 @@ namespace App\Http\Integrations\GoFlightIntegration\Requests;
 
 use App\Data\FlightDataDTO;
 use Illuminate\Support\Carbon;
-use Illuminate\Support\Facades\Cache;
 use Saloon\Enums\Method;
 use Saloon\Http\Request;
 use Saloon\Http\SoloRequest;
-use Saloon\RateLimitPlugin\Contracts\RateLimitStore;
-use Saloon\RateLimitPlugin\Limit;
-use Saloon\RateLimitPlugin\Stores\LaravelCacheStore;
 use Saloon\Traits\Plugins\AlwaysThrowOnErrors;
 use Spatie\LaravelData\Optional;
 
-class RetrieveFlightsRequest extends SoloRequest
+class RetrieveIncompleteFlights2 extends SoloRequest
 {
     use AlwaysThrowOnErrors;
 
     /**
-     * Define the HTTP method
+     * The HTTP method of the request
      */
     protected Method $method = Method::GET;
 
-    //public ?int $tries = 2;
+    private $adults;
 
-    public function __construct() {}
+    private $infants;
+
+    private $children;
 
     /**
-     * Define the endpoint for the request
+     * The endpoint for the request
      */
     public function resolveEndpoint(): string
     {
-        return 'https://sky-scanner3.p.rapidapi.com/flights/search-roundtrip';
+        return 'https://skyscanner80.p.rapidapi.com/api/v1/flights/search-incomplete';
+    }
+
+    public function __construct($adults, $children, $infants)
+    {
+        $this->adults = $adults;
+        $this->infants = $infants;
+        $this->children = $children;
+    }
+
+    protected function defaultHeaders(): array
+    {
+        return [
+            'X-RapidAPI-Key' => 'eff37b01a1msh6090de6dea39514p108435jsnf7c09e43a0a5',
+            'X-RapidAPI-Host' => 'skyscanner80.p.rapidapi.com',
+        ];
     }
 
     protected function defaultQuery(): array
@@ -67,9 +80,9 @@ class RetrieveFlightsRequest extends SoloRequest
                 arrival: new \DateTime($itinerary['legs'][0]['arrival']),
                 airline: $itinerary['legs'][0]['carriers']['marketing'][0]['name'],
                 stopCount: $itinerary['legs'][0]['stopCount'],
-                adults: $this->query()->get('adults'),
-                children: $this->query()->get('children'),
-                infants: $this->query()->get('infants'),
+                adults: $this->adults,
+                children: $this->children,
+                infants: $this->infants,
                 packageConfigId: Optional::create(),
                 segments: json_encode($itinerary['legs'][0]['segments']),
                 carriers: $this->getCarriers($itinerary),
@@ -77,14 +90,6 @@ class RetrieveFlightsRequest extends SoloRequest
             );
         });
 
-    }
-
-    protected function defaultHeaders(): array
-    {
-        return [
-            'X-RapidAPI-Key' => 'eff37b01a1msh6090de6dea39514p108435jsnf7c09e43a0a5',
-            'X-RapidAPI-Host' => 'sky-scanner3.p.rapidapi.com',
-        ];
     }
 
     private function getCarriers($itinerary): array
@@ -109,17 +114,4 @@ class RetrieveFlightsRequest extends SoloRequest
 
         return $timeBetweenFlights;
     }
-
-    //    protected function resolveLimits(): array
-    //    {
-    //        return [
-    //            Limit::allow(5000)->everySeconds(1)->sleep(),
-    //        ];
-    //    }
-    //
-    //    protected function resolveRateLimitStore(): RateLimitStore
-    //    {
-    //        return new LaravelCacheStore(Cache::store('redis'));
-    //    }
-
 }

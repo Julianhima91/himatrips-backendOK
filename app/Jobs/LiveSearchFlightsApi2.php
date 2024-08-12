@@ -2,8 +2,8 @@
 
 namespace App\Jobs;
 
-use App\Http\Integrations\GoFlightIntegration\Requests\RetrieveFlightsRequest;
-use App\Http\Integrations\GoFlightIntegration\Requests\RetrieveIncompleteFlights;
+use App\Http\Integrations\GoFlightIntegration\Requests\RetrieveFlightsApi2Request;
+use App\Http\Integrations\GoFlightIntegration\Requests\RetrieveIncompleteFlights2;
 use Illuminate\Bus\Batchable;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -12,7 +12,7 @@ use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Cache;
 
-class LiveSearchFlights implements ShouldQueue
+class LiveSearchFlightsApi2 implements ShouldQueue
 {
     use Batchable, Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
@@ -32,11 +32,17 @@ class LiveSearchFlights implements ShouldQueue
 
     protected $return_date;
 
+    private mixed $fromAirport;
+
+    private mixed $toAirport;
+
     /**
      * Create a new job instance.
      */
-    public function __construct($date, $return_date, $origin_airport, $destination_airport, $adults, $children, $infants)
+    public function __construct($fromAirport, $toAirport, $date, $return_date, $origin_airport, $destination_airport, $adults, $children, $infants)
     {
+        $this->fromAirport = $fromAirport;
+        $this->toAirport = $toAirport;
         $this->date = $date;
         $this->return_date = $return_date;
         $this->origin = $origin_airport;
@@ -51,11 +57,11 @@ class LiveSearchFlights implements ShouldQueue
      */
     public function handle(): void
     {
-        $request = new RetrieveFlightsRequest;
+        $request = new RetrieveFlightsApi2Request;
 
         $request->query()->merge([
-            'fromEntityId' => $this->origin->rapidapi_id,
-            'toEntityId' => $this->destination->rapidapi_id,
+            'fromId' => $this->fromAirport->rapidapi_id,
+            'toId' => $this->toAirport->rapidapi_id,
             'departDate' => $this->date,
             'returnDate' => $this->return_date,
             'adults' => $this->adults,
@@ -83,7 +89,8 @@ class LiveSearchFlights implements ShouldQueue
             $itineraries = $response->dtoOrFail();
 
             if ($itineraries->isEmpty()) {
-                ray('empty itineraries 1111');
+                ray('empty itineraries 2');
+                ray($itineraries);
                 $this->release(1);
             }
         } catch (\Exception $e) {
@@ -100,8 +107,7 @@ class LiveSearchFlights implements ShouldQueue
 
     private function getIncompleteResults($session)
     {
-
-        $request = new RetrieveIncompleteFlights($this->adults, $this->children, $this->infants);
+        $request = new RetrieveIncompleteFlights2($this->adults, $this->children, $this->infants);
 
         $request->query()->merge([
             'sessionId' => $session,

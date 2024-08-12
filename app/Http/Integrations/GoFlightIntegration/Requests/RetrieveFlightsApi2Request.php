@@ -14,7 +14,7 @@ use Saloon\RateLimitPlugin\Stores\LaravelCacheStore;
 use Saloon\Traits\Plugins\AlwaysThrowOnErrors;
 use Spatie\LaravelData\Optional;
 
-class RetrieveFlightsRequest extends SoloRequest
+class RetrieveFlightsApi2Request extends SoloRequest
 {
     use AlwaysThrowOnErrors;
 
@@ -23,7 +23,7 @@ class RetrieveFlightsRequest extends SoloRequest
      */
     protected Method $method = Method::GET;
 
-    //public ?int $tries = 2;
+    public ?int $tries = 2;
 
     public function __construct() {}
 
@@ -32,7 +32,7 @@ class RetrieveFlightsRequest extends SoloRequest
      */
     public function resolveEndpoint(): string
     {
-        return 'https://sky-scanner3.p.rapidapi.com/flights/search-roundtrip';
+        return 'https://skyscanner80.p.rapidapi.com/api/v1/flights/search-roundtrip';
     }
 
     protected function defaultQuery(): array
@@ -83,7 +83,7 @@ class RetrieveFlightsRequest extends SoloRequest
     {
         return [
             'X-RapidAPI-Key' => 'eff37b01a1msh6090de6dea39514p108435jsnf7c09e43a0a5',
-            'X-RapidAPI-Host' => 'sky-scanner3.p.rapidapi.com',
+            'X-RapidAPI-Host' => 'skyscanner80.p.rapidapi.com',
         ];
     }
 
