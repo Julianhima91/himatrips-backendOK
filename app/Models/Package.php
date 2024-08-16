@@ -10,9 +10,9 @@ class Package extends Model
 {
     protected $guarded = [];
 
-    public function packageables(): MorphToMany
+    public function transfers(): MorphToMany
     {
-        return $this->morphToMany(Package::class, 'packageable');
+        return $this->morphedByMany(Transfer::class, 'packageable');
     }
 
     public function outboundFlight(): BelongsTo

@@ -11,10 +11,10 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('transfers', function (Blueprint $table) {
+        Schema::create('bundleables', function (Blueprint $table) {
             $table->id();
-            $table->integer('price'); // in cents
-            $table->text('description')->nullable();
+            $table->foreignId('hotel_id')->constrained()->onDelete('cascade');
+            $table->morphs('bundleable');
             $table->timestamps();
         });
     }
@@ -24,6 +24,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('transfers');
+        Schema::dropIfExists('bundleables');
     }
 };

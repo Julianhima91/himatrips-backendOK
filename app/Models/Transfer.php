@@ -11,6 +11,11 @@ class Transfer extends Model
 
     public function packages(): MorphToMany
     {
-        return $this->morphedByMany(Package::class, 'packageable');
+        return $this->morphToMany(Package::class, 'packageable');
+    }
+
+    public function hotels(): MorphToMany
+    {
+        return $this->morphToMany(Hotel::class, 'bundleable');
     }
 }
