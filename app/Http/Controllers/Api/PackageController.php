@@ -19,6 +19,7 @@ use App\Models\HotelData;
 use App\Models\HotelOffer;
 use App\Models\Origin;
 use App\Models\Package;
+use App\Models\PackageConfig;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
@@ -35,8 +36,8 @@ class PackageController extends Controller
         $request->validate([
             'nights' => 'required|integer',
             'checkin_date' => 'required|date|date_format:Y-m-d',
-            'origin_id' => 'required|string',
-            'destination_id' => 'required|string|exists:destination_origins,destination_id',
+            'origin_id' => 'required|exists:origins,id',
+            'destination_id' => 'required|exists:destinations,id',
         ]);
 
         $destination_origin = DestinationOrigin::where('destination_id', $request->destination_id)
@@ -304,9 +305,22 @@ class PackageController extends Controller
                         }
 
                         $first_offer = $hotel_data->offers()->orderBy('price')->first();
+                        $cheapestOffer = collect($hotel_data->offers)->sortBy('TotalPrice')->first();
+
+                        $hotel_data->update(['price' => $cheapestOffer->total_price_for_this_offer]);
 
                         //calculate commission (20%)
                         $commission = ($outbound_flight_hydrated->price + $inbound_flight_hydrated->price + $first_offer->price) * $commission_percentage;
+
+                        $packageConfig = PackageConfig::query()
+                            ->whereHas('destination_origin', function ($query) {
+                                $query->where([
+                                    ['destination_id', request()->destination_id],
+                                    ['origin_id', request()->origin_id],
+                                ]);
+                            })
+                            ->whereJsonContains('number_of_nights', request()->nights)
+                            ->first();
 
                         //create the package here
                         $package = Package::create([
@@ -316,6 +330,7 @@ class PackageController extends Controller
                             'commission' => $commission,
                             'total_price' => $first_offer->total_price_for_this_offer,
                             'batch_id' => $batchId,
+                            'package_config_id' => $packageConfig->id ?? null,
                         ]);
 
                         $package_ids[] = $package->id;
