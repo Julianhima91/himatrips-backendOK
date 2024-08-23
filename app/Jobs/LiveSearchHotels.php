@@ -13,6 +13,7 @@ use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
 use RicorocksDigitalAgency\Soap\Facades\Soap;
 use Spatie\LaravelData\Optional;
 
@@ -78,7 +79,7 @@ class LiveSearchHotels implements ShouldQueue
         }
 
         if (! isset(json_decode($response->MakeRequestResult)->Hotels)) {
-            \Log::info('No hotels found');
+            Log::info('No hotels found');
             if ($this->attempts() == 1) {
                 addBreadcrumb('message', 'Hotel Attempts', ['attempts' => $this->attempts()]);
                 $this->release(1);
