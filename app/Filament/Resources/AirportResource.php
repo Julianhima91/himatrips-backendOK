@@ -31,6 +31,8 @@ class AirportResource extends Resource
                 Forms\Components\TextInput::make('codeIataAirport')
                     ->label('IATA Code')
                     ->required(),
+                Forms\Components\TextInput::make('rapidapi_id')
+                    ->label('Rapid API ID'),
             ]);
     }
 
