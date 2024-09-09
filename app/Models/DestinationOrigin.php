@@ -34,4 +34,9 @@ class DestinationOrigin extends Pivot
     {
         return $this->hasManyThrough(Package::class, PackageConfig::class, 'destination_origin_id', 'package_config_id');
     }
+
+    public function directFlightsAvailability()
+    {
+        return $this->hasMany(DirectFlightAvailability::class);
+    }
 }
