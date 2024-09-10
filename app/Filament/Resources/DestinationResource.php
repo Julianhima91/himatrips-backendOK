@@ -31,7 +31,7 @@ class DestinationResource extends Resource
                     ->label('Show in homepage'),
                 Forms\Components\Textarea::make('description')
                     ->required()
-                    ->maxLength(65535)
+                    ->maxLength(255)
                     ->columnSpanFull(),
                 Forms\Components\TextInput::make('city')
                     ->required()
@@ -39,30 +39,6 @@ class DestinationResource extends Resource
                 Forms\Components\TextInput::make('country')
                     ->required()
                     ->maxLength(255),
-                //add fields
-                Forms\Components\Toggle::make('is_direct_flight')
-                    ->inline(false)
-                    ->label('Is Direct Flight'),
-                Forms\Components\TextInput::make('commission_percentage')
-                    ->numeric()
-                    ->minValue(0)
-                    ->maxValue(1)
-                    ->step(0.01)
-                    ->label('Commission Percentage'),
-                Forms\Components\Toggle::make('prioritize_morning_flights')
-                    ->live()
-                    ->inline(false)
-                    ->label('Prioritize Morning Flights'),
-                Forms\Components\Toggle::make('prioritize_evening_flights')
-                    ->live()
-                    ->inline(false)
-                    ->label('Prioritize Evening Flights'),
-                Forms\Components\TextInput::make('max_stop_count')
-                    ->numeric()
-                    ->label('Max Stop Count'),
-                Forms\Components\TextInput::make('max_wait_time')
-                    ->numeric()
-                    ->label('Max Wait Time'),
                 Forms\Components\TimePicker::make('morning_flight_start_time')
                     ->live()
                     ->hidden(fn (Get $get) => ! $get('prioritize_morning_flights'))

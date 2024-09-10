@@ -18,12 +18,12 @@ return new class extends Migration
             $table->string('city');
             $table->string('country');
             $table->boolean('show_in_homepage')->default(false);
-            $table->boolean('is_direct_flight')->default(false);
-            $table->decimal('commission_percentage', 5, 2)->default(0);
-            $table->boolean('prioritize_morning_flights')->default(false);
-            $table->boolean('prioritize_evening_flights')->default(false);
-            $table->integer('max_stop_count')->default(0);
-            $table->integer('max_wait_time')->default(0);
+            //            $table->boolean('is_direct_flight')->default(false);
+            //            $table->decimal('commission_percentage', 5, 2)->default(0);
+            //            $table->boolean('prioritize_morning_flights')->default(false);
+            //            $table->boolean('prioritize_evening_flights')->default(false);
+            //            $table->integer('max_stop_count')->default(0);
+            //            $table->integer('max_wait_time')->default(0);
             $table->time('morning_flight_start_time')->nullable();
             $table->time('morning_flight_end_time')->nullable();
             $table->time('evening_flight_start_time')->nullable();
