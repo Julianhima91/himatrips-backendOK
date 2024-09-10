@@ -78,6 +78,32 @@ class PackageConfigResource extends Resource
                     ->multiple()
                     ->searchable(),
 
+                Forms\Components\Toggle::make('is_direct_flight')
+                    ->inline(false)
+                    ->label('Is Direct Flight'),
+
+                Forms\Components\TextInput::make('commission_percentage')
+                    ->numeric()
+                    ->minValue(0)
+                    ->maxValue(1)
+                    ->required()
+                    ->step(0.01)
+                    ->label('Commission Percentage'),
+
+                Forms\Components\Toggle::make('prioritize_morning_flights')
+                    ->live()
+                    ->inline(false)
+                    ->label('Prioritize Morning Flights'),
+
+                Forms\Components\Toggle::make('prioritize_evening_flights')
+                    ->live()
+                    ->inline(false)
+                    ->label('Prioritize Evening Flights'),
+
+                Forms\Components\TextInput::make('max_wait_time')
+                    ->numeric()
+                    ->label('Max Wait Time'),
+
                 Forms\Components\TextInput::make('max_stop_count')
                     ->label('Max Stop Count')
                     ->numeric()
