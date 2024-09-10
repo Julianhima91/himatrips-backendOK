@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\DestinationController;
+use App\Http\Controllers\Api\FlightController;
 use App\Http\Controllers\Api\OriginController;
 use App\Http\Controllers\Api\PackageController;
 use Illuminate\Http\Request;
@@ -37,3 +38,5 @@ Route::get('/destinations/all', [DestinationController::class, 'indexAll']);
 Route::get('/destinations/{destination}/packages', [DestinationController::class, 'showPackagesForDestination']);
 Route::get('/destinations/{origin}/plain', [DestinationController::class, 'showDestinationsForOriginPlain']);
 Route::get('/destinations/{origin}', [DestinationController::class, 'showDestinationsForOrigin']);
+
+Route::get('/direct-flight', FlightController::class);
