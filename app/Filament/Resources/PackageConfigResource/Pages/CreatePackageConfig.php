@@ -12,6 +12,13 @@ class CreatePackageConfig extends CreateRecord
 
     protected function mutateFormDataBeforeCreate(array $data): array
     {
+        $commissionRate = $data['commission_amount'];
+        $commissionPercentage = $data['commission_percentage'];
+
+        $calculatedCommissionPercentage = ($commissionPercentage / 100) * $data['price_limit'];
+
+        $data['commission_type'] = ($calculatedCommissionPercentage > $commissionRate) ? 'Percentage' : 'Fixed';
+
         //find the correct DestinationOrigin model
         $destinationOrigin = DestinationOrigin::where('origin_id', $data['origin'])->where('destination_id', $data['destination'])->first();
 

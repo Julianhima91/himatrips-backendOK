@@ -82,14 +82,6 @@ class PackageConfigResource extends Resource
                     ->inline(false)
                     ->label('Is Direct Flight'),
 
-                Forms\Components\TextInput::make('commission_percentage')
-                    ->numeric()
-                    ->minValue(0)
-                    ->maxValue(1)
-                    ->required()
-                    ->step(0.01)
-                    ->label('Commission Percentage'),
-
                 Forms\Components\Toggle::make('prioritize_morning_flights')
                     ->live()
                     ->inline(false)
@@ -133,16 +125,22 @@ class PackageConfigResource extends Resource
                     ])
                     ->label('Room Basis'),
 
-                Select::make('commission_type')
-                    ->placeholder('Select commission type')
-                    ->options([
-                        'percentage' => 'Percentage',
-                        'fixed' => 'Fixed',
-                    ])
-                    ->label('Commission Type'),
+                Forms\Components\TextInput::make('update_frequency')
+                    ->label('Update Frequency')
+                    ->numeric()
+                    ->placeholder('Update Frequency in hours'),
+
+                Forms\Components\TextInput::make('commission_percentage')
+                    ->numeric()
+                    ->minValue(0)
+                    ->maxValue(50)
+                    ->required()
+                    ->step(0.01)
+                    ->label('Commission Percentage'),
 
                 Forms\Components\TextInput::make('commission_amount')
                     ->label('Commission Amount')
+                    ->minValue(0)
                     ->numeric()
                     ->placeholder('Commission Amount')
                     ->required(),
@@ -151,12 +149,6 @@ class PackageConfigResource extends Resource
                     ->label('Price Limit')
                     ->numeric()
                     ->placeholder('Price Limit'),
-
-                Forms\Components\TextInput::make('update_frequency')
-                    ->label('Update Frequency')
-                    ->numeric()
-                    ->placeholder('Update Frequency in hours'),
-
             ]);
 
     }
