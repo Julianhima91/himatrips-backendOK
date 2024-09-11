@@ -310,7 +310,7 @@ class PackageController extends Controller
                         $hotel_data->update(['price' => $cheapestOffer->total_price_for_this_offer]);
 
                         //calculate commission (20%)
-                        $commission = ($outbound_flight_hydrated->price + $inbound_flight_hydrated->price + $first_offer->price) * $commission_percentage;
+                        //$commission = ($outbound_flight_hydrated->price + $inbound_flight_hydrated->price + $first_offer->price) * $commission_percentage;
 
                         $packageConfig = PackageConfig::query()
                             ->whereHas('destination_origin', function ($query) {
@@ -322,12 +322,15 @@ class PackageController extends Controller
                             ->whereJsonContains('number_of_nights', request()->nights)
                             ->first();
 
+                        $calculatedCommissionPercentage = ($packageConfig->commission_percentage / 100) * $first_offer->total_price_for_this_offer;
+                        $fixedCommissionRate = $packageConfig->commission_amount;
+
                         //create the package here
                         $package = Package::create([
                             'hotel_data_id' => $hotel_data->id,
                             'outbound_flight_id' => $outbound_flight_hydrated->id,
                             'inbound_flight_id' => $inbound_flight_hydrated->id,
-                            'commission' => $commission,
+                            'commission' => max($fixedCommissionRate, $calculatedCommissionPercentage),
                             'total_price' => $first_offer->total_price_for_this_offer,
                             'batch_id' => $batchId,
                             'package_config_id' => $packageConfig->id ?? null,
