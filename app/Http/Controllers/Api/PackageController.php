@@ -80,13 +80,15 @@ class PackageController extends Controller
         $destination = Destination::where('id', $request->destination_id)->first();
 
         try {
-            Cache::put('job_completed', false, now()->addMinutes(1));
-            Cache::put('hotel_job_completed', false, now()->addMinutes(1));
+            $batchId = Str::orderedUuid();
+
+            Cache::put("job_completed_{$batchId}", false, now()->addMinutes(1));
+            Cache::put("hotel_job_completed_{$batchId}", false, now()->addMinutes(1));
 
             $jobs = [
-                new LiveSearchFlightsApi2($origin_airport, $destination_airport, $date, $return_date, $origin_airport, $destination_airport, $request->adults, $request->children, $request->infants),
-                new LiveSearchFlights($request->date, $return_date, $origin_airport, $destination_airport, $request->adults, $request->children, $request->infants),
-                new LiveSearchHotels($request->date, $request->nights, $request->destination_id, $request->adults, $request->children, $request->infants),
+                new LiveSearchFlightsApi2($origin_airport, $destination_airport, $date, $return_date, $origin_airport, $destination_airport, $request->adults, $request->children, $request->infants, $batchId),
+                new LiveSearchFlights($request->date, $return_date, $origin_airport, $destination_airport, $request->adults, $request->children, $request->infants, $batchId),
+                new LiveSearchHotels($request->date, $request->nights, $request->destination_id, $request->adults, $request->children, $request->infants, $batchId),
             ];
 
             foreach ($jobs as $job) {
@@ -95,7 +97,7 @@ class PackageController extends Controller
 
             // Continuously check the shared state until one job completes
             while (true) {
-                if (Cache::get('job_completed') && Cache::get('hotel_job_completed')) {
+                if (Cache::get("job_completed_{$batchId}") && Cache::get("hotel_job_completed_{$batchId}")) {
                     // One job has completed, break the loop
                     ray('job completed');
 
@@ -162,8 +164,6 @@ class PackageController extends Controller
                         ['stopCount', 'asc'],
                         ['price', 'asc'],
                     ]);
-
-                    $batchId = Str::orderedUuid();
 
                     //if collection is empty return early and broadcast failure
                     if ($outbound_flight->isEmpty()) {
