@@ -2,38 +2,20 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Actions\CheckFlightAvailability;
 use App\Http\Controllers\Controller;
-use App\Models\DirectFlightAvailability;
-use App\Models\PackageConfig;
-use Illuminate\Http\Request;
+use App\Http\Requests\CheckFlightAvailabilityRequest;
 
 class FlightController extends Controller
 {
     /**
      * Handle the incoming request.
      */
-    public function __invoke(Request $request)
+    public function __invoke(CheckFlightAvailabilityRequest $request, CheckFlightAvailability $action)
     {
-        $validated = $request->validate([
-            'date' => 'required|date',
-        ]);
+        $result = $action->handle($request);
 
-        $results = PackageConfig::query()
-            ->where('max_stop_count', '=', 0)
-            ->whereDate('from_date', '<=', $validated['date'])
-            ->whereDate('to_date', '>=', $validated['date'])
-            ->get();
-
-        foreach ($results as $result) {
-            DirectFlightAvailability::updateOrCreate(
-                [
-                    'date' => $validated['date'],
-                    'destination_origin_id' => $result->destination_origin_id,
-                ],
-            );
-        }
-
-        return $results->isEmpty() ? response()->json(['message' => 'No direct flights were found.'])
-            : response()->json(['message' => 'Direct flights availability updated.']);
+        return $result ? response()->json(['message' => 'Direct flights availability updated.'])
+            : response()->json(['message' => 'No direct flights were found.']);
     }
 }

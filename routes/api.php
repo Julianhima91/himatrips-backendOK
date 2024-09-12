@@ -39,4 +39,4 @@ Route::get('/destinations/{destination}/packages', [DestinationController::class
 Route::get('/destinations/{origin}/plain', [DestinationController::class, 'showDestinationsForOriginPlain']);
 Route::get('/destinations/{origin}', [DestinationController::class, 'showDestinationsForOrigin']);
 
-Route::get('/direct-flight', FlightController::class);
+Route::post('/direct-flight', FlightController::class);
