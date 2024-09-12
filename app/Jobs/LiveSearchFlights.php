@@ -30,12 +30,14 @@ class LiveSearchFlights implements ShouldQueue
 
     protected $infants;
 
+    public $batchId;
+
     protected $return_date;
 
     /**
      * Create a new job instance.
      */
-    public function __construct($date, $return_date, $origin_airport, $destination_airport, $adults, $children, $infants)
+    public function __construct($date, $return_date, $origin_airport, $destination_airport, $adults, $children, $infants, $batchId)
     {
         $this->date = $date;
         $this->return_date = $return_date;
@@ -44,6 +46,7 @@ class LiveSearchFlights implements ShouldQueue
         $this->adults = $adults;
         $this->children = $children;
         $this->infants = $infants;
+        $this->batchId = $batchId;
     }
 
     /**
@@ -93,8 +96,8 @@ class LiveSearchFlights implements ShouldQueue
         //put it in cache
         cache()->put('flight_'.$this->date, $itineraries, now()->addMinutes(5));
         cache()->put('flight_'.$this->return_date, $itineraries, now()->addMinutes(5));
-        if (! Cache::get('job_completed')) {
-            Cache::put('job_completed', true);
+        if (! Cache::get("job_completed_{$this->batchId}")) {
+            Cache::put("job_completed_{$this->batchId}", true);
         }
     }
 

@@ -37,10 +37,12 @@ class LiveSearchHotels implements ShouldQueue
 
     private $infants;
 
+    public $batchId;
+
     /**
      * Create a new job instance.
      */
-    public function __construct($checkin_date, $nights, $destination, $adults, $children, $infants)
+    public function __construct($checkin_date, $nights, $destination, $adults, $children, $infants, $batchId)
     {
         $this->checkin_date = $checkin_date;
         $this->nights = $nights;
@@ -48,6 +50,7 @@ class LiveSearchHotels implements ShouldQueue
         $this->adults = $adults;
         $this->children = $children;
         $this->infants = $infants;
+        $this->batchId = $batchId;
     }
 
     /**
@@ -143,7 +146,7 @@ class LiveSearchHotels implements ShouldQueue
 
         //save the hotel results in cache
         Cache::put('hotels', $hotel_results, now()->addMinutes(5));
-        Cache::put('hotel_job_completed', true, now()->addMinutes(1));
+        Cache::put("hotel_job_completed_{$this->batchId}", true, now()->addMinutes(1));
     }
 
     public function getHotelData(string $hotelIds, mixed $arrivalDate, mixed $nights, $adults, $children, $infants): mixed
