@@ -19,7 +19,7 @@ class DatabaseSeeder extends Seeder
             '--password' => 'password',
         ]);
 
-        $this->call(AirlinesSeeder::class);
+        //        $this->call(AirlinesSeeder::class);
         $this->call(AirportsSeeder::class);
         $this->call(HotelSeeder::class);
     }
