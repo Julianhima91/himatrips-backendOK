@@ -2,8 +2,10 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Actions\FlightsAction;
+use App\Actions\HotelsAction;
+use App\Actions\PackagesAction;
 use App\Events\LiveSearchCompleted;
-use App\Events\LiveSearchFailed;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Livesearch\LivesearchRequest;
 use App\Jobs\LiveSearchFlights;
@@ -13,16 +15,11 @@ use App\Models\Airport;
 use App\Models\Destination;
 use App\Models\DestinationOrigin;
 use App\Models\Flight;
-use App\Models\FlightData;
 use App\Models\Hotel;
-use App\Models\HotelData;
-use App\Models\HotelOffer;
 use App\Models\Origin;
 use App\Models\Package;
-use App\Models\PackageConfig;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
-use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -63,7 +60,7 @@ class PackageController extends Controller
         return response()->json(['data' => $packages], 200);
     }
 
-    public function liveSearch(LivesearchRequest $request)
+    public function liveSearch(LivesearchRequest $request, FlightsAction $flights, HotelsAction $hotels, PackagesAction $packagesAction)
     {
         ray()->newScreen();
 
@@ -101,259 +98,9 @@ class PackageController extends Controller
                     // One job has completed, break the loop
                     ray('job completed');
 
-                    $outbound_flight = Cache::get('flight_'.$date);
-
-                    //filter the flights as per the destination configuration
-                    //if destination has is_direct_flight set to true, we need to return only direct flights
-                    //if prioritize_morning_flights is set to true, we need to check if the flight is between the morning_flight_start_time and morning_flight_end_time
-                    //if we can find such flights we need to return them, but if we don't we still need to return the flights
-                    //if max_stop_count is not 0, we need to return only flights with stop count less than or equal to max_stop_count
-                    // and with max_wait_time less than or equal to max_wait_time
-
-                    //filter for direct flights
-                    $outbound_flight_direct = $outbound_flight->filter(function ($flight) {
-                        if ($flight == null) {
-                            return false;
-                        }
-
-                        return $flight->stopCount === 0;
-                    });
-
-                    //if we have direct flights, keep only direct flights
-                    if ($outbound_flight_direct->isNotEmpty()) {
-                        $outbound_flight = $outbound_flight_direct;
-                    }
-
-                    $outbound_flight_morning = $outbound_flight->when($destination->prioritize_morning_flights, function (Collection $collection) use ($destination) {
-                        return $collection->filter(function ($flight) use ($destination) {
-                            if ($flight == null) {
-                                return false;
-                            }
-                            if ($destination->morning_flight_start_time && $destination->morning_flight_end_time) {
-                                $departure = Carbon::parse($flight->departure);
-
-                                // Create Carbon instances for start and end times on the same day as the departure
-                                $morningStart = Carbon::parse($flight->departure->format('Y-m-d').' '.$destination->morning_flight_start_time);
-                                $morningEnd = Carbon::parse($flight->departure->format('Y-m-d').' '.$destination->morning_flight_end_time);
-
-                                // Now check if the departure time is between these two times
-                                return $departure->between($morningStart, $morningEnd);
-                            }
-
-                            return true;
-                        });
-                    });
-
-                    //if we have morning flights, find the cheapest one
-                    if ($outbound_flight_morning->isNotEmpty()) {
-                        $outbound_flight = $outbound_flight_morning;
-                    }
-
-                    $outbound_flight = $outbound_flight->when($destination->max_stop_count !== 0, function (Collection $collection) use ($destination) {
-                        return $collection->filter(function ($flight) use ($destination) {
-                            if ($flight == null) {
-                                return false;
-                            }
-
-                            return ! ($flight->stopCount <= $destination->max_stop_count &&
-                                    $flight->stopCount > 0) || $flight->timeBetweenFlights[0] <= $destination->max_wait_time;
-                        });
-                    });
-
-                    $outbound_flight = $outbound_flight->sortBy([
-                        ['stopCount', 'asc'],
-                        ['price', 'asc'],
-                    ]);
-
-                    //if collection is empty return early and broadcast failure
-                    if ($outbound_flight->isEmpty()) {
-                        broadcast(new LiveSearchFailed('No flights found', $batchId));
-
-                        return;
-                    }
-
-                    //if morning flights are not empty get first otherwise get the first from the filtered flights
-                    $first_outbound_flight = $outbound_flight->first();
-
-                    $outbound_flight_hydrated = FlightData::create([
-                        'price' => $first_outbound_flight->price,
-                        'departure' => $first_outbound_flight->departure,
-                        'arrival' => $first_outbound_flight->arrival,
-                        'airline' => $first_outbound_flight->airline,
-                        'stop_count' => $first_outbound_flight->stopCount,
-                        'origin' => $first_outbound_flight->origin,
-                        'destination' => $first_outbound_flight->destination,
-                        'adults' => $first_outbound_flight->adults,
-                        'children' => $first_outbound_flight->children,
-                        'infants' => $first_outbound_flight->infants,
-                        'extra_data' => json_encode($first_outbound_flight),
-                        'segments' => $first_outbound_flight->segments,
-                        'package_config_id' => 0,
-                    ]);
-
-                    $inbound_flight = Cache::get('flight_'.$return_date);
-
-                    $inbound_flight_direct = $inbound_flight->filter(function ($flight) {
-                        if ($flight == null) {
-                            return false;
-                        }
-
-                        return $flight->stopCount === 0;
-                    });
-
-                    //if we have direct flights, keep only direct flights
-                    if ($inbound_flight_direct->isNotEmpty()) {
-                        $inbound_flight = $inbound_flight_direct;
-                    }
-
-                    $inbound_flight_evening = $inbound_flight->when($destination->prioritize_evening_flights, function (Collection $collection) use ($destination) {
-                        return $collection->filter(function ($flight) use ($destination) {
-                            if ($flight == null) {
-                                return false;
-                            }
-                            if ($destination->evening_flight_start_time && $destination->evening_flight_end_time) {
-                                $departure = Carbon::parse($flight->departure);
-
-                                // Create Carbon instances for start and end times on the same day as the departure
-                                $eveningStart = Carbon::parse($flight->departure->format('Y-m-d').' '.$destination->evening_flight_start_time);
-                                $eveningEnd = Carbon::parse($flight->departure->format('Y-m-d').' '.$destination->evening_flight_end_time);
-
-                                // Now check if the departure time is between these two times
-                                return $departure->between($eveningStart, $eveningEnd);
-                            }
-
-                            return true;
-                        });
-                    });
-
-                    //if we have morning flights, find the cheapest one
-                    if ($inbound_flight_evening->isNotEmpty()) {
-                        $inbound_flight = $inbound_flight_evening;
-                    }
-
-                    $inbound_flight = $inbound_flight->when($destination->max_stop_count !== 0, function (Collection $collection) {
-                        return $collection->filter(function ($flight) {
-                            if ($flight == null) {
-                                return false;
-                            }
-
-                            return ! ($flight->stopCount <= 1 &&
-                                    $flight->stopCount > 0) || $flight->timeBetweenFlights[0] <= 360;
-                        });
-                    });
-
-                    $inbound_flight = $inbound_flight->sortBy([
-                        ['stopCount', 'asc'],
-                        ['price', 'asc'],
-                    ]);
-
-                    //if collection is empty return early and broadcast failure
-                    if ($inbound_flight->isEmpty()) {
-                        broadcast(new LiveSearchFailed('No flights found', $batchId));
-
-                        return;
-                    }
-
-                    $first_inbound_flight = $inbound_flight->first();
-
-                    $inbound_flight_hydrated = FlightData::create([
-                        'price' => $first_inbound_flight->price,
-                        'departure' => $first_inbound_flight->departure,
-                        'arrival' => $first_inbound_flight->arrival,
-                        'airline' => $first_inbound_flight->airline,
-                        'stop_count' => $first_inbound_flight->stopCount,
-                        'origin' => $first_inbound_flight->origin,
-                        'destination' => $first_inbound_flight->destination,
-                        'adults' => $first_inbound_flight->adults,
-                        'children' => $first_inbound_flight->children,
-                        'infants' => $first_inbound_flight->infants,
-                        'extra_data' => json_encode($first_inbound_flight),
-                        'segments' => $first_inbound_flight->segments,
-                        'package_config_id' => 0,
-                    ]);
-
-                    //array of hotel data DTOs
-                    $hotel_results = Cache::get('hotels');
-
-                    $package_ids = [];
-
-                    $commission_percentage = $destination->commission_percentage != 0 ? $destination->commission_percentage : 0.2;
-
-                    foreach ($hotel_results as $hotel_result) {
-
-                        $hotel_data = HotelData::create([
-                            'hotel_id' => $hotel_result->hotel_id,
-                            'check_in_date' => $hotel_result->check_in_date,
-                            'number_of_nights' => $hotel_result->number_of_nights,
-                            'room_count' => $hotel_result->room_count,
-                            'adults' => $hotel_result->adults,
-                            'children' => $hotel_result->children,
-                            'infants' => $hotel_result->infants,
-                            'package_config_id' => 0,
-                        ]);
-
-                        foreach ($hotel_result->hotel_offers as $offer) {
-
-                            HotelOffer::create([
-                                'hotel_data_id' => $hotel_data->id,
-                                'room_basis' => $offer->room_basis,
-                                'room_type' => $offer->room_type,
-                                'price' => $offer->price,
-                                'total_price_for_this_offer' => $outbound_flight_hydrated->price + $inbound_flight_hydrated->price + $offer->price + $commission_percentage * ($outbound_flight_hydrated->price + $inbound_flight_hydrated->price + $offer->price),
-                                'reservation_deadline' => $offer->reservation_deadline,
-                            ]);
-                        }
-
-                        $first_offer = $hotel_data->offers()->orderBy('price')->first();
-                        $cheapestOffer = collect($hotel_data->offers)->sortBy('TotalPrice')->first();
-
-                        $hotel_data->update(['price' => $cheapestOffer->total_price_for_this_offer]);
-
-                        //calculate commission (20%)
-                        //$commission = ($outbound_flight_hydrated->price + $inbound_flight_hydrated->price + $first_offer->price) * $commission_percentage;
-
-                        $packageConfig = PackageConfig::query()
-                            ->whereHas('destination_origin', function ($query) {
-                                $query->where([
-                                    ['destination_id', request()->destination_id],
-                                    ['origin_id', request()->origin_id],
-                                ]);
-                            })
-                            ->whereJsonContains('number_of_nights', request()->nights)
-                            ->first();
-
-                        $calculatedCommissionPercentage = ($packageConfig->commission_percentage / 100) * $first_offer->total_price_for_this_offer;
-                        $fixedCommissionRate = $packageConfig->commission_amount;
-
-                        //create the package here
-                        $package = Package::create([
-                            'hotel_data_id' => $hotel_data->id,
-                            'outbound_flight_id' => $outbound_flight_hydrated->id,
-                            'inbound_flight_id' => $inbound_flight_hydrated->id,
-                            'commission' => max($fixedCommissionRate, $calculatedCommissionPercentage),
-                            'total_price' => $first_offer->total_price_for_this_offer,
-                            'batch_id' => $batchId,
-                            'package_config_id' => $packageConfig->id ?? null,
-                        ]);
-
-                        $package_ids[] = $package->id;
-                    }
-
-                    $maxTotalPrice = Package::whereIn('id', $package_ids)->max('total_price');
-                    $minTotalPrice = Package::whereIn('id', $package_ids)->min('total_price');
-
-                    $packages = Package::whereIn('id', $package_ids)
-                        ->with([
-                            'hotelData',
-                            'hotelData.hotel',
-                            'hotelData.hotel.hotelPhotos',
-                            'outboundFlight',
-                            'inboundFlight',
-                            'hotelData.offers' => function ($query) {
-                                $query->orderBy('price', 'asc');
-                            },
-                        ])
-                        ->paginate(10);
+                    [$outbound_flight_hydrated, $inbound_flight_hydrated] = $flights->handle($date, $destination, $batchId, $return_date);
+                    [$hotel_data, $first_offer] = $hotels->handle($destination, $outbound_flight_hydrated, $inbound_flight_hydrated);
+                    [$packages, $minTotalPrice, $maxTotalPrice] = $packagesAction->handle($first_offer, $outbound_flight_hydrated, $inbound_flight_hydrated, $hotel_data, $batchId);
 
                     //fire off event
                     broadcast(new LiveSearchCompleted($packages, $batchId, $minTotalPrice, $maxTotalPrice));
