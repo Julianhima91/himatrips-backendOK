@@ -13,7 +13,6 @@ class HotelsAction
         //array of hotel data DTOs
         $hotel_results = Cache::get('hotels');
 
-        \Log::info($hotel_results);
         $package_ids = [];
 
         $commission_percentage = $destination->commission_percentage != 0 ? $destination->commission_percentage : 0.2;

@@ -93,7 +93,7 @@ class LiveSearchFlightsApi2 implements ShouldQueue
 
             if ($itineraries->isEmpty()) {
                 ray('empty itineraries 2');
-                ray($itineraries);
+//                ray($itineraries);
                 $this->release(1);
             }
         } catch (\Exception $e) {
