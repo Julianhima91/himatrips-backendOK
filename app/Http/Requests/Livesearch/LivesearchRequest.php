@@ -16,6 +16,7 @@ class LivesearchRequest extends FormRequest
             'adults' => ['required', 'integer', 'min:1'],
             'children' => ['required', 'integer'],
             'infants' => ['required', 'integer'],
+            'rooms' => ['required', 'integer'],
         ];
     }
 }
