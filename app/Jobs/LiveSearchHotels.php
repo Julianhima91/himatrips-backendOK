@@ -37,12 +37,14 @@ class LiveSearchHotels implements ShouldQueue
 
     private $infants;
 
+    private $rooms;
+
     public $batchId;
 
     /**
      * Create a new job instance.
      */
-    public function __construct($checkin_date, $nights, $destination, $adults, $children, $infants, $batchId)
+    public function __construct($checkin_date, $nights, $destination, $adults, $children, $infants, $rooms, $batchId)
     {
         $this->checkin_date = $checkin_date;
         $this->nights = $nights;
@@ -50,6 +52,7 @@ class LiveSearchHotels implements ShouldQueue
         $this->adults = $adults;
         $this->children = $children;
         $this->infants = $infants;
+        $this->rooms = $rooms;
         $this->batchId = $batchId;
     }
 
@@ -71,7 +74,7 @@ class LiveSearchHotels implements ShouldQueue
         }, $hotelIds->toArray()));
 
         try {
-            $response = $this->getHotelData($hotelIds, $this->checkin_date, $this->nights, $this->adults, $this->children, $this->infants);
+            $response = $this->getHotelData($hotelIds, $this->checkin_date, $this->nights, $this->adults, $this->children, $this->infants, $this->rooms);
         } catch (\Exception $e) {
             //if it's the first time, we retry
             if ($this->attempts() == 1) {
@@ -149,7 +152,7 @@ class LiveSearchHotels implements ShouldQueue
         Cache::put("hotel_job_completed_{$this->batchId}", true, now()->addMinutes(1));
     }
 
-    public function getHotelData(string $hotelIds, mixed $arrivalDate, mixed $nights, $adults, $children, $infants): mixed
+    public function getHotelData(string $hotelIds, mixed $arrivalDate, mixed $nights, $adults, $children, $infants, $rooms): mixed
     {
         //$children and infants will be an integer
         //for every children we need to create this string
@@ -188,7 +191,7 @@ class LiveSearchHotels implements ShouldQueue
         <ArrivalDate>{$arrivalDate}</ArrivalDate>
         <Nights>{$nights}</Nights>
         <Rooms>
-            <Room Adults="{$adults}" RoomCount="1" ChildCount="{$totalChildren}">
+            <Room Adults="{$adults}" RoomCount="{$rooms}" ChildCount="{$totalChildren}">
             "{$childrenString}"
             "{$infantsString}"
             </Room>
