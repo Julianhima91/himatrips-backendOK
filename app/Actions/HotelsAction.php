@@ -13,6 +13,7 @@ class HotelsAction
         //array of hotel data DTOs
         $hotel_results = Cache::get('hotels');
 
+        \Log::info($hotel_results);
         $package_ids = [];
 
         $commission_percentage = $destination->commission_percentage != 0 ? $destination->commission_percentage : 0.2;
@@ -35,7 +36,7 @@ class HotelsAction
                 HotelOffer::create([
                     'hotel_data_id' => $hotel_data->id,
                     'room_basis' => $offer->room_basis,
-                    'room_type' => $offer->room_type,
+                    'room_type' => json_encode($offer->room_type),
                     'price' => $offer->price,
                     'total_price_for_this_offer' => $outbound_flight_hydrated->price + $inbound_flight_hydrated->price + $offer->price + $commission_percentage * ($outbound_flight_hydrated->price + $inbound_flight_hydrated->price + $offer->price),
                     'reservation_deadline' => $offer->reservation_deadline,
