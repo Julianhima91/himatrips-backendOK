@@ -97,7 +97,7 @@ class FetchSeparateHotelData implements ShouldQueue
             foreach ($hotelOffer->Offers as $offer) {
                 $hotel->offers()->create([
                     'room_basis' => $offer->RoomBasis,
-                    'room_type' => $offer->Rooms[0],
+                    'room_type' => $offer->Rooms,
                     'price' => $offer->TotalPrice,
                     'reservation_deadline' => DateTime::createFromFormat('d/M/Y', $offer->CxlDeadLine)->format('Y-m-d'),
                     'remark' => $offer->Remark,

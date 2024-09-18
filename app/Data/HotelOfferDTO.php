@@ -12,7 +12,7 @@ class HotelOfferDTO extends Data
         public int|null|Optional $id,
         public int $hotel_data_id,
         public string $room_basis,
-        public string $room_type,
+        public array $room_type,
         public float $price,
         public ?Carbon $reservation_deadline,
         public ?string $remark
