@@ -168,8 +168,6 @@ class PackageController extends Controller
                 'month' => Carbon::parse($first_available_date)->format('m'),
                 'year' => Carbon::parse($first_available_date)->format('Y'),
             ]);
-
-            //            dd($request->all());
         }
 
         $dates = Package::whereHas('packageConfig', function ($query) use ($destination_origin) {
