@@ -26,12 +26,13 @@ Route::get('/origins', [OriginController::class, 'index']);
 
 Route::post('/packages/search', [PackageController::class, 'search']);
 Route::get('/packages/{package}', [PackageController::class, 'show']);
-Route::post('/packages/available-dates', [PackageController::class, 'getAvailableDates']);
+//Route::post('/packages/available-dates', [PackageController::class, 'getAvailableDates']);
 Route::post('/packages/available-nights', [PackageController::class, 'getAvailableNights']);
 
 Route::post('/live-search', [PackageController::class, 'liveSearch']);
 Route::post('/live-search-paginated', [PackageController::class, 'paginateLiveSearch']);
 Route::post('/filter-data', [PackageController::class, 'getFilterData']);
+Route::get('/available-dates', [PackageController::class, 'getAvailableDates']);
 
 Route::get('/destinations', [DestinationController::class, 'index']);
 Route::get('/destinations/all', [DestinationController::class, 'indexAll']);
