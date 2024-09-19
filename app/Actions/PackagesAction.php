@@ -9,6 +9,7 @@ class PackagesAction
 {
     public function handle($first_offer, $outbound_flight_hydrated, $inbound_flight_hydrated, $hotel_data, $batchId)
     {
+        //todo: default package config?
         //array of hotel data DTOs
         //calculate commission (20%)
         //$commission = ($outbound_flight_hydrated->price + $inbound_flight_hydrated->price + $first_offer->price) * $commission_percentage;

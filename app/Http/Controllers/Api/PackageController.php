@@ -14,6 +14,7 @@ use App\Jobs\LiveSearchHotels;
 use App\Models\Airport;
 use App\Models\Destination;
 use App\Models\DestinationOrigin;
+use App\Models\DirectFlightAvailability;
 use App\Models\Flight;
 use App\Models\Hotel;
 use App\Models\Origin;
@@ -133,9 +134,20 @@ class PackageController extends Controller
 
     public function getAvailableDates(Request $request)
     {
-        $destination_origin = DestinationOrigin::where('destination_id', $request->destination_id)
-            ->where('origin_id', $request->origin_id)
-            ->first();
+        $destination_origin =
+            DestinationOrigin::where([
+                ['destination_id', $request->destination_id],
+                ['origin_id', $request->origin_id],
+            ])->first();
+
+        $directFlightDates = DirectFlightAvailability::where('destination_origin_id', $destination_origin->id)
+            ->pluck('date')->toArray();
+
+        if ($directFlightDates) {
+            return response()->json([
+                'data' => $directFlightDates,
+            ], 200);
+        }
 
         //lets modify this so we automatically get the first month and year
         //if the user has not selected a month and year
@@ -156,6 +168,8 @@ class PackageController extends Controller
                 'month' => Carbon::parse($first_available_date)->format('m'),
                 'year' => Carbon::parse($first_available_date)->format('Y'),
             ]);
+
+            //            dd($request->all());
         }
 
         $dates = Package::whereHas('packageConfig', function ($query) use ($destination_origin) {
