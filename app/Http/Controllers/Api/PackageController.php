@@ -86,7 +86,7 @@ class PackageController extends Controller
             $jobs = [
                 new LiveSearchFlightsApi2($origin_airport, $destination_airport, $date, $return_date, $origin_airport, $destination_airport, $request->adults, $request->children, $request->infants, $batchId),
                 new LiveSearchFlights($request->date, $return_date, $origin_airport, $destination_airport, $request->adults, $request->children, $request->infants, $batchId),
-                new LiveSearchHotels($request->date, $request->nights, $request->destination_id, $request->adults, $request->children, $request->infants, $request->rooms, $batchId),
+                new LiveSearchHotels($request->date, $request->nights, $request->destination_id, $request->adults, $request->children, $request->infants, 1, $batchId),
             ];
 
             foreach ($jobs as $job) {
@@ -100,8 +100,8 @@ class PackageController extends Controller
                     ray('job completed');
 
                     [$outbound_flight_hydrated, $inbound_flight_hydrated] = $flights->handle($date, $destination, $batchId, $return_date);
-                    [$hotel_data, $first_offer] = $hotels->handle($destination, $outbound_flight_hydrated, $inbound_flight_hydrated);
-                    [$packages, $minTotalPrice, $maxTotalPrice] = $packagesAction->handle($first_offer, $outbound_flight_hydrated, $inbound_flight_hydrated, $hotel_data, $batchId);
+                    $package_ids = $hotels->handle($destination, $outbound_flight_hydrated, $inbound_flight_hydrated, $batchId);
+                    [$packages, $minTotalPrice, $maxTotalPrice] = $packagesAction->handle($package_ids);
 
                     //fire off event
                     broadcast(new LiveSearchCompleted($packages, $batchId, $minTotalPrice, $maxTotalPrice));
