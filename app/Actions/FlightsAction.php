@@ -181,7 +181,7 @@ class FlightsAction
             'infants' => $first_inbound_flight->infants,
             'extra_data' => json_encode($first_inbound_flight),
             'segments' => $first_inbound_flight->segments,
-            //todo
+            //todo: Add a package config id
             'package_config_id' => 0,
         ]);
 
