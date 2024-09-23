@@ -3,6 +3,7 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\HotelResource\Pages;
+use App\Filament\Resources\HotelResource\RelationManagers\DestinationsRelationManager;
 use App\Models\Hotel;
 use Filament\Forms;
 use Filament\Forms\Form;
@@ -128,7 +129,7 @@ class HotelResource extends Resource
     public static function getRelations(): array
     {
         return [
-            //
+            DestinationsRelationManager::class,
         ];
     }
 
