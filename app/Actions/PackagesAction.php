@@ -19,9 +19,7 @@ class PackagesAction
                     ['destination_id', request()->destination_id],
                     ['origin_id', request()->origin_id],
                 ]);
-            })
-            ->whereJsonContains('number_of_nights', request()->nights)
-            ->first();
+            })->first();
 
         $calculatedCommissionPercentage = ($packageConfig->commission_percentage / 100) * $first_offer->total_price_for_this_offer;
         $fixedCommissionRate = $packageConfig->commission_amount;
