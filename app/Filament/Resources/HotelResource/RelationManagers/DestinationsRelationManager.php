@@ -2,7 +2,6 @@
 
 namespace App\Filament\Resources\HotelResource\RelationManagers;
 
-use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Tables;
@@ -16,22 +15,6 @@ class DestinationsRelationManager extends RelationManager
     {
         return $form
             ->schema([
-                Forms\Components\TextInput::make('name')
-                    ->required()
-                    ->maxLength(255),
-                Forms\Components\Toggle::make('show_in_homepage')
-                    ->inline(false)
-                    ->label('Show in homepage'),
-                Forms\Components\Textarea::make('description')
-                    ->required()
-                    ->maxLength(255)
-                    ->columnSpanFull(),
-                Forms\Components\TextInput::make('city')
-                    ->required()
-                    ->maxLength(255),
-                Forms\Components\TextInput::make('country')
-                    ->required()
-                    ->maxLength(255),
             ]);
     }
 
@@ -49,8 +32,10 @@ class DestinationsRelationManager extends RelationManager
                 Tables\Actions\AttachAction::make(),
             ])
             ->actions([
+                Tables\Actions\Action::make('redirect')
+                    ->label('View')
+                    ->url(fn ($record) => route('filament.admin.resources.destinations.edit', $record)),
                 Tables\Actions\DetachAction::make(),
-                Tables\Actions\ViewAction::make(),
             ])
             ->bulkActions([
                 //                Tables\Actions\BulkActionGroup::make([
