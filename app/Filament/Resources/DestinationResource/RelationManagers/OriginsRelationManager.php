@@ -2,7 +2,6 @@
 
 namespace App\Filament\Resources\DestinationResource\RelationManagers;
 
-use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Tables;
@@ -16,19 +15,6 @@ class OriginsRelationManager extends RelationManager
     {
         return $form
             ->schema([
-                Forms\Components\TextInput::make('name')
-                    ->required()
-                    ->maxLength(255),
-                Forms\Components\Textarea::make('description')
-                    ->required()
-                    ->maxLength(65535)
-                    ->columnSpanFull(),
-                Forms\Components\TextInput::make('city')
-                    ->required()
-                    ->maxLength(255),
-                Forms\Components\TextInput::make('country')
-                    ->required()
-                    ->maxLength(255),
             ]);
     }
 
@@ -46,8 +32,10 @@ class OriginsRelationManager extends RelationManager
                 Tables\Actions\AttachAction::make(),
             ])
             ->actions([
+                Tables\Actions\Action::make('redirect')
+                    ->label('View')
+                    ->url(fn ($record) => route('filament.admin.resources.origins.edit', $record)),
                 Tables\Actions\DetachAction::make(),
-                Tables\Actions\ViewAction::make(),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([

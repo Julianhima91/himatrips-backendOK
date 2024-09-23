@@ -2,7 +2,6 @@
 
 namespace App\Filament\Resources\DestinationResource\RelationManagers;
 
-use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Tables;
@@ -16,19 +15,6 @@ class AirportsRelationManager extends RelationManager
     {
         return $form
             ->schema([
-                Forms\Components\TextInput::make('nameAirport')
-                    ->autofocus()
-                    ->required()
-                    ->label('Name'),
-                Forms\Components\TextInput::make('sky_id')
-                    ->required(),
-                Forms\Components\TextInput::make('entity_id')
-                    ->required(),
-                Forms\Components\TextInput::make('codeIataAirport')
-                    ->label('IATA Code')
-                    ->required(),
-                Forms\Components\TextInput::make('rapidapi_id')
-                    ->label('Rapid API ID'),
             ]);
     }
 
@@ -49,8 +35,10 @@ class AirportsRelationManager extends RelationManager
                 Tables\Actions\AttachAction::make(),
             ])
             ->actions([
+                Tables\Actions\Action::make('redirect')
+                    ->label('View')
+                    ->url(fn ($record) => route('filament.admin.resources.airports.edit', $record)),
                 Tables\Actions\DetachAction::make(),
-                Tables\Actions\ViewAction::make(),
             ])
             ->bulkActions([
             ])
