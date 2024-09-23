@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Filament\Resources\DestinationResource\RelationManagers;
+namespace App\Filament\Resources\HotelResource\RelationManagers;
 
 use Filament\Forms;
 use Filament\Forms\Form;
@@ -8,9 +8,9 @@ use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Tables;
 use Filament\Tables\Table;
 
-class OriginsRelationManager extends RelationManager
+class DestinationsRelationManager extends RelationManager
 {
-    protected static string $relationship = 'origins';
+    protected static string $relationship = 'destinations';
 
     public function form(Form $form): Form
     {
@@ -19,9 +19,12 @@ class OriginsRelationManager extends RelationManager
                 Forms\Components\TextInput::make('name')
                     ->required()
                     ->maxLength(255),
+                Forms\Components\Toggle::make('show_in_homepage')
+                    ->inline(false)
+                    ->label('Show in homepage'),
                 Forms\Components\Textarea::make('description')
                     ->required()
-                    ->maxLength(65535)
+                    ->maxLength(255)
                     ->columnSpanFull(),
                 Forms\Components\TextInput::make('city')
                     ->required()
@@ -50,10 +53,9 @@ class OriginsRelationManager extends RelationManager
                 Tables\Actions\ViewAction::make(),
             ])
             ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    //                    Tables\Actions\DetachBulkAction::make(),
-                    //                    Tables\Actions\DeleteBulkAction::make(),
-                ]),
+                //                Tables\Actions\BulkActionGroup::make([
+                //                    Tables\Actions\DetachBulkAction::make(),
+                //                ]),
             ])
             ->emptyStateActions([
                 Tables\Actions\AttachAction::make(),

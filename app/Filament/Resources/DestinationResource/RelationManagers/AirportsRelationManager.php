@@ -16,9 +16,19 @@ class AirportsRelationManager extends RelationManager
     {
         return $form
             ->schema([
-                Forms\Components\TextInput::make('codeIataAirport')
+                Forms\Components\TextInput::make('nameAirport')
+                    ->autofocus()
                     ->required()
-                    ->maxLength(255),
+                    ->label('Name'),
+                Forms\Components\TextInput::make('sky_id')
+                    ->required(),
+                Forms\Components\TextInput::make('entity_id')
+                    ->required(),
+                Forms\Components\TextInput::make('codeIataAirport')
+                    ->label('IATA Code')
+                    ->required(),
+                Forms\Components\TextInput::make('rapidapi_id')
+                    ->label('Rapid API ID'),
             ]);
     }
 
@@ -40,6 +50,7 @@ class AirportsRelationManager extends RelationManager
             ])
             ->actions([
                 Tables\Actions\DetachAction::make(),
+                Tables\Actions\ViewAction::make(),
             ])
             ->bulkActions([
             ])

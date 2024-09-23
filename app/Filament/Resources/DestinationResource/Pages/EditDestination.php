@@ -28,10 +28,12 @@ class EditDestination extends EditRecord
         //delete all photos first from the database and from storage
         $record->destinationPhotos()->delete();
 
-        $record->destinationPhotos()->updateOrCreate([
-            'file_path' => $image,
-            'destination_id' => $record->id,
-        ]);
+        if ($image) {
+            $record->destinationPhotos()->updateOrCreate([
+                'file_path' => $image,
+                'destination_id' => $record->id,
+            ]);
+        }
 
         return $record;
     }
