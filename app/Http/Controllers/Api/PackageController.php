@@ -21,7 +21,6 @@ use App\Models\Origin;
 use App\Models\Package;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
-use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -252,19 +251,22 @@ class PackageController extends Controller
             })
             ->values()
             ->all();
+
         $packages = collect($packages);
 
-        $packages = new LengthAwarePaginator(
-            $packages->forPage($request->page ?? 1, $request->per_page ?? 10),
-            $packages->count(),
-            $request->per_page ?? 10,
-            $request->page ?? 1,
-            ['path' => $request->url()]
-        );
+        $page = $request->page ?? 1;
+        $perPage = $request->per_page ?? 10;
+
+        $paginatedData = $packages->forPage($page, $perPage)->values();
 
         return response()->json([
-            'data' => $packages,
-        ], 200);
+            'data' => [
+                'data' => $paginatedData,
+                'current_page' => $page,
+                'per_page' => $perPage,
+                'total' => $packages->count(),
+            ],
+        ]);
     }
 
     public function getFilterData(Request $request)
