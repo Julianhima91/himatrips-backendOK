@@ -87,13 +87,9 @@ class DestinationController extends Controller
 
     }
 
-    public function showDestinationsForOriginPlain(Origin $origin, Request $request)
+    public function showDestinationsForOriginPlain(Origin $origin)
     {
-        $request->validate([
-            'origin_id' => 'required|integer',
-        ]);
-
-        $originId = $request->input('origin_id');
+        $originId = $origin->id;
 
         $destinations = Destination::where('show_in_homepage', true)
             ->whereHas('destinationOrigin', function ($query) use ($originId) {
