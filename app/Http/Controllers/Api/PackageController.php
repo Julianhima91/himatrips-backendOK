@@ -21,6 +21,7 @@ use App\Models\Origin;
 use App\Models\Package;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -86,7 +87,7 @@ class PackageController extends Controller
             $jobs = [
                 new LiveSearchFlightsApi2($origin_airport, $destination_airport, $date, $return_date, $origin_airport, $destination_airport, $request->adults, $request->children, $request->infants, $batchId),
                 new LiveSearchFlights($request->date, $return_date, $origin_airport, $destination_airport, $request->adults, $request->children, $request->infants, $batchId),
-                new LiveSearchHotels($request->date, $request->nights, $request->destination_id, $request->adults, $request->children, $request->infants, 1, $batchId),
+                new LiveSearchHotels($request->date, $request->nights, $request->destination_id, $request->adults, $request->children, $request->infants, $request->rooms, $batchId),
             ];
 
             foreach ($jobs as $job) {
@@ -251,12 +252,15 @@ class PackageController extends Controller
             })
             ->values()
             ->all();
+        $packages = collect($packages);
 
-        $packages = collect($packages)
-            ->paginate(
-                perPage: $request->per_page ?? 10,
-                page: $request->page ?? 1
-            );
+        $packages = new LengthAwarePaginator(
+            $packages->forPage($request->page ?? 1, $request->per_page ?? 10),
+            $packages->count(),
+            $request->per_page ?? 10,
+            $request->page ?? 1,
+            ['path' => $request->url()]
+        );
 
         return response()->json([
             'data' => $packages,

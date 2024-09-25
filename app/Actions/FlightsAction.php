@@ -99,7 +99,7 @@ class FlightsAction
             'infants' => $first_outbound_flight->infants,
             'extra_data' => json_encode($first_outbound_flight),
             'segments' => $first_outbound_flight->segments,
-            //todo
+            //todo: Default package config id?
             'package_config_id' => 0,
         ]);
 
