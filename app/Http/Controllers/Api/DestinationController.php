@@ -11,17 +11,11 @@ class DestinationController extends Controller
 {
     public function index(Request $request)
     {
-        $request->validate([
-            'origin_id' => 'required|integer',
-        ]);
-
-        $originId = $request->input('origin_id');
+        //here we will return 12 destinations that have show_on_homepage set to true
+        //we also need to include the number of packages for each destination
+        //we also need to include the lowest price for each destination
 
         $destinations = Destination::where('show_in_homepage', true)
-            ->whereHas('destinationOrigin', function ($query) use ($originId) {
-                $query->where('origin_id', $originId)
-                    ->whereHas('packageConfigs');
-            })
             ->withCount('packages')
             ->withMin('packages', 'total_price')
             ->with('destinationPhotos')
@@ -93,14 +87,23 @@ class DestinationController extends Controller
 
     }
 
-    public function showDestinationsForOriginPlain(Origin $origin)
+    public function showDestinationsForOriginPlain(Origin $origin, Request $request)
     {
-        //here we need to get all destinations for this origin
-        //we need to make sure to return only destinations that have packages available
+        $request->validate([
+            'origin_id' => 'required|integer',
+        ]);
 
-        $destinations = $origin->destinations()
-            //->whereHas('packages')
+        $originId = $request->input('origin_id');
+
+        $destinations = Destination::where('show_in_homepage', true)
+            ->whereHas('destinationOrigin', function ($query) use ($originId) {
+                $query->where('origin_id', $originId)
+                    ->whereHas('packageConfigs');
+            })
+            ->withCount('packages')
+            ->withMin('packages', 'total_price')
             ->with('destinationPhotos')
+            ->take(12)
             ->get();
 
         return response()->json([
