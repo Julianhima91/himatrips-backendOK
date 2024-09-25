@@ -11,14 +11,11 @@ class OriginController extends Controller
     public function index()
     {
         $origins = QueryBuilder::for(Origin::class)
-            //we need to filter the origins that have packages
-//            ->whereHas('destinations', function ($query) {
-//                $query->whereHas('packages');
-//            })
-//            ->with(['destinations' => function ($query) {
-//                $query->whereHas('packages');
-//            }])
-            ->with('destinations')
+            ->whereHas('destinationOrigin', function ($query) {
+                $query->whereHas('packageConfigs', function ($pivotQuery) {
+                    return $pivotQuery;
+                });
+            })
             ->get();
 
         if ($origins->isEmpty()) {

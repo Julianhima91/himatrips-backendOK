@@ -9,13 +9,19 @@ use Illuminate\Http\Request;
 
 class DestinationController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        //here we will return 12 destinations that have show_on_homepage set to true
-        //we also need to include the number of packages for each destination
-        //we also need to include the lowest price for each destination
+        $request->validate([
+            'origin_id' => 'required|integer',
+        ]);
+
+        $originId = $request->input('origin_id');
 
         $destinations = Destination::where('show_in_homepage', true)
+            ->whereHas('destinationOrigin', function ($query) use ($originId) {
+                $query->where('origin_id', $originId)
+                    ->whereHas('packageConfigs');
+            })
             ->withCount('packages')
             ->withMin('packages', 'total_price')
             ->with('destinationPhotos')
