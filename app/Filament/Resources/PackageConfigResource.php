@@ -2,7 +2,9 @@
 
 namespace App\Filament\Resources;
 
+use App\Actions\CheckFlightAvailability;
 use App\Filament\Resources\PackageConfigResource\Pages;
+use App\Http\Requests\CheckFlightAvailabilityRequest;
 use App\Models\Airline;
 use App\Models\Airport;
 use App\Models\Destination;
@@ -12,9 +14,12 @@ use Filament\Forms;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Form;
+use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
+use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\ValidationException;
 
 class PackageConfigResource extends Resource
 {
@@ -219,6 +224,61 @@ class PackageConfigResource extends Resource
                 Tables\Actions\Action::make('Show Package Dates')
                     ->icon('heroicon-o-calendar')
                     ->iconButton(),
+                Tables\Actions\Action::make('Choose Package Config')
+                    ->label('Check Flights')
+                    ->form([
+                        Forms\Components\DatePicker::make('from_date')
+                            ->required()
+                            ->label('Start Date'),
+                        Forms\Components\DatePicker::make('to_date')
+                            ->required()
+                            ->label('To Date'),
+
+                        Forms\Components\Toggle::make('is_direct_flight')
+                            ->required()
+                            ->label('Direct Flight'),
+                        //                        Forms\Components\Select::make('airline_id')->label('Airline')
+                        //                            ->options(function () {
+                        //                            })
+                    ])
+                    ->action(function ($record, array $data) {
+                        try {
+                            $validator = Validator::make(array_merge($data, [
+                                'package_config_id' => $record->id,
+                            ]), [
+                                'package_config_id' => 'required|exists:package_configs,id',
+                                'from_date' => 'required|date',
+                                'to_date' => 'required|date|after_or_equal:from_date',
+                                'airline_id' => 'nullable|exists:airlines,id',
+                                'is_direct_flight' => 'nullable|boolean',
+                            ]);
+
+                            $validatedData = $validator->validate();
+
+                            $request = new CheckFlightAvailabilityRequest($validatedData);
+                            $result = (new CheckFlightAvailability)->handle($request);
+
+                            if ($result) {
+                                Notification::make()
+                                    ->success()
+                                    ->title('Flight Availability Checked')
+                                    ->send();
+                            } else {
+                                Notification::make()
+                                    ->danger()
+                                    ->title('No Flight Availability Found')
+                                    ->send();
+                            }
+                        } catch (ValidationException $e) {
+                            Notification::make()
+                                ->danger()
+                                ->title('Validation Failed')
+                                ->body(implode("\n", $e->errors()))
+                                ->send();
+
+                            return;
+                        }
+                    }),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
