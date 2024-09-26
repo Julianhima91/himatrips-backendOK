@@ -129,53 +129,17 @@ class PackageConfigResource extends Resource
                     ->label('Destination')
                     ->searchable()
                     ->sortable(),
-                Tables\Columns\TextColumn::make('from_date')
-                    ->label('From')
-                    ->date('d-m-Y'),
-                Tables\Columns\TextColumn::make('to_date')
-                    ->label('To')
-                    ->date('d-m-Y'),
                 //show the numbers of packages
                 Tables\Columns\TextColumn::make('packages_count')
                     ->label('Packages')
                     ->counts('packages')
                     ->sortable(),
-                Tables\Columns\TextColumn::make('last_processed_at')
-                    ->label('Last Updated At')
-                    ->date('d-m-Y H:i:s')
-                    ->description(function (PackageConfig $record) {
-                        if ($record->last_processed_at == null) {
-                            return '-';
-                        }
-
-                        return $record->last_processed_at->diffForHumans();
-                    }),
-                Tables\Columns\TextColumn::make('created_at')
-                    ->label('Next update at')
-                    ->date('d-m-Y H:i:s')
-                    ->formatStateUsing(function (PackageConfig $record) {
-                        if ($record->last_processed_at == null) {
-                            return '-';
-                        }
-
-                        return $record->last_processed_at->addHours($record->update_frequency);
-                    })
-                    ->description(function (PackageConfig $record) {
-                        if ($record->last_processed_at == null) {
-                            return '-';
-                        }
-
-                        return $record->last_processed_at->addHours($record->update_frequency)->diffForHumans();
-                    }),
             ])
             ->filters([
                 //
             ])
             ->actions([
                 Tables\Actions\EditAction::make()
-                    ->iconButton(),
-                Tables\Actions\Action::make('Show Package Dates')
-                    ->icon('heroicon-o-calendar')
                     ->iconButton(),
                 Tables\Actions\Action::make('Choose Package Config')
                     ->label('Check Flights')
