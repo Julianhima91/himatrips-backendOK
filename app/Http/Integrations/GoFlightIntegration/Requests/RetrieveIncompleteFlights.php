@@ -75,7 +75,7 @@ class RetrieveIncompleteFlights extends SoloRequest
                 id: Optional::create(),
                 price: (float) $itinerary['price']['raw'],
                 origin: $itinerary['legs'][0]['origin']['id'],
-                origin_back: $itinerary['legs'][0]['origin']['id'],
+                origin_back: $itinerary['legs'][1]['origin']['id'],
                 destination: $itinerary['legs'][0]['destination']['id'],
                 destination_back: $itinerary['legs'][1]['destination']['id'],
                 departure: new \DateTime($itinerary['legs'][0]['departure']),
