@@ -4,6 +4,7 @@ namespace App\Actions;
 
 use App\Events\LiveSearchFailed;
 use App\Models\FlightData;
+use App\Models\PackageConfig;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
@@ -83,6 +84,14 @@ class FlightsAction
             return;
         }
 
+        $packageConfig = PackageConfig::query()
+            ->whereHas('destination_origin', function ($query) {
+                $query->where([
+                    ['destination_id', request()->destination_id],
+                    ['origin_id', request()->origin_id],
+                ]);
+            })->first();
+
         //if morning flights are not empty get first otherwise get the first from the filtered flights
         $first_outbound_flight = $outbound_flight->first();
 
@@ -100,7 +109,7 @@ class FlightsAction
             'extra_data' => json_encode($first_outbound_flight),
             'segments' => $first_outbound_flight->segments,
             //todo: Default package config id?
-            'package_config_id' => 0,
+            'package_config_id' => $packageConfig->id,
         ]);
 
         $inbound_flight = Cache::get('flight_'.$return_date);
@@ -182,7 +191,7 @@ class FlightsAction
             'extra_data' => json_encode($first_inbound_flight),
             'segments' => $first_inbound_flight->segments,
             //todo: Add a package config id
-            'package_config_id' => 0,
+            'package_config_id' => $packageConfig->id,
         ]);
 
         return [$outbound_flight_hydrated, $inbound_flight_hydrated];
