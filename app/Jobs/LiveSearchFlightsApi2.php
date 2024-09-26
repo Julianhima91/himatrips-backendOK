@@ -93,7 +93,7 @@ class LiveSearchFlightsApi2 implements ShouldQueue
 
             if ($itineraries->isEmpty()) {
                 ray('empty itineraries 2');
-//                ray($itineraries);
+                //                ray($itineraries);
                 $this->release(1);
             }
         } catch (\Exception $e) {
@@ -101,6 +101,7 @@ class LiveSearchFlightsApi2 implements ShouldQueue
         }
 
         //put it in cache
+
         cache()->put('flight_'.$this->date, $itineraries, now()->addMinutes(5));
         cache()->put('flight_'.$this->return_date, $itineraries, now()->addMinutes(5));
         if (! Cache::get("job_completed_{$this->batchId}")) {
