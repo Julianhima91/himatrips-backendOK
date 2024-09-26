@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Resources\DestinationPlainResource;
 use App\Models\Destination;
 use App\Models\Origin;
 use Illuminate\Http\Request;
@@ -91,19 +92,19 @@ class DestinationController extends Controller
     {
         $originId = $origin->id;
 
-        $destinations = Destination::where('show_in_homepage', true)
-            ->whereHas('destinationOrigin', function ($query) use ($originId) {
-                $query->where('origin_id', $originId)
-                    ->whereHas('packageConfigs');
-            })
+        $destinations = Destination::whereHas('destinationOrigin', function ($query) use ($originId) {
+            $query->where('origin_id', $originId)
+                ->whereHas('packageConfigs');
+        })
+            ->with(['origins' => function ($query) use ($originId) {
+                $query->where('origin_id', $originId);
+            }])
             ->withCount('packages')
-            ->withMin('packages', 'total_price')
             ->with('destinationPhotos')
-            ->take(12)
             ->get();
 
         return response()->json([
-            'data' => $destinations,
+            'data' => DestinationPlainResource::collection($destinations),
         ], 200);
     }
 
