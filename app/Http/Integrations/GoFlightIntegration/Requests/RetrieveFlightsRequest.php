@@ -5,6 +5,7 @@ namespace App\Http\Integrations\GoFlightIntegration\Requests;
 use App\Data\FlightDataDTO;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
 use Saloon\Enums\Method;
 use Saloon\Http\Request;
 use Saloon\Http\SoloRequest;
@@ -58,15 +59,23 @@ class RetrieveFlightsRequest extends SoloRequest
                 return null;
             }
 
+            Log::info($itinerary['legs'][0]['origin']['id']);
+
             return new FlightDataDTO(
                 id: Optional::create(),
                 price: (float) $itinerary['price']['raw'],
                 origin: $itinerary['legs'][0]['origin']['id'],
+                origin_back: $itinerary['legs'][0]['origin']['id'],
                 destination: $itinerary['legs'][0]['destination']['id'],
+                destination_back: $itinerary['legs'][1]['destination']['id'],
                 departure: new \DateTime($itinerary['legs'][0]['departure']),
                 arrival: new \DateTime($itinerary['legs'][0]['arrival']),
+                departure_flight_back: new \DateTime($itinerary['legs'][1]['departure']),
+                arrival_flight_back: new \DateTime($itinerary['legs'][1]['arrival']),
                 airline: $itinerary['legs'][0]['carriers']['marketing'][0]['name'],
+                airline_back: $itinerary['legs'][1]['carriers']['marketing'][0]['name'],
                 stopCount: $itinerary['legs'][0]['stopCount'],
+                stopCount_back: $itinerary['legs'][1]['stopCount'],
                 adults: $this->query()->get('adults'),
                 children: $this->query()->get('children'),
                 infants: $this->query()->get('infants'),

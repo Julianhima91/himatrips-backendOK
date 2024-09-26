@@ -179,12 +179,12 @@ class FlightsAction
 
         $inbound_flight_hydrated = FlightData::create([
             'price' => $first_inbound_flight->price,
-            'departure' => $first_inbound_flight->departure,
-            'arrival' => $first_inbound_flight->arrival,
-            'airline' => $first_inbound_flight->airline,
-            'stop_count' => $first_inbound_flight->stopCount,
-            'origin' => $first_inbound_flight->origin,
-            'destination' => $first_inbound_flight->destination,
+            'departure' => $first_inbound_flight->departure_flight_back,
+            'arrival' => $first_inbound_flight->arrival_flight_back,
+            'airline' => $first_inbound_flight->airline_back,
+            'stop_count' => $first_inbound_flight->stopCount_back,
+            'origin' => $first_inbound_flight->origin_back,
+            'destination' => $first_inbound_flight->destination_back,
             'adults' => $first_inbound_flight->adults,
             'children' => $first_inbound_flight->children,
             'infants' => $first_inbound_flight->infants,
