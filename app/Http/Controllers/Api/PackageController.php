@@ -132,6 +132,36 @@ class PackageController extends Controller
         ], 200);
     }
 
+    public function hasAvailableDates(Request $request)
+    {
+        $destination_origin =
+            DestinationOrigin::where([
+                ['destination_id', $request->destination_id],
+                ['origin_id', $request->origin_id],
+            ])->first();
+
+        if (! $destination_origin) {
+            return response()->json([
+                'data' => 'There is no destination origin',
+            ], 200);
+        }
+
+        $directFlightDates = DirectFlightAvailability::where('destination_origin_id', $destination_origin->id)
+            ->pluck('date')->toArray();
+
+        if ($directFlightDates) {
+            return response()->json([
+                'data' => [
+                    'dates' => $directFlightDates,
+                ],
+            ], 200);
+        } else {
+            return response()->json([
+                'data' => 'There are no available dates',
+            ], 200);
+        }
+    }
+
     public function getAvailableDates(Request $request)
     {
         $destination_origin =
