@@ -4,6 +4,7 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\HotelResource\Pages;
 use App\Filament\Resources\HotelResource\RelationManagers\DestinationsRelationManager;
+use App\Filament\Resources\HotelResource\RelationManagers\TransfersRelationManager;
 use App\Models\Hotel;
 use Filament\Forms;
 use Filament\Forms\Form;
@@ -130,6 +131,7 @@ class HotelResource extends Resource
     {
         return [
             DestinationsRelationManager::class,
+            TransfersRelationManager::class,
         ];
     }
 
