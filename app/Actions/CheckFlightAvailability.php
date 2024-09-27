@@ -3,6 +3,7 @@
 namespace App\Actions;
 
 use App\Http\Requests\CheckFlightAvailabilityRequest;
+use App\Models\Airline;
 use App\Models\DirectFlightAvailability;
 use App\Models\FlightData;
 use App\Models\PackageConfig;
@@ -13,9 +14,7 @@ class CheckFlightAvailability
     {
         $packageConfig = PackageConfig::query()
             ->where('id', $request['package_config_id'])
-            ->when($request['airline_id'], function ($query, $airline_id) {
-                return $query->whereJsonContains('airlines', $airline_id);
-            })->first();
+            ->first();
 
         if (! isset($packageConfig)) {
             return false;
@@ -27,7 +26,13 @@ class CheckFlightAvailability
             ->whereDate('departure', '<=', $request['to_date'])
             ->when($request['is_direct_flight'], function ($query) {
                 return $query->where('stop_count', 0);
-            })->get()
+            })
+            ->when($request['airline_id'], function ($query) use ($request) {
+                $airline = Airline::find($request->airline_id);
+
+                return $query->where('airline', $airline->nameAirline);
+            })
+            ->get()
             ->groupBy(function ($flight) {
                 return $flight->departure->toDateString();
             });

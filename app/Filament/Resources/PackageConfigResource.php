@@ -154,9 +154,14 @@ class PackageConfigResource extends Resource
                         Forms\Components\Toggle::make('is_direct_flight')
                             ->required()
                             ->label('Direct Flight'),
-                        //                        Forms\Components\Select::make('airline_id')->label('Airline')
-                        //                            ->options(function () {
-                        //                            })
+                        Forms\Components\Select::make('airline_id')->label('Airline')
+                            ->getSearchResultsUsing(function (string $search) {
+                                return \App\Models\Airline::where('nameAirline', 'like', "%{$search}%")
+                                    ->limit(50)
+                                    ->pluck('nameAirline', 'id');
+                            })
+                            ->searchable()
+                            ->hint('Start typing to search for an airline'),
                     ])
                     ->action(function ($record, array $data) {
                         try {
