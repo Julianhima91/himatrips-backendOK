@@ -25,10 +25,7 @@ class HotelsAction
 
         $package_ids = [];
 
-        $commission_percentage = $destination->commission_percentage != 0 ? $destination->commission_percentage : 0.2;
-
         foreach ($hotel_results as $hotel_result) {
-
             $hotel_data = HotelData::create([
                 'hotel_id' => $hotel_result->hotel_id,
                 'check_in_date' => $hotel_result->check_in_date,
@@ -47,7 +44,7 @@ class HotelsAction
                     'room_basis' => $offer->room_basis,
                     'room_type' => json_encode($offer->room_type),
                     'price' => $offer->price,
-                    'total_price_for_this_offer' => $outbound_flight_hydrated->price + $inbound_flight_hydrated->price + $offer->price + $commission_percentage * ($outbound_flight_hydrated->price + $inbound_flight_hydrated->price + $offer->price),
+                    'total_price_for_this_offer' => $outbound_flight_hydrated->price + $inbound_flight_hydrated->price + $offer->price * ($outbound_flight_hydrated->price + $inbound_flight_hydrated->price + $offer->price),
                     'reservation_deadline' => $offer->reservation_deadline,
                 ]);
             }
@@ -66,14 +63,14 @@ class HotelsAction
 
             $calculatedCommissionPercentage = ($packageConfig->commission_percentage / 100) * $first_offer->total_price_for_this_offer;
             $fixedCommissionRate = $packageConfig->commission_amount;
-
+            $commission = max($fixedCommissionRate, $calculatedCommissionPercentage);
             //create the package here
             $package = Package::create([
                 'hotel_data_id' => $hotel_data->id,
                 'outbound_flight_id' => $outbound_flight_hydrated->id,
                 'inbound_flight_id' => $inbound_flight_hydrated->id,
-                'commission' => max($fixedCommissionRate, $calculatedCommissionPercentage),
-                'total_price' => $first_offer->total_price_for_this_offer + $transferPrice,
+                'commission' => $commission,
+                'total_price' => $first_offer->total_price_for_this_offer + $transferPrice + $commission,
                 'batch_id' => $batchId,
                 'package_config_id' => $packageConfig->id ?? null,
             ]);

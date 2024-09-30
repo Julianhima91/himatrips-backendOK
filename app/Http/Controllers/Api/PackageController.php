@@ -6,6 +6,7 @@ use App\Actions\FlightsAction;
 use App\Actions\HotelsAction;
 use App\Actions\PackagesAction;
 use App\Events\LiveSearchCompleted;
+use App\Events\LiveSearchFailed;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Livesearch\LivesearchRequest;
 use App\Jobs\LiveSearchFlights;
@@ -97,6 +98,13 @@ class PackageController extends Controller
                     ray('job completed');
 
                     [$outbound_flight_hydrated, $inbound_flight_hydrated] = $flights->handle($date, $destination, $batchId, $return_date);
+
+                    if (is_null($outbound_flight_hydrated) || is_null($inbound_flight_hydrated)) {
+                        broadcast(new LiveSearchFailed('No flights found', $batchId));
+
+                        break;
+                    }
+
                     $package_ids = $hotels->handle($destination, $outbound_flight_hydrated, $inbound_flight_hydrated, $batchId);
                     [$packages, $minTotalPrice, $maxTotalPrice] = $packagesAction->handle($package_ids);
 
