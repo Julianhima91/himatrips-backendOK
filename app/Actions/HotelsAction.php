@@ -38,13 +38,12 @@ class HotelsAction
             ]);
 
             foreach ($hotel_result->hotel_offers as $offer) {
-
                 HotelOffer::create([
                     'hotel_data_id' => $hotel_data->id,
                     'room_basis' => $offer->room_basis,
                     'room_type' => json_encode($offer->room_type),
                     'price' => $offer->price,
-                    'total_price_for_this_offer' => $outbound_flight_hydrated->price + $inbound_flight_hydrated->price + $offer->price * ($outbound_flight_hydrated->price + $inbound_flight_hydrated->price + $offer->price),
+                    'total_price_for_this_offer' => $outbound_flight_hydrated->price + $offer->price,
                     'reservation_deadline' => $offer->reservation_deadline,
                 ]);
             }
