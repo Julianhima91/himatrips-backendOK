@@ -11,11 +11,6 @@ class OriginController extends Controller
 {
     public function index()
     {
-        $destinationOrigin = DestinationOrigin::find(30);
-
-        dd($destinationOrigin->directFlightsAvailability);
-
-        dd('end');
         $origins = QueryBuilder::for(Origin::class)
             ->whereHas('destinationOrigin', function ($query) {
                 $query->whereHas('packageConfigs', function ($pivotQuery) {
