@@ -8,6 +8,7 @@ use App\Models\Package;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Infolists\Components\Grid;
+use Filament\Infolists\Components\RepeatableEntry;
 use Filament\Infolists\Components\Section;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Infolists\Infolist;
@@ -88,6 +89,35 @@ class PackageResource extends Resource
                                 TextEntry::make('hotelData.hotel.hotel_id')
                                     ->label('HOTEL ID'),
                             ]),
+                    ]),
+                Section::make('Hotel Offers')
+                    ->description('Details for the hotel offers')
+                    ->schema([
+                        RepeatableEntry::make('hotelData.offers')
+                            ->label('Offers')
+                            ->schema([
+                                TextEntry::make('room_basis')
+                                    ->label('Room Basis'),
+                                TextEntry::make('room_type')
+                                    ->label('Room Type'),
+                                TextEntry::make('price')
+                                    ->label('Price'),
+                            ])
+                            ->columns(3),
+                    ]),
+                Section::make('Hotel Transfers')
+                    ->description('Details for the hotel transfers')
+                    ->schema([
+                        RepeatableEntry::make('hotelData.hotel.transfers')
+                            ->label('Transfers')
+                            ->schema([
+                                TextEntry::make('price')
+                                    ->label('Price')
+                                    ->money('EUR'),
+                                TextEntry::make('description')
+                                    ->label('Description'),
+                            ])
+                            ->columns(3),
                     ]),
                 Section::make('Package Details')
                     ->description('Details for the package itself')

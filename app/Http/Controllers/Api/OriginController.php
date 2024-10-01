@@ -3,7 +3,6 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Models\DestinationOrigin;
 use App\Models\Origin;
 use Spatie\QueryBuilder\QueryBuilder;
 
