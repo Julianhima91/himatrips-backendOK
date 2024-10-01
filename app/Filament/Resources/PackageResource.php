@@ -69,9 +69,6 @@ class PackageResource extends Resource
                                     ->label('Arrival'),
                                 TextEntry::make('inboundFlight.airline')
                                     ->label('Airline'),
-                                TextEntry::make('inboundFlight.price')
-                                    ->money('EUR')
-                                    ->label('Price'),
                             ]),
                     ]),
                 Section::make('Hotel')
@@ -85,7 +82,7 @@ class PackageResource extends Resource
                                     ->label('Number of Nights'),
                                 TextEntry::make('hotelData.room_basis')
                                     ->label('Room Basis'),
-                                TextEntry::make('hotelData.price')
+                                TextEntry::make('hotelData.cheapest_offer_price')
                                     ->money('EUR')
                                     ->label('Price'),
                                 TextEntry::make('hotelData.hotel.hotel_id')
@@ -99,7 +96,13 @@ class PackageResource extends Resource
                             ->schema([
                                 TextEntry::make('commission')
                                     ->money('EUR')
-                                    ->label('Commission'),
+                                    ->label('Commission')
+                                    ->formatStateUsing(function (Model $record) {
+                                        $flightPrice = FlightData::where('id', $record->outbound_flight_id)->first()->price;
+                                        $total = $record->total_price - $flightPrice - $record->hotelData->cheapest_offer_price;
+
+                                        return '€'.$total;
+                                    }),
                                 TextEntry::make('total_price')
                                     ->money('EUR')
                                     ->label('total_price'),
@@ -132,15 +135,19 @@ class PackageResource extends Resource
                     ->sortable(),
                 Tables\Columns\TextColumn::make('hotelData.number_of_nights')
                     ->label('Number of Nights'),
-                Tables\Columns\TextColumn::make('hotelData.price')
+                Tables\Columns\TextColumn::make('hotelData.cheapest_offer_price')
                     ->label('Hotel Price'),
                 Tables\Columns\TextColumn::make('outbound_flight_id')
                     ->label('Flight Price')
                     ->formatStateUsing(function (Model $record) {
-                        return FlightData::where('id', $record->outbound_flight_id)->first()->price +
-                            FlightData::where('id', $record->inbound_flight_id)->first()->price;
+                        return FlightData::where('id', $record->outbound_flight_id)->first()->price;
                     }),
-                Tables\Columns\TextColumn::make('commission'),
+                Tables\Columns\TextColumn::make('commission')
+                    ->formatStateUsing(function (Model $record) {
+                        $flightPrice = FlightData::where('id', $record->outbound_flight_id)->first()->price;
+
+                        return $record->total_price - $flightPrice - $record->hotelData->cheapest_offer_price;
+                    }),
                 Tables\Columns\TextColumn::make('total_price'),
             ])
             ->filters([
