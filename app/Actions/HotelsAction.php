@@ -37,20 +37,25 @@ class HotelsAction
                 'package_config_id' => $packageConfig->id,
             ]);
 
+            $transferPrice = 0;
+            foreach ($hotel_data->hotel->transfers as $transfer) {
+                $transferPrice += $transfer->price;
+            }
+
             foreach ($hotel_result->hotel_offers as $offer) {
+
+                $calculatedCommissionPercentage = ($packageConfig->commission_percentage / 100) * ($outbound_flight_hydrated->price + $transferPrice + $offer->price);
+                $fixedCommissionRate = $packageConfig->commission_amount;
+                $commission = max($fixedCommissionRate, $calculatedCommissionPercentage);
+
                 HotelOffer::create([
                     'hotel_data_id' => $hotel_data->id,
                     'room_basis' => $offer->room_basis,
                     'room_type' => json_encode($offer->room_type),
                     'price' => $offer->price,
-                    'total_price_for_this_offer' => $outbound_flight_hydrated->price + $offer->price,
+                    'total_price_for_this_offer' => $outbound_flight_hydrated->price + $transferPrice + $offer->price + $commission,
                     'reservation_deadline' => $offer->reservation_deadline,
                 ]);
-            }
-
-            $transferPrice = 0;
-            foreach ($hotel_data->hotel->transfers as $transfer) {
-                $transferPrice += $transfer->price;
             }
 
             $first_offer = $hotel_data->offers()->orderBy('price')->first();
@@ -60,16 +65,16 @@ class HotelsAction
             //calculate commission (20%)
             //$commission = ($outbound_flight_hydrated->price + $inbound_flight_hydrated->price + $first_offer->price) * $commission_percentage;
 
-            $calculatedCommissionPercentage = ($packageConfig->commission_percentage / 100) * $first_offer->total_price_for_this_offer;
-            $fixedCommissionRate = $packageConfig->commission_amount;
-            $commission = max($fixedCommissionRate, $calculatedCommissionPercentage);
+            //            $calculatedCommissionPercentage = ($packageConfig->commission_percentage / 100) * $first_offer->total_price_for_this_offer;
+            //            $fixedCommissionRate = $packageConfig->commission_amount;
+            //            $commission = max($fixedCommissionRate, $calculatedCommissionPercentage);
             //create the package here
             $package = Package::create([
                 'hotel_data_id' => $hotel_data->id,
                 'outbound_flight_id' => $outbound_flight_hydrated->id,
                 'inbound_flight_id' => $inbound_flight_hydrated->id,
                 'commission' => $commission,
-                'total_price' => $first_offer->total_price_for_this_offer + $transferPrice + $commission,
+                'total_price' => $first_offer->total_price_for_this_offer,
                 'batch_id' => $batchId,
                 'package_config_id' => $packageConfig->id ?? null,
             ]);
