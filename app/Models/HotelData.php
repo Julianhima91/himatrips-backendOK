@@ -25,4 +25,14 @@ class HotelData extends Model
     {
         return $this->hasMany(HotelOffer::class);
     }
+
+    public function cheapestOffer()
+    {
+        return $this->hasMany(HotelOffer::class)->orderBy('price')->limit(1);
+    }
+
+    public function getCheapestOfferPriceAttribute()
+    {
+        return $this->cheapestOffer ? $this->cheapestOffer->first()->price : null;
+    }
 }
