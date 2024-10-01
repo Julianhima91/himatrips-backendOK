@@ -129,11 +129,35 @@ class PackageConfigResource extends Resource
                     ->label('Destination')
                     ->searchable()
                     ->sortable(),
+                Tables\Columns\TextColumn::make('destination_origin.directFlightsAvailability.date')
+                    ->label('Start Date')
+                    ->sortable()
+                    ->default('-')
+                    ->formatStateUsing(function ($state, $record) {
+                        $earliestDate = $record->destination_origin->directFlightsAvailability()
+                            ->orderBy('date')
+                            ->first()?->date;
+
+                        return $earliestDate ?? '-';
+                    })->alignCenter(),
+
+                Tables\Columns\TextColumn::make('destination_origin.directFlightsAvailability')
+                    ->label('End Date')
+                    ->sortable()
+                    ->default('-')
+                    ->formatStateUsing(function ($state, $record) {
+                        $latestDate = $record->destination_origin->directFlightsAvailability()
+                            ->orderBy('date', 'desc') // Order by date descending
+                            ->first()?->date;
+
+                        return $latestDate ?? '-';
+                    })->alignCenter(),
+
                 //show the numbers of packages
-                Tables\Columns\TextColumn::make('packages_count')
-                    ->label('Packages')
-                    ->counts('packages')
-                    ->sortable(),
+                //                Tables\Columns\TextColumn::make('packages_count')
+                //                    ->label('Packages')
+                //                    ->counts('packages')
+                //                    ->sortable(),
             ])
             ->filters([
                 //
