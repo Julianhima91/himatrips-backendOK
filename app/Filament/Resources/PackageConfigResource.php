@@ -176,7 +176,8 @@ class PackageConfigResource extends Resource
                             ->label('To Date'),
 
                         Forms\Components\Toggle::make('is_direct_flight')
-                            ->required()
+                            ->default(true)
+                            ->disabled()
                             ->label('Direct Flight'),
                         Forms\Components\Select::make('airline_id')->label('Airline')
                             ->getSearchResultsUsing(function (string $search) {

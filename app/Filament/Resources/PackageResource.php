@@ -147,6 +147,9 @@ class PackageResource extends Resource
             ->poll('10s')
             ->columns([
                 //create the following columns: Origin, Destination, Departure, Arrival, Hotel, Hotel Price, Flight Price, Commission, Total Price
+                Tables\Columns\TextColumn::make('id')
+                    ->label('ID')
+                    ->sortable(),
                 Tables\Columns\TextColumn::make('outboundFlight.origin')
                     ->label('Origin')
                     ->searchable()
