@@ -9,6 +9,7 @@ use App\Models\Airport;
 use App\Models\DirectFlightAvailability;
 use App\Models\PackageConfig;
 use Carbon\CarbonPeriod;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Log;
 
 class CheckFlightAvailability
@@ -29,39 +30,53 @@ class CheckFlightAvailability
         $period = CarbonPeriod::create($request->from_date, $request->to_date);
 
         foreach ($period as $date) {
-            $request = new OneWayDirectFlightRequest;
-            $date = $date->format('Y-m-d');
+            $this->searchDirectFlight($origin_airport, $destination_airport, $date->format('Y-m-d'), $airlineName, $packageConfig->destination_origin_id, false);
+        }
 
-            $request->query()->merge([
-                'fromEntityId' => $origin_airport->rapidapi_id,
-                'toEntityId' => $destination_airport->rapidapi_id,
-                'departDate' => $date,
-                'stops' => 'direct',
-            ]);
+        $returnPeriod = CarbonPeriod::create(Carbon::parse($request->from_date)->addDay(), Carbon::parse($request->to_date)->addDay());
 
-            try {
-                $response = $request->send();
-
-                $itineraries = $response->json()['data']['itineraries'] ?? [];
-
-                if ($this->hasDirectFlight($itineraries, $airlineName)) {
-                    DirectFlightAvailability::updateOrCreate([
-                        'date' => $date,
-                        'destination_origin_id' => $packageConfig->destination_origin_id,
-                    ]);
-                    Log::info('Direct flight available on date: '.$date);
-                } else {
-                    Log::info('No itineraries found for date: '.$date);
-                }
-            } catch (\Exception $e) {
-                Log::error('!!!ERROR!!!');
-                Log::error($e->getMessage());
-
-                return false;
-            }
+        foreach ($returnPeriod as $date) {
+            $this->searchDirectFlight($destination_airport, $origin_airport, $date->format('Y-m-d'), $airlineName, $packageConfig->destination_origin_id, true);
         }
 
         return true;
+    }
+
+    private function searchDirectFlight($origin_airport, $destination_airport, $date, $airlineName, $destination_origin_id, $is_return_flight)
+    {
+        $flightRequest = new OneWayDirectFlightRequest;
+
+        $flightRequest->query()->merge([
+            'fromEntityId' => $origin_airport->rapidapi_id,
+            'toEntityId' => $destination_airport->rapidapi_id,
+            'departDate' => $date,
+            'stops' => 'direct',
+        ]);
+
+        try {
+            $response = $flightRequest->send();
+
+            $itineraries = $response->json()['data']['itineraries'] ?? [];
+
+            if ($this->hasDirectFlight($itineraries, $airlineName)) {
+                DirectFlightAvailability::updateOrCreate([
+                    'date' => $date,
+                    'destination_origin_id' => $destination_origin_id,
+                    'is_return_flight' => $is_return_flight,
+                ]);
+
+                Log::info(($is_return_flight ? 'Return' : 'Outbound').' direct flight available on date: '.$date);
+            } else {
+                Log::info('No itineraries found for date: '.$date);
+            }
+
+            return true;
+        } catch (\Exception $e) {
+            Log::error('!!!ERROR!!!');
+            Log::error($e->getMessage());
+
+            return false;
+        }
     }
 
     private function hasDirectFlight(array $itineraries, ?string $airlineName): bool
