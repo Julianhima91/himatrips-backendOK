@@ -148,8 +148,8 @@ class PackageConfigResource extends Resource
                     ->default('-')
                     ->formatStateUsing(function ($state, $record) {
                         $latestDate = $record->destination_origin->directFlightsAvailability()
-                            ->orderBy('date', 'desc')
                             ->where('is_return_flight', 0)
+                            ->orderBy('date', 'desc')
                             ->first()?->date;
 
                         return $latestDate ?? '-';
