@@ -135,6 +135,7 @@ class PackageConfigResource extends Resource
                     ->default('-')
                     ->formatStateUsing(function ($state, $record) {
                         $earliestDate = $record->destination_origin->directFlightsAvailability()
+                            ->where('is_return_flight', 0)
                             ->orderBy('date')
                             ->first()?->date;
 
@@ -147,7 +148,8 @@ class PackageConfigResource extends Resource
                     ->default('-')
                     ->formatStateUsing(function ($state, $record) {
                         $latestDate = $record->destination_origin->directFlightsAvailability()
-                            ->orderBy('date', 'desc') // Order by date descending
+                            ->where('is_return_flight', 0)
+                            ->orderBy('date', 'desc')
                             ->first()?->date;
 
                         return $latestDate ?? '-';
@@ -163,8 +165,6 @@ class PackageConfigResource extends Resource
                 //
             ])
             ->actions([
-                Tables\Actions\EditAction::make()
-                    ->iconButton(),
                 Tables\Actions\Action::make('Choose Package Config')
                     ->label('Check Flights')
                     ->form([
