@@ -169,14 +169,17 @@ class PackageConfigResource extends Resource
                     ->label('Check Flights')
                     ->form([
                         Forms\Components\DatePicker::make('from_date')
+                            ->default('2024-10-10')
                             ->required()
                             ->label('Start Date'),
                         Forms\Components\DatePicker::make('to_date')
+                            ->default('2024-10-20')
                             ->required()
                             ->label('To Date'),
 
                         Forms\Components\Toggle::make('is_direct_flight')
-                            ->required()
+                            ->default(true)
+                            ->disabled()
                             ->label('Direct Flight'),
                         Forms\Components\Select::make('airline_id')->label('Airline')
                             ->getSearchResultsUsing(function (string $search) {
