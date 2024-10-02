@@ -208,12 +208,12 @@ class PackageConfigResource extends Resource
                             if ($result) {
                                 Notification::make()
                                     ->success()
-                                    ->title('Flight Availability Checked')
+                                    ->title('Flight Availability is being updated!')
                                     ->send();
                             } else {
                                 Notification::make()
                                     ->danger()
-                                    ->title('No Flight Availability Found')
+                                    ->title('Something went wrong')
                                     ->send();
                             }
                         } catch (ValidationException $e) {
