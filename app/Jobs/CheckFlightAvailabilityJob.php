@@ -2,6 +2,7 @@
 
 namespace App\Jobs;
 
+use App\Http\Integrations\GoFlightIntegration\Requests\DirectIncompleteFlightRequest;
 use App\Http\Integrations\GoFlightIntegration\Requests\OneWayDirectFlightRequest;
 use App\Models\DirectFlightAvailability;
 use Illuminate\Bus\Queueable;
@@ -57,6 +58,11 @@ class CheckFlightAvailabilityJob implements ShouldQueue
         try {
             $response = $flightRequest->send();
 
+            if (isset($response->json()['data']['context']['status']) && $response->json()['data']['context']['status'] == 'incomplete') {
+                $response = $this->getIncompleteResults($response->json()['data']['context']['sessionId']);
+            }
+
+            Log::info('Status: '.$response->json()['data']['context']['status']);
             $itineraries = $response->json()['data']['itineraries'] ?? [];
 
             if ($this->hasDirectFlight($itineraries, $this->airlineName)) {
@@ -86,5 +92,23 @@ class CheckFlightAvailabilityJob implements ShouldQueue
         }
 
         return false;
+    }
+
+    private function getIncompleteResults($session)
+    {
+        $request = new DirectIncompleteFlightRequest;
+
+        $request->query()->merge([
+            'sessionId' => $session,
+            'stops' => 'direct',
+        ]);
+
+        $response = $request->send();
+
+        if (isset($response->json()['data']['context']['status']) && $response->json()['data']['context']['status'] == 'incomplete') {
+            return $this->getIncompleteResults($session);
+        }
+
+        return $response;
     }
 }
