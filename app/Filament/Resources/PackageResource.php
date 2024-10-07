@@ -108,11 +108,24 @@ class PackageResource extends Resource
                 Section::make('Hotel Transfers')
                     ->description('Details for the hotel transfers')
                     ->schema([
+                        Section::make('People')
+                            ->label('People')
+                            ->schema([
+                                TextEntry::make('hotelData.adults')
+                                    ->label('Adults'),
+                                TextEntry::make('hotelData.children')
+                                    ->label('Children'),
+                            ])
+                            ->columns(2),
+
                         RepeatableEntry::make('hotelData.hotel.transfers')
                             ->label('Transfers')
                             ->schema([
-                                TextEntry::make('price')
-                                    ->label('Price')
+                                TextEntry::make('adult_price')
+                                    ->label('Price per Adult')
+                                    ->money('EUR'),
+                                TextEntry::make('children_price')
+                                    ->label('Price per child')
                                     ->money('EUR'),
                                 TextEntry::make('description')
                                     ->label('Description'),
@@ -129,7 +142,18 @@ class PackageResource extends Resource
                                     ->label('Commission')
                                     ->formatStateUsing(function (Model $record) {
                                         $flightPrice = FlightData::where('id', $record->outbound_flight_id)->first()->price;
-                                        $total = $record->total_price - $flightPrice - $record->hotelData->cheapest_offer_price;
+                                        $hotelData = $record->hotelData;
+                                        $transfers = $hotelData->hotel->transfers;
+                                        $transferPrice = 0;
+
+                                        foreach ($transfers as $transfer) {
+                                            $transferPrice += $transfer->adult_price * $hotelData->adults;
+
+                                            if ($hotelData->children > 0) {
+                                                $transferPrice += $transfer->children_price * $hotelData->children;
+                                            }
+                                        }
+                                        $total = $record->total_price - $flightPrice - $record->hotelData->cheapest_offer_price - $transferPrice;
 
                                         return '€'.$total;
                                     }),
