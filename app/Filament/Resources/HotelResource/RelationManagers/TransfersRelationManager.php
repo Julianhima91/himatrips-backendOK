@@ -19,9 +19,24 @@ class TransfersRelationManager extends RelationManager
                 Forms\Components\TextInput::make('description')
                     ->required()
                     ->maxLength(255),
-                Forms\Components\TextInput::make('price')
+
+                Forms\Components\TextInput::make('adult_price')
+                    ->numeric()
                     ->required()
-                    ->numeric(),
+                    ->label('Adult Price'),
+
+                Forms\Components\Toggle::make('has_children_price')
+                    ->label('Enable Children Price')
+                    ->live()
+                    ->default(false)
+                    ->reactive()
+                    ->dehydrated(false),
+
+                Forms\Components\TextInput::make('children_price')
+                    ->numeric()
+                    ->required()
+                    ->label('Children Price')
+                    ->visible(fn ($get) => $get('has_children_price')),
             ]);
     }
 
@@ -31,13 +46,15 @@ class TransfersRelationManager extends RelationManager
             ->recordTitleAttribute('description')
             ->columns([
                 Tables\Columns\TextColumn::make('description'),
-                Tables\Columns\TextColumn::make('price')->money('USD'),
+                Tables\Columns\TextColumn::make('adult_price')->money('EUR')->label('Adult Price'),
+                Tables\Columns\TextColumn::make('children_price')->money('EUR')->label('Children Price'),
             ])
             ->filters([
                 //
             ])
             ->headerActions([
                 Tables\Actions\AttachAction::make(),
+                Tables\Actions\CreateAction::make(),
             ])
             ->actions([
                 Tables\Actions\Action::make('redirect')
