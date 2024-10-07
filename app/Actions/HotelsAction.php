@@ -39,7 +39,11 @@ class HotelsAction
 
             $transferPrice = 0;
             foreach ($hotel_data->hotel->transfers as $transfer) {
-                $transferPrice += $transfer->price;
+                $transferPrice += $transfer->adult_price * $hotel_result->adults;
+
+                if ($hotel_result->children > 0) {
+                    $transferPrice += $transfer->children_price * $hotel_result->children;
+                }
             }
 
             foreach ($hotel_result->hotel_offers as $offer) {

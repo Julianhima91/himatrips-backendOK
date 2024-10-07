@@ -23,9 +23,19 @@ class TransferResource extends Resource
                 Forms\Components\TextInput::make('description')
                     ->required()
                     ->maxLength(255),
-                Forms\Components\TextInput::make('price')
+                Forms\Components\TextInput::make('adult_price')
                     ->numeric()
                     ->required(),
+                Forms\Components\Toggle::make('has_children_price')
+                    ->label('Enable Children Price')
+                    ->live()
+                    ->default(false)
+                    ->dehydrated(false),
+
+                Forms\Components\TextInput::make('children_price')
+                    ->numeric()
+                    ->required()
+                    ->visible(fn ($get) => $get('has_children_price')),
             ]);
     }
 
@@ -34,7 +44,8 @@ class TransferResource extends Resource
         return $table
             ->columns([
                 Tables\Columns\TextColumn::make('description'),
-                Tables\Columns\TextColumn::make('price')->money('EUR'),
+                Tables\Columns\TextColumn::make('adult_price')->money('EUR'),
+                Tables\Columns\TextColumn::make('children_price')->money('EUR'),
             ])
             ->filters([
                 //
