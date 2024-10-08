@@ -91,6 +91,7 @@ class RetrieveIncompleteFlights2 extends SoloRequest
                 infants: $this->infants,
                 packageConfigId: Optional::create(),
                 segments: json_encode($itinerary['legs'][0]['segments']),
+                segments_back: json_encode($itinerary['legs'][1]['segments']),
                 carriers: $this->getCarriers($itinerary),
                 timeBetweenFlights: $this->getTimeBetweenFlights($itinerary) ?? 0
             );

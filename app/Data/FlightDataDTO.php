@@ -28,6 +28,7 @@ class FlightDataDTO extends Data
         public int $infants,
         public int|null|Optional $packageConfigId,
         public string $segments,
+        public string $segments_back,
         public ?array $carriers,
         public ?array $timeBetweenFlights,
     ) {}

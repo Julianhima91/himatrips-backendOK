@@ -104,7 +104,6 @@ class PackageController extends Controller
 
                         break;
                     }
-
                     $package_ids = $hotels->handle($destination, $outbound_flight_hydrated, $inbound_flight_hydrated, $batchId);
                     [$packages, $minTotalPrice, $maxTotalPrice] = $packagesAction->handle($package_ids);
 
