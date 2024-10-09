@@ -34,6 +34,7 @@ Route::post('/live-search-paginated', [PackageController::class, 'paginateLiveSe
 Route::post('/filter-data', [PackageController::class, 'getFilterData']);
 Route::get('/available-dates', [PackageController::class, 'getAvailableDates']);
 Route::get('/has-available-dates', [PackageController::class, 'hasAvailableDates']);
+Route::get('/has-available-return', [PackageController::class, 'hasAvailableReturn']);
 
 Route::get('/destinations', [DestinationController::class, 'index']);
 Route::get('/destinations/all', [DestinationController::class, 'indexAll']);

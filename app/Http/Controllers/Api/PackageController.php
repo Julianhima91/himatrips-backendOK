@@ -153,8 +153,49 @@ class PackageController extends Controller
         $directFlightDates = DirectFlightAvailability::query()
             ->where([
                 ['destination_origin_id', $destination_origin->id],
-                ['is_return_flight', $request->is_return ?? false],
+                ['is_return_flight', 0],
             ])
+            ->pluck('date')->toArray();
+
+        if ($directFlightDates) {
+            return response()->json([
+                'data' => [
+                    'dates' => $directFlightDates,
+                ],
+            ], 200);
+        } else {
+            return response()->json([
+                'data' => 'There are no available dates',
+            ], 200);
+        }
+    }
+
+    public function hasAvailableReturn(Request $request)
+    {
+        $request->validate([
+            'start_date' => ['required', 'date', 'after_or_equal:today'],
+        ]);
+
+        $destination_origin =
+            DestinationOrigin::where([
+                ['destination_id', $request->destination_id],
+                ['origin_id', $request->origin_id],
+            ])->first();
+
+        if (! $destination_origin) {
+            return response()->json([
+                'data' => 'There is no destination origin',
+            ], 200);
+        }
+
+        $directFlightDates = DirectFlightAvailability::query()
+            ->where([
+                ['destination_origin_id', $destination_origin->id],
+                ['is_return_flight', 1],
+                ['date', '>', $request->start_date],
+            ])
+            ->orderBy('date')
+            ->take(15)
             ->pluck('date')->toArray();
 
         if ($directFlightDates) {
