@@ -150,7 +150,11 @@ class PackageController extends Controller
             ], 200);
         }
 
-        $directFlightDates = DirectFlightAvailability::where('destination_origin_id', $destination_origin->id)
+        $directFlightDates = DirectFlightAvailability::query()
+            ->where([
+                ['destination_origin_id', $destination_origin->id],
+                ['is_return_flight', $request->is_return ?? false],
+            ])
             ->pluck('date')->toArray();
 
         if ($directFlightDates) {
