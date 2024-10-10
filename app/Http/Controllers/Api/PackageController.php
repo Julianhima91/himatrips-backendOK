@@ -314,6 +314,7 @@ class PackageController extends Controller
             ->with([
                 'hotelData',
                 'hotelData.hotel',
+                'hotelData.hotel.transfers',
                 'hotelData.hotel.hotelPhotos',
                 'outboundFlight',
                 'inboundFlight',
