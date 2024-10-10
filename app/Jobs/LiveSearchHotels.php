@@ -222,10 +222,10 @@ XML;
             ->afterRequesting(function ($request, $response) {
                 // Log the response
                 //\Log::info('HOTEL SEARCH REQUEST');
-                //                ray($request->getBody());
-                ray($response);
+                //ray($request->getBody());
+                //ray($response);
                 //\Log::info("HOTEL SEARCH REQUEST END\n");
-                \Log::info("RESPONSE START\n");
+                //\Log::info("RESPONSE START\n");
                 //\Log::info(json_encode($response));
             })
             ->call('MakeRequest', [
