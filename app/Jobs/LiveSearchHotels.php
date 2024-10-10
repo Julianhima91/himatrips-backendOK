@@ -178,7 +178,7 @@ class LiveSearchHotels implements ShouldQueue
     <Header>
         <Agency>147255</Agency>
         <User>HIMAXMLLOOK</User>
-        <Password>Fh12!@67GDtn</Password>
+        <Password>D25%74S#cn2!</Password>
         <Operation>HOTEL_SEARCH_REQUEST</Operation>
         <OperationType>Request</OperationType>
     </Header>
@@ -223,6 +223,7 @@ XML;
                 // Log the response
                 //\Log::info('HOTEL SEARCH REQUEST');
                 //ray($request->getBody());
+                //ray($response);
                 //\Log::info("HOTEL SEARCH REQUEST END\n");
                 //\Log::info("RESPONSE START\n");
                 //\Log::info(json_encode($response));
