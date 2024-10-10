@@ -126,7 +126,7 @@ class FetchSeparateHotelData implements ShouldQueue
     <Header>
         <Agency>147255</Agency>
         <User>HIMAXMLLOOK</User>
-        <Password>Fh12!@67GDtn</Password>
+        <Password>D25%74S#cn2!</Password>
         <Operation>HOTEL_SEARCH_REQUEST</Operation>
         <OperationType>Request</OperationType>
     </Header>
