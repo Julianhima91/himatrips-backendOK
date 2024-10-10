@@ -15,6 +15,7 @@ class PackagesAction
             ->with([
                 'hotelData',
                 'hotelData.hotel',
+                'hotelData.hotel.transfers',
                 'hotelData.hotel.hotelPhotos',
                 'outboundFlight',
                 'inboundFlight',
