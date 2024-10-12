@@ -482,4 +482,45 @@ class PackageController extends Controller
             ],
         ], 200);
     }
+
+    public function offers()
+    {
+        $cheapestPackages = Destination::query()
+            ->select(['id', 'name', 'description', 'city', 'country', 'created_at', 'updated_at', 'show_in_homepage'])
+            ->with(['destinationOrigin.packages.outboundFlight', 'destinationOrigin.packages.packageConfig.destination_origin'])
+            ->whereHas('destinationOrigin.packages')
+            ->get()
+            ->map(function ($destination) {
+                $allPackages = $destination->destinationOrigin->flatMap(function ($origin) {
+                    return $origin->packages;
+                });
+
+                $filteredPackages = $allPackages->filter(function ($package) {
+                    return $package->outboundFlight
+                        && $package->outboundFlight->adults == 2
+                        && $package->outboundFlight->children == 0
+                        && $package->outboundFlight->infants == 0;
+                });
+
+                $cheapestPackage = $filteredPackages->sortBy('total_price')->first();
+
+                if ($cheapestPackage) {
+                    return [
+                        'destination' => array_merge(
+                            $destination->only(['id', 'name', 'description', 'city', 'country', 'created_at', 'updated_at', 'show_in_homepage']),
+                            ['price' => $cheapestPackage->total_price],
+                            ['photos' => $destination->destinationPhotos],
+                            ['destination_origin' => $cheapestPackage->packageConfig->destination_origin]
+                        ),
+                    ];
+                }
+
+                return null;
+            })
+            ->filter();
+
+        return response()->json([
+            'data' => $cheapestPackages,
+        ], 200);
+    }
 }
