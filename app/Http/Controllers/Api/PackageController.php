@@ -505,14 +505,12 @@ class PackageController extends Controller
                 $cheapestPackage = $filteredPackages->sortBy('total_price')->first();
 
                 if ($cheapestPackage) {
-                    return [
-                        'destination' => array_merge(
-                            $destination->only(['id', 'name', 'description', 'city', 'country', 'created_at', 'updated_at', 'show_in_homepage']),
-                            ['price' => $cheapestPackage->total_price],
-                            ['photos' => $destination->destinationPhotos],
-                            ['destination_origin' => $cheapestPackage->packageConfig->destination_origin]
-                        ),
-                    ];
+                    return array_merge(
+                        $destination->only(['id', 'name', 'description', 'city', 'country', 'created_at', 'updated_at', 'show_in_homepage']),
+                        ['price' => $cheapestPackage->total_price],
+                        ['photos' => $destination->destinationPhotos],
+                        ['destination_origin' => $cheapestPackage->packageConfig->destination_origin]
+                    );
                 }
 
                 return null;
