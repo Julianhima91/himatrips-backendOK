@@ -508,6 +508,7 @@ class PackageController extends Controller
                     return array_merge(
                         $destination->only(['id', 'name', 'description', 'city', 'country', 'created_at', 'updated_at', 'show_in_homepage']),
                         ['price' => $cheapestPackage->total_price],
+                        ['batch_id' => $cheapestPackage->batch_id],
                         ['photos' => $destination->destinationPhotos],
                         ['destination_origin' => $cheapestPackage->packageConfig->destination_origin]
                     );
@@ -515,7 +516,8 @@ class PackageController extends Controller
 
                 return null;
             })
-            ->filter();
+            ->filter()
+            ->values();
 
         return response()->json([
             'data' => $cheapestPackages,
