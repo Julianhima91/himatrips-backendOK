@@ -491,9 +491,13 @@ class PackageController extends Controller
             ->whereHas('destinationOrigin.packages')
             ->get()
             ->map(function ($destination) {
-                $allPackages = $destination->destinationOrigin->flatMap(function ($origin) {
-                    return $origin->packages;
-                });
+                $allPackages = $destination->destinationOrigin
+                    ->filter(function ($origin) {
+                        return $origin->origin_id === 1;
+                    })
+                    ->flatMap(function ($origin) {
+                        return $origin->packages;
+                    });
 
                 $filteredPackages = $allPackages->filter(function ($package) {
                     return $package->outboundFlight
