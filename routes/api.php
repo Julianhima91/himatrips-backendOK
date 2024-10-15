@@ -45,26 +45,3 @@ Route::get('/destinations/{origin}/plain', [DestinationController::class, 'showD
 Route::get('/destinations/{origin}', [DestinationController::class, 'showDestinationsForOrigin']);
 
 Route::post('/direct-flight', FlightController::class);
-Route::get('/test', function () {
-    $origin = Origin::find(1);
-    $destinations = $origin->destinations()->get()->pluck('name', 'id');
-
-    $array = [];
-    foreach ($destinations as $key => $value) {
-        $originDestinations = DB::table('destination_origins')
-            ->where([
-                ['origin_id', '=', $origin->id],
-                ['destination_id', '=', $key],
-            ])->first();
-
-        if ($originDestinations) {
-            $exists = \App\Models\PackageConfig::where('destination_origin_id', $originDestinations->id)->exists();
-
-            if (! $exists) {
-                $array[$key] = $value;
-            }
-        }
-    }
-
-    dd($array, $destinations);
-});
