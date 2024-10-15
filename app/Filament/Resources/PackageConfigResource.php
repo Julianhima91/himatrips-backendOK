@@ -15,6 +15,7 @@ use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\ValidationException;
 
@@ -40,6 +41,40 @@ class PackageConfigResource extends Resource
                 Select::make('destination')
                     ->live()
                     ->placeholder('Select a destination')
+                    ->hiddenOn('edit')
+                    ->options(function (Forms\Get $get) {
+                        $origin = Origin::find($get('origin'));
+                        $destinations = $origin?->destinations()->get()->pluck('name', 'id');
+
+                        $array = [];
+                        if ($destinations) {
+                            foreach ($destinations as $key => $value) {
+                                $originDestinations = DB::table('destination_origins')
+                                    ->where([
+                                        ['origin_id', '=', $origin->id],
+                                        ['destination_id', '=', $key],
+                                    ])->first();
+
+                                if ($originDestinations) {
+                                    $exists = \App\Models\PackageConfig::where('destination_origin_id', $originDestinations->id)->exists();
+
+                                    if (! $exists) {
+                                        $array[$key] = $value;
+                                    }
+                                }
+                            }
+                        }
+
+                        return $array;
+                    })
+                    ->label('Destination')
+                    ->required()
+                    ->searchable(),
+
+                Select::make('destination')
+                    ->live()
+                    ->placeholder('Select a destination')
+                    ->hiddenOn('create')
                     ->options(function (Forms\Get $get) {
                         return Origin::find($get('origin'))?->destinations()->get()->pluck('name', 'id');
                     })
@@ -62,11 +97,13 @@ class PackageConfigResource extends Resource
 
                 Forms\Components\Toggle::make('prioritize_morning_flights')
                     ->live()
+                    ->default(true)
                     ->inline(false)
                     ->label('Prioritize Morning Flights'),
 
                 Forms\Components\Toggle::make('prioritize_evening_flights')
                     ->live()
+                    ->default(true)
                     ->inline(false)
                     ->label('Prioritize Evening Flights'),
 
@@ -77,6 +114,7 @@ class PackageConfigResource extends Resource
 
                 Forms\Components\TextInput::make('max_stop_count')
                     ->label('Max Stop Count')
+                    ->default(1)
                     ->numeric()
                     ->required()
                     ->placeholder('Max Stop Count'),
@@ -102,6 +140,7 @@ class PackageConfigResource extends Resource
 
                 Forms\Components\TextInput::make('commission_percentage')
                     ->numeric()
+                    ->default(30)
                     ->minValue(0)
                     ->maxValue(50)
                     ->required()
@@ -110,6 +149,7 @@ class PackageConfigResource extends Resource
 
                 Forms\Components\TextInput::make('commission_amount')
                     ->label('Commission Amount')
+                    ->default(80)
                     ->minValue(0)
                     ->numeric()
                     ->placeholder('Commission Amount')

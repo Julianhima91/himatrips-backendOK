@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\DestinationController;
 use App\Http\Controllers\Api\FlightController;
 use App\Http\Controllers\Api\OriginController;
 use App\Http\Controllers\Api\PackageController;
+use App\Models\Origin;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
