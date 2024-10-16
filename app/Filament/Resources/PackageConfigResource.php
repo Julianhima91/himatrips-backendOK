@@ -38,8 +38,9 @@ class PackageConfigResource extends Resource
                     ->required()
                     ->searchable(),
 
-                Select::make('destination')
+                Select::make('destination_create')
                     ->live()
+                    ->multiple()
                     ->placeholder('Select a destination')
                     ->hiddenOn('edit')
                     ->options(function (Forms\Get $get) {
