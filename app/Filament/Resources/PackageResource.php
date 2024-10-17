@@ -203,7 +203,19 @@ class PackageResource extends Resource
                     ->formatStateUsing(function (Model $record) {
                         $flightPrice = FlightData::where('id', $record->outbound_flight_id)->first()->price;
 
-                        return $record->total_price - $flightPrice - $record->hotelData->cheapest_offer_price;
+                        $hotelData = $record->hotelData;
+                        $transfers = $hotelData->hotel->transfers;
+                        $transferPrice = 0;
+
+                        foreach ($transfers as $transfer) {
+                            $transferPrice += $transfer->adult_price * $hotelData->adults;
+
+                            if ($hotelData->children > 0) {
+                                $transferPrice += $transfer->children_price * $hotelData->children;
+                            }
+                        }
+
+                        return $record->total_price - $flightPrice - $transferPrice - $record->hotelData->cheapest_offer_price;
                     }),
                 Tables\Columns\TextColumn::make('total_price'),
             ])
