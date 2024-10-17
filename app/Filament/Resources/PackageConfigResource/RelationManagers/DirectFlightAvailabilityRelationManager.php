@@ -12,6 +12,7 @@ use Filament\Notifications\Notification;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Tables;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 
 class DirectFlightAvailabilityRelationManager extends RelationManager
 {
@@ -38,7 +39,45 @@ class DirectFlightAvailabilityRelationManager extends RelationManager
                     ->disabled(),
             ])
             ->filters([
-                //
+                Tables\Filters\Filter::make('date_range')
+                    ->form([
+                        Flatpickr::make('date_range')
+                            ->minDate('today')
+                            ->maxDate(now()->addYear())
+                            ->mode(FlatpickrMode::RANGE),
+
+                    ])
+                    ->query(function (Builder $query, array $data) {
+                        if (isset($data['date_range'])) {
+                            $dates = explode(' to ', $data['date_range']);
+
+                            if (count($dates) === 2) {
+                                $startDate = $dates[0];
+                                $endDate = $dates[1];
+
+                                return $query
+                                    ->where('date', '>=', $startDate)
+                                    ->where('date', '<=', $endDate);
+                            }
+                        }
+
+                        return $query;
+                    })
+                    ->label('Filter by Date Range'),
+                Tables\Filters\Filter::make('return_flight')
+                ->form([
+                    Toggle::make('is_return_flight')
+                        ->label('Return Flight')
+                        ->default(false),
+                ])
+                    ->query(function (Builder $query, array $data) {
+                        if (array_key_exists('is_return_flight', $data)) {
+                            $query->where('is_return_flight', $data['is_return_flight']);
+                        }
+
+                        return $query;
+                    })
+
             ])
             ->headerActions([
                 Tables\Actions\CreateAction::make()
