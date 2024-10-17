@@ -6,10 +6,14 @@ use App\Actions\CheckFlightAvailability;
 use App\Filament\Resources\PackageConfigResource\Pages;
 use App\Http\Requests\CheckFlightAvailabilityRequest;
 use App\Models\Airline;
+use App\Models\DirectFlightAvailability;
 use App\Models\Origin;
 use App\Models\PackageConfig;
+use Coolsam\FilamentFlatpickr\Enums\FlatpickrMode;
+use Coolsam\FilamentFlatpickr\Forms\Components\Flatpickr;
 use Filament\Forms;
 use Filament\Forms\Components\Select;
+use Filament\Forms\Components\Toggle;
 use Filament\Forms\Form;
 use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
@@ -266,6 +270,35 @@ class PackageConfigResource extends Resource
 
                             return;
                         }
+                    }),
+                Tables\Actions\Action::make('insertDates')
+                    ->label('Insert Dates')
+                    ->form([
+                        Flatpickr::make('dates')
+                            ->label('Dates')
+                            ->minDate('today')
+                            ->maxDate(now()->addYear())
+                            ->mode(FlatpickrMode::MULTIPLE),
+                        Toggle::make('is_return_flight')
+                            ->label('Return Dates'),
+                    ])
+                    ->action(function ($record, array $data) {
+                        $dates = explode(',', $data['dates']);
+
+                        foreach ($dates as $date) {
+                            DirectFlightAvailability::updateOrCreate(
+                                [
+                                    'date' => $date,
+                                    'destination_origin_id' => $record->destination_origin_id,
+                                    'is_return_flight' => $data['is_return_flight'],
+                                ],
+                            );
+                        }
+
+                        Notification::make()
+                            ->success()
+                            ->title('Dates added!')
+                            ->send();
                     }),
             ])
             ->bulkActions([
