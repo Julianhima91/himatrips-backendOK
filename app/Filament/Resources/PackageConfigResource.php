@@ -4,6 +4,7 @@ namespace App\Filament\Resources;
 
 use App\Actions\CheckFlightAvailability;
 use App\Filament\Resources\PackageConfigResource\Pages;
+use App\Filament\Resources\PackageConfigResource\RelationManagers\DirectFlightAvailabilityRelationManager;
 use App\Http\Requests\CheckFlightAvailabilityRequest;
 use App\Models\Airline;
 use App\Models\DirectFlightAvailability;
@@ -321,7 +322,7 @@ class PackageConfigResource extends Resource
     public static function getRelations(): array
     {
         return [
-            //
+            DirectFlightAvailabilityRelationManager::class,
         ];
     }
 
