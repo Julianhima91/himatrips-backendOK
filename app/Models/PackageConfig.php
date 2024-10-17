@@ -40,4 +40,9 @@ class PackageConfig extends Model
     {
         return $this->hasMany(Package::class, 'package_config_id');
     }
+
+    public function directFlightsAvailabilityDates()
+    {
+        return $this->destination_origin->directFlightsAvailability();
+    }
 }
