@@ -2,6 +2,7 @@
 
 namespace App\Console;
 
+use App\Jobs\CheckDirectFlightForPackageConfigJob;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Console\Kernel as ConsoleKernel;
 
@@ -16,7 +17,10 @@ class Kernel extends ConsoleKernel
      */
     protected function schedule(Schedule $schedule): void
     {
-        // $schedule->command('inspire')->hourly();
+        //todo: run monthly, running it once for now to test it
+        $schedule->call(function () {
+            CheckDirectFlightForPackageConfigJob::dispatch();
+        })->cron('* * * * *');
     }
 
     /**
