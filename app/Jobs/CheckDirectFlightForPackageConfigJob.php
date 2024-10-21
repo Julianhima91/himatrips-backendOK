@@ -88,21 +88,13 @@ class CheckDirectFlightForPackageConfigJob implements ShouldQueue
 
     private function dispatchNextJob()
     {
-        //        PackageConfig::where('id', '>', $this->packageConfigId)->chunk(1, function ($packageConfigs) {
-        //            foreach ($packageConfigs as $packageConfig) {
-        //                Log::info('PACKAGE ID: ' . $packageConfig->id);
-        //                CheckDirectFlightForPackageConfigJob::dispatch($packageConfig->id)->delay(now()->addSeconds(1));
-        //                break;
-        //            }
-        //        });
-
         $nextPackageConfig = PackageConfig::where('id', '>', $this->packageConfigId)
             ->orderBy('id')
             ->first();
 
         if ($nextPackageConfig) {
             Log::info('Next PACKAGE ID: '.$nextPackageConfig->id);
-            CheckDirectFlightForPackageConfigJob::dispatch($nextPackageConfig->id)->delay(now()->addSeconds(1));
+            CheckDirectFlightForPackageConfigJob::dispatch($nextPackageConfig->id)->delay(now()->addSeconds(3));
         } else {
             Log::info('No more package configurations found after ID: '.$this->packageConfigId);
         }
@@ -121,14 +113,17 @@ class CheckDirectFlightForPackageConfigJob implements ShouldQueue
         try {
             $response = $flightRequest->send();
 
-            $traces = $response->json()['data']['Traces'];
+            $grids = $response->json()['data']['PriceGrids']['Grid'][0];
 
-            foreach ($traces as $trace) {
-                $arr = explode('*', $trace);
+            foreach ($grids as $index => $grid) {
 
-                if ($arr[1] === 'D') {
+                if ($grid['DirectOutboundAvailable'] === true) {
+                    [$year, $month] = explode('-', $yearMonth);
+                    $date = new DateTime;
+                    $date->setDate($year, $month, $index + 1);
+
                     DirectFlightAvailability::updateOrCreate([
-                        'date' => DateTime::createFromFormat('Ymd', $arr[4])->format('Y-m-d'),
+                        'date' => $date->format('Y-m-d'),
                         'destination_origin_id' => $destinationOriginId,
                         'is_return_flight' => $isReturnFlight,
                     ]);
