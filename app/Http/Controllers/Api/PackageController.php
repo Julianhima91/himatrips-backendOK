@@ -17,6 +17,7 @@ use App\Models\Destination;
 use App\Models\DestinationOrigin;
 use App\Models\DirectFlightAvailability;
 use App\Models\Package;
+use App\Models\PackageConfig;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Bus;
@@ -188,11 +189,16 @@ class PackageController extends Controller
             ], 200);
         }
 
+        $packageConfig = PackageConfig::query()
+            ->where('destination_origin_id', $destination_origin->id)->first();
+
+        $minNightsStay = $packageConfig->min_nights_stay;
+
         $directFlightDates = DirectFlightAvailability::query()
             ->where([
                 ['destination_origin_id', $destination_origin->id],
                 ['is_return_flight', 1],
-                ['date', '>', $request->start_date],
+                ['date', '>', Carbon::parse($request->start_date)->addDays($minNightsStay)],
             ])
             ->orderBy('date')
             ->take(15)
