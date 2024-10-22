@@ -19,6 +19,7 @@ use App\Models\DirectFlightAvailability;
 use App\Models\Package;
 use App\Models\PackageConfig;
 use Carbon\Carbon;
+use DateTime;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Cache;
@@ -506,10 +507,17 @@ class PackageController extends Controller
                     });
 
                 $filteredPackages = $allPackages->filter(function ($package) {
-                    return $package->outboundFlight
-                        && $package->outboundFlight->adults == 2
-                        && $package->outboundFlight->children == 0
-                        && $package->outboundFlight->infants == 0;
+                    $outboundFlight = $package->outboundFlight;
+                    $inboundFlight = $package->inboundFlight;
+
+                    $outboundDate = new DateTime($outboundFlight->departure);
+                    $inboundDate = new DateTime($inboundFlight->departure);
+                    $nightsStay = $inboundDate->diff($outboundDate)->days;
+
+                    return $nightsStay >= 2
+                        && $outboundFlight->adults == 2
+                        && $outboundFlight->children == 0
+                        && $outboundFlight->infants == 0;
                 });
 
                 $cheapestPackage = $filteredPackages->sortBy('total_price')->first();
