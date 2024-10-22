@@ -490,17 +490,17 @@ class PackageController extends Controller
         ], 200);
     }
 
-    public function offers()
+    public function offers(Request $request)
     {
         $cheapestPackages = Destination::query()
             ->select(['id', 'name', 'description', 'city', 'country', 'created_at', 'updated_at', 'show_in_homepage'])
             ->with(['destinationOrigin.packages.outboundFlight', 'destinationOrigin.packages.packageConfig.destination_origin'])
             ->whereHas('destinationOrigin.packages')
             ->get()
-            ->map(function ($destination) {
+            ->map(function ($destination) use ($request) {
                 $allPackages = $destination->destinationOrigin
-                    ->filter(function ($origin) {
-                        return $origin->origin_id === 1;
+                    ->filter(function ($origin) use($request) {
+                        return $origin->origin_id === ((int)$request->origin_id ?? 1);
                     })
                     ->flatMap(function ($origin) {
                         return $origin->packages;
