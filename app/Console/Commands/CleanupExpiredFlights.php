@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Models\Package;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 
@@ -32,8 +33,9 @@ class CleanupExpiredFlights extends Command
             ->where('date', '<', $now)
             ->delete();
 
-        //todo: Flight_data and hotel_data prune
+        $deleted = Package::where('created_at', '<', $now->subHours(72))->delete();
 
         $this->info('Expired flights from direct_flights_availability have been cleaned up.');
+        $this->info($deleted . ' old packages deleted successfully.');
     }
 }
