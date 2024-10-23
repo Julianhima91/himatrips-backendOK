@@ -190,10 +190,9 @@ class PackageController extends Controller
             ], 200);
         }
 
-        $packageConfig = PackageConfig::query()
-            ->where('destination_origin_id', $destination_origin->id)->first();
-
-        $minNightsStay = $packageConfig->min_nights_stay;
+        $minNightsStay = PackageConfig::query()
+            ->where('destination_origin_id', $destination_origin->id)->first()
+            ->destination_origin->destination->min_nights_stay;
 
         $directFlightDates = DirectFlightAvailability::query()
             ->where([
@@ -500,7 +499,7 @@ class PackageController extends Controller
             ->map(function ($destination) use ($request) {
                 $allPackages = $destination->destinationOrigin
                     ->filter(function ($origin) use ($request) {
-                        return $origin->origin_id === ((int)($request->origin_id ?? 1));
+                        return $origin->origin_id === ((int) ($request->origin_id ?? 1));
                     })
                     ->flatMap(function ($origin) {
                         return $origin->packages;

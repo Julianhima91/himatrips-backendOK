@@ -45,7 +45,6 @@ class CreatePackageConfig extends CreateRecord
                 'max_wait_time' => $data['max_wait_time'],
                 'max_stop_count' => $data['max_stop_count'],
                 'max_transit_time' => $data['max_transit_time'],
-                'min_nights_stay' => $data['min_nights_stay'],
                 'room_basis' => $data['room_basis'],
                 'commission_percentage' => $data['commission_percentage'],
                 'commission_amount' => $data['commission_amount'],
