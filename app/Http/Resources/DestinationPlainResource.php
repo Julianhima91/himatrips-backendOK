@@ -29,6 +29,7 @@ class DestinationPlainResource extends JsonResource
             'updated_at' => $this->updated_at,
             'packages_count' => $this->packages_count,
             'destination_photos' => $this->destination_photos,
+            'min_nights' => $this->min_nights_stay,
             'pivot' => [
                 'destination_id' => $this->origins[0]->pivot->destination_id,
                 'origin_id' => $this->origins[0]->pivot->origin_id,
