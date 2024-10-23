@@ -499,8 +499,8 @@ class PackageController extends Controller
             ->get()
             ->map(function ($destination) use ($request) {
                 $allPackages = $destination->destinationOrigin
-                    ->filter(function ($origin) use($request) {
-                        return $origin->origin_id === ((int)$request->origin_id ?? 1);
+                    ->filter(function ($origin) use ($request) {
+                        return $origin->origin_id === ((int)($request->origin_id ?? 1));
                     })
                     ->flatMap(function ($origin) {
                         return $origin->packages;
