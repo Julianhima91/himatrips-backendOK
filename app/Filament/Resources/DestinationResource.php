@@ -55,6 +55,12 @@ class DestinationResource extends Resource
                     ->live()
                     ->hidden(fn (Get $get) => ! $get('prioritize_evening_flights'))
                     ->label('Evening Flight End Time'),
+                Forms\Components\TextInput::make('min_nights_stay')
+                    ->label('Min Nights Stay')
+                    ->default(0)
+                    ->numeric()
+                    ->required()
+                    ->placeholder('Min Nights Stay'),
                 Forms\Components\Section::make('Destination Photo')
                     ->schema([
                         Forms\Components\FileUpload::make('Images')

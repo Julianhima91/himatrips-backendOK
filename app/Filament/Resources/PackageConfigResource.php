@@ -125,13 +125,6 @@ class PackageConfigResource extends Resource
                     ->required()
                     ->placeholder('Max Stop Count'),
 
-                Forms\Components\TextInput::make('min_nights_stay')
-                    ->label('Min Nights Stay')
-                    ->default(0)
-                    ->numeric()
-                    ->required()
-                    ->placeholder('Min Nights Stay'),
-
                 Forms\Components\TextInput::make('max_transit_time')
                     ->label('Max Transit Time (minutes)')
                     ->default(0)
