@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Models\Package;
+use App\Settings\PackageHourly;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 
@@ -33,9 +34,11 @@ class CleanupExpiredFlights extends Command
             ->where('date', '<', $now)
             ->delete();
 
-        $deleted = Package::where('created_at', '<', $now->subHours(72))->delete();
+        $hourly = app(PackageHourly::class)->hourly;
+
+        $deleted = Package::where('created_at', '<', $now->subHours($hourly))->delete();
 
         $this->info('Expired flights from direct_flights_availability have been cleaned up.');
-        $this->info($deleted . ' old packages deleted successfully.');
+        $this->info($deleted.' old packages deleted successfully.');
     }
 }
