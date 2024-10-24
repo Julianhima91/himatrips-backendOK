@@ -4,7 +4,6 @@ use App\Http\Controllers\Api\DestinationController;
 use App\Http\Controllers\Api\FlightController;
 use App\Http\Controllers\Api\OriginController;
 use App\Http\Controllers\Api\PackageController;
-use App\Models\Origin;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -24,6 +23,7 @@ Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
 });
 
 Route::get('/origins', [OriginController::class, 'index']);
+Route::get('/available-origins', [OriginController::class, 'availableOrigins']);
 
 Route::post('/packages/search', [PackageController::class, 'search']);
 Route::get('/packages/{package}', [PackageController::class, 'show']);
