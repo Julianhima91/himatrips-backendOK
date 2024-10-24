@@ -39,6 +39,20 @@ class DestinationResource extends Resource
                 Forms\Components\TextInput::make('country')
                     ->required()
                     ->maxLength(255),
+                Forms\Components\Select::make('board_options')
+                    ->multiple()
+                    ->label('Board Options')
+                    ->options([
+                        'BB' => 'Bed & Breakfast',
+                        'HB' => 'Half Board',
+                        'FB' => 'Full Board',
+                        'AI' => 'All Inclusive',
+                        'RO' => 'Room Only',
+                        'CB' => 'Continental Breakfast',
+                        'BD' => 'Bed & Dinner',
+                    ])
+                    ->placeholder('Select Board Options')
+                    ->required(),
                 Forms\Components\TimePicker::make('morning_flight_start_time')
                     ->live()
                     ->hidden(fn (Get $get) => ! $get('prioritize_morning_flights'))
