@@ -18,8 +18,8 @@ class Settings extends SettingsPage
         return $form
             ->schema([
                 TextInput::make('hourly')
+                    ->minValue(1)
                     ->numeric()
-                    ->min(1)
                     ->label('Package hourly deletion')
                     ->required(),
             ]);
