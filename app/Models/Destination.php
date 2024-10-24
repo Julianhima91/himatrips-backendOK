@@ -14,6 +14,10 @@ class Destination extends Model
 
     protected $guarded = [];
 
+    protected $casts = [
+        'board_options' => 'array', // Automatically handle JSON as an array
+    ];
+
     public function hotels(): BelongsToMany
     {
         return $this->belongsToMany(Hotel::class, 'destination_hotel');

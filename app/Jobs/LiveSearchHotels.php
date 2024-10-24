@@ -178,8 +178,6 @@ class LiveSearchHotels implements ShouldQueue
         $filterRoomBasisesXml = '<FilterRoomBasises>';
 
         if ($boardOptions) {
-            $boardOptions = json_decode($boardOptions, true);
-
             foreach ($boardOptions as $boardOption) {
                 $filterRoomBasisesXml .= "<FilterRoomBasis>{$boardOption}</FilterRoomBasis>";
             }
