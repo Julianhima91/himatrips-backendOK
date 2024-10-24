@@ -198,7 +198,7 @@ class PackageController extends Controller
             ->where([
                 ['destination_origin_id', $destination_origin->id],
                 ['is_return_flight', 1],
-                ['date', '>', Carbon::parse($request->start_date)->addDays($minNightsStay)],
+                ['date', '>=', Carbon::parse($request->start_date)->addDays($minNightsStay)],
             ])
             ->orderBy('date')
             ->take(15)
