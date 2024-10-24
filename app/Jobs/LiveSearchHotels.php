@@ -4,6 +4,7 @@ namespace App\Jobs;
 
 use App\Data\HotelDataDTO;
 use App\Data\HotelOfferDTO;
+use App\Models\Destination;
 use App\Models\Hotel;
 use Illuminate\Bus\Batchable;
 use Illuminate\Bus\Queueable;
@@ -73,8 +74,9 @@ class LiveSearchHotels implements ShouldQueue
             return "<HotelId>{$hotelId}</HotelId>";
         }, $hotelIds->toArray()));
 
+        $boardOptions = Destination::find($this->destination)->board_options;
         try {
-            $response = $this->getHotelData($hotelIds, $this->checkin_date, $this->nights, $this->adults, $this->children, $this->infants, $this->rooms);
+            $response = $this->getHotelData($hotelIds, $this->checkin_date, $this->nights, $this->adults, $this->children, $this->infants, $this->rooms, $boardOptions);
         } catch (\Exception $e) {
             //if it's the first time, we retry
             if ($this->attempts() == 1) {
@@ -152,7 +154,7 @@ class LiveSearchHotels implements ShouldQueue
         Cache::put("hotel_job_completed_{$this->batchId}", true, now()->addMinutes(1));
     }
 
-    public function getHotelData(string $hotelIds, mixed $arrivalDate, mixed $nights, $adults, $children, $infants, $rooms): mixed
+    public function getHotelData(string $hotelIds, mixed $arrivalDate, mixed $nights, $adults, $children, $infants, $rooms, $boardOptions): mixed
     {
         //$children and infants will be an integer
         //for every children we need to create this string
@@ -173,6 +175,17 @@ class LiveSearchHotels implements ShouldQueue
 
         $totalChildren = $infants + $children;
 
+        $filterRoomBasisesXml = '<FilterRoomBasises>';
+
+        if ($boardOptions) {
+            $boardOptions = json_decode($boardOptions, true);
+
+            foreach ($boardOptions as $boardOption) {
+                $filterRoomBasisesXml .= "<FilterRoomBasis>{$boardOption}</FilterRoomBasis>";
+            }
+        }
+        $filterRoomBasisesXml .= '</FilterRoomBasises>';
+
         $xmlRequestBody = <<<XML
 <Root>
     <Header>
@@ -187,6 +200,7 @@ class LiveSearchHotels implements ShouldQueue
             {$hotelIds}
         </Hotels>
         <MaximumWaitTime>1500</MaximumWaitTime>
+        {$filterRoomBasisesXml}
         <Nationality>AL</Nationality>
         <ArrivalDate>{$arrivalDate}</ArrivalDate>
         <Nights>{$nights}</Nights>
