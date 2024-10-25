@@ -31,9 +31,27 @@ class FlightsAction
             return $flight->stopCount === 0;
         });
 
+        $packageConfig = PackageConfig::query()
+            ->whereHas('destination_origin', function ($query) {
+                $query->where([
+                    ['destination_id', request()->destination_id],
+                    ['origin_id', request()->origin_id],
+                ]);
+            })->first();
+
         //if we have direct flights, keep only direct flights
         if ($outbound_flight_direct->isNotEmpty()) {
             $outbound_flight = $outbound_flight_direct;
+        } else {
+            $outbound_flight_max_stops = $outbound_flight->filter(function ($flight) use ($packageConfig) {
+                if ($flight == null) {
+                    return false;
+                }
+
+                return $flight->stopCount_back === $packageConfig->max_stop_count;
+            });
+
+            $outbound_flight = $outbound_flight_max_stops;
         }
 
         $outbound_flight_morning = $outbound_flight->when($destination->prioritize_morning_flights, function (Collection $collection) use ($destination) {
@@ -61,16 +79,16 @@ class FlightsAction
             $outbound_flight = $outbound_flight_morning;
         }
 
-        $outbound_flight = $outbound_flight->when($destination->max_stop_count !== 0, function (Collection $collection) use ($destination) {
-            return $collection->filter(function ($flight) use ($destination) {
-                if ($flight == null) {
-                    return false;
-                }
-
-                return ! ($flight->stopCount <= $destination->max_stop_count &&
-                        $flight->stopCount > 0) || $flight->timeBetweenFlights[0] <= $destination->max_wait_time;
-            });
-        });
+        //        $outbound_flight = $outbound_flight->when($destination->max_stop_count !== 0, function (Collection $collection) use ($destination) {
+        //            return $collection->filter(function ($flight) use ($destination) {
+        //                if ($flight == null) {
+        //                    return false;
+        //                }
+        //
+        //                return ! ($flight->stopCount <= $destination->max_stop_count &&
+        //                        $flight->stopCount > 0) || $flight->timeBetweenFlights[0] <= $destination->max_wait_time;
+        //            });
+        //        });
 
         $outbound_flight = $outbound_flight->sortBy([
             ['stopCount', 'asc'],
@@ -83,14 +101,6 @@ class FlightsAction
 
             return;
         }
-
-        $packageConfig = PackageConfig::query()
-            ->whereHas('destination_origin', function ($query) {
-                $query->where([
-                    ['destination_id', request()->destination_id],
-                    ['origin_id', request()->origin_id],
-                ]);
-            })->first();
 
         //if morning flights are not empty get first otherwise get the first from the filtered flights
         $first_outbound_flight = $outbound_flight->first();
@@ -125,6 +135,16 @@ class FlightsAction
         //if we have direct flights, keep only direct flights
         if ($inbound_flight_direct->isNotEmpty()) {
             $inbound_flight = $inbound_flight_direct;
+        } else {
+            $inbound_flight_max_stops = $inbound_flight->filter(function ($flight) use ($packageConfig) {
+                if ($flight == null) {
+                    return false;
+                }
+
+                return $flight->stopCount_back === $packageConfig->max_stop_count;
+            });
+
+            $inbound_flight = $inbound_flight_max_stops;
         }
 
         $inbound_flight_evening = $inbound_flight->when($destination->prioritize_evening_flights, function (Collection $collection) use ($destination) {
@@ -152,16 +172,16 @@ class FlightsAction
             $inbound_flight = $inbound_flight_evening;
         }
 
-        $inbound_flight = $inbound_flight->when($destination->max_stop_count !== 0, function (Collection $collection) {
-            return $collection->filter(function ($flight) {
-                if ($flight == null) {
-                    return false;
-                }
-
-                return ! ($flight->stopCount <= 1 &&
-                        $flight->stopCount > 0) || $flight->timeBetweenFlights[0] <= 360;
-            });
-        });
+        //        $inbound_flight = $inbound_flight->when($destination->max_stop_count !== 0, function (Collection $collection) {
+        //            return $collection->filter(function ($flight) {
+        //                if ($flight == null) {
+        //                    return false;
+        //                }
+        //
+        //                return ! ($flight->stopCount <= 1 &&
+        //                        $flight->stopCount > 0) || $flight->timeBetweenFlights[0] <= 360;
+        //            });
+        //        });
 
         $inbound_flight = $inbound_flight->sortBy([
             ['stopCount', 'asc'],
