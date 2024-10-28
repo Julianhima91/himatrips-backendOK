@@ -4,11 +4,13 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\PackageSearchesResource\Pages;
 use App\Models\ClientSearches;
+use App\Models\Package;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
+use Illuminate\Support\Facades\DB;
 
 class ClientSearchesResource extends Resource
 {
@@ -27,8 +29,16 @@ class ClientSearchesResource extends Resource
     public static function table(Table $table): Table
     {
         return $table
-            ->query(ClientSearches::query()->orderBy('created_at', 'desc'))
-            ->poll()
+            ->query(
+                ClientSearches::query()
+                    ->select('packages.*')
+                    ->whereIn('id', function($query) {
+                        $query->select(\DB::raw('MIN(id)'))
+                            ->from('packages')
+                            ->groupBy('batch_id');
+                    })
+                    ->orderBy('created_at', 'desc')
+            )->poll()
             ->columns([
                 Tables\Columns\TextColumn::make('id')
                     ->label('ID')
