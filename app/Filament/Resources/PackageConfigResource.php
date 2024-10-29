@@ -125,12 +125,6 @@ class PackageConfigResource extends Resource
                     ->required()
                     ->placeholder('Max Stop Count'),
 
-                Forms\Components\TextInput::make('max_transit_time')
-                    ->label('Max Transit Time (minutes)')
-                    ->default(0)
-                    ->numeric()
-                    ->placeholder('Max Transit Time'),
-
                 Select::make('room_basis')
                     ->placeholder('Select room basis or leave empty for cheapest')
                     ->options([
