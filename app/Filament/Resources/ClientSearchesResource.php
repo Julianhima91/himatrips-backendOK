@@ -4,13 +4,12 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\PackageSearchesResource\Pages;
 use App\Models\ClientSearches;
-use App\Models\Package;
 use Filament\Forms;
+use Filament\Forms\Components\Actions\Action;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
-use Illuminate\Support\Facades\DB;
 
 class ClientSearchesResource extends Resource
 {
@@ -32,7 +31,7 @@ class ClientSearchesResource extends Resource
             ->query(
                 ClientSearches::query()
                     ->select('packages.*')
-                    ->whereIn('id', function($query) {
+                    ->whereIn('id', function ($query) {
                         $query->select(\DB::raw('MIN(id)'))
                             ->from('packages')
                             ->groupBy('batch_id');
@@ -53,29 +52,37 @@ class ClientSearchesResource extends Resource
                     ->sortable(),
                 Tables\Columns\TextColumn::make('passengers')
                     ->label('Passengers')
-                    ->getStateUsing(fn ($record) => "Adults: {$record->hotelData->adults}, Children: {$record->hotelData->children}, Infants: {$record->hotelData->infants}"),
+                    ->getStateUsing(fn ($record) => "Ad: {$record->hotelData->adults}, CHD: {$record->hotelData->children}, INF: {$record->hotelData->infants}"),
                 Tables\Columns\TextColumn::make('created_at')
                     ->label('Date')
                     ->searchable()
                     ->sortable(),
                 Tables\Columns\TextColumn::make('batch_id')
                     ->label('Search Link')
-                    ->url(fn ($record) => env('FRONT_URL').'/search-'.strtolower("{$record->packageConfig->destination_origin->origin->name}-to-{$record->packageConfig->destination_origin->destination->name}").
-                        "?batch_id={$record->batch_id}".
-                        "&nights={$record->hotelData->number_of_nights}".
-                        "&checkin_date={$record->hotelData->check_in_date}".
-                        "&origin_id={$record->packageConfig->destination_origin->origin->id}".
-                        "&destination_id={$record->packageConfig->destination_origin->destination->id}".
-                        '&page=1'.
-                        "&rooms={$record->hotelData->room_count}".
-                        '&directFlightsOnly='.($record->inboundFlight->stop_count === 0 ? 'true' : 'false').
-                        '&sort_by=total_price'.
-                        '&sort_order='.strtoupper('asc').
-                        "&adults={$record->hotelData->adults}".
-                        "&children={$record->hotelData->children}".
-                        "&infants={$record->hotelData->infants}".
-                        '&refresh=0'
-                    )->openUrlInNewTab(),
+                    ->formatStateUsing(fn ($state, $record) => Action::make('searchLink')
+                        ->label('LINK')
+                        ->url(fn () => env('FRONT_URL').'/search-'.strtolower(
+                            str_replace(' ', '-', "{$record->packageConfig->destination_origin->origin->name}").
+                            '-to-'.
+                            str_replace(' ', '-', "{$record->packageConfig->destination_origin->destination->name}")
+                            ."?batch_id={$record->batch_id}"
+                            ."&nights={$record->hotelData->number_of_nights}"
+                            ."&checkin_date={$record->hotelData->check_in_date}"
+                            ."&origin_id={$record->packageConfig->destination_origin->origin->id}"
+                            ."&destination_id={$record->packageConfig->destination_origin->destination->id}"
+                            .'&page=1'
+                            ."&rooms={$record->hotelData->room_count}"
+                            .'&directFlightsOnly='.($record->inboundFlight->stop_count === 0 ? 'true' : 'false')
+                            .'&sort_by=total_price'
+                            .'&sort_order='.strtoupper('asc')
+                            ."&adults={$record->hotelData->adults}"
+                            ."&children={$record->hotelData->children}"
+                            ."&infants={$record->hotelData->infants}"
+                            .'&refresh=0')
+                        )
+                        ->color('success')
+                        ->openUrlInNewTab()
+                    ),
 
             ])
             ->filters([
