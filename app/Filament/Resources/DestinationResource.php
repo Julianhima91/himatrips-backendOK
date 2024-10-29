@@ -67,8 +67,7 @@ class DestinationResource extends Resource
                         'CB' => 'Continental Breakfast',
                         'BD' => 'Bed & Dinner',
                     ])
-                    ->placeholder('Select Board Options')
-                    ->required(),
+                    ->placeholder('Select Board Options'),
                 Forms\Components\TimePicker::make('morning_flight_start_time')
                     ->live()
                     ->hidden(fn (Get $get) => ! $get('prioritize_morning_flights'))
