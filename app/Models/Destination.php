@@ -5,17 +5,18 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Spatie\Tags\HasTags;
 use Staudenmeir\EloquentHasManyDeep\HasManyDeep;
 use Staudenmeir\EloquentHasManyDeep\HasRelationships;
 
 class Destination extends Model
 {
-    use HasRelationships;
+    use HasRelationships, HasTags;
 
     protected $guarded = [];
 
     protected $casts = [
-        'board_options' => 'array', // Automatically handle JSON as an array
+        'board_options' => 'array',
     ];
 
     public function hotels(): BelongsToMany
