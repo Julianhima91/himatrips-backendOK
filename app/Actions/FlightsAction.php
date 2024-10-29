@@ -79,16 +79,16 @@ class FlightsAction
             $outbound_flight = $outbound_flight_morning;
         }
 
-        //        $outbound_flight = $outbound_flight->when($destination->max_stop_count !== 0, function (Collection $collection) use ($destination) {
-        //            return $collection->filter(function ($flight) use ($destination) {
-        //                if ($flight == null) {
-        //                    return false;
-        //                }
-        //
-        //                return ! ($flight->stopCount <= $destination->max_stop_count &&
-        //                        $flight->stopCount > 0) || $flight->timeBetweenFlights[0] <= $destination->max_wait_time;
-        //            });
-        //        });
+        $outbound_flight = $outbound_flight->when($packageConfig->max_stop_count !== 0, function (Collection $collection) use ($packageConfig) {
+            return $collection->filter(function ($flight) use ($packageConfig) {
+                if ($flight == null) {
+                    return false;
+                }
+
+                return ! ($flight->stopCount <= $packageConfig->max_stop_count &&
+                        $flight->stopCount > 0) || $flight->timeBetweenFlights[0] <= $packageConfig->max_wait_time;
+            });
+        });
 
         $outbound_flight = $outbound_flight->sortBy([
             ['stopCount', 'asc'],

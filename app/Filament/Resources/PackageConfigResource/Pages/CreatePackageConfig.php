@@ -44,7 +44,6 @@ class CreatePackageConfig extends CreateRecord
                 'prioritize_evening_flights' => $data['prioritize_evening_flights'],
                 'max_wait_time' => $data['max_wait_time'],
                 'max_stop_count' => $data['max_stop_count'],
-                'max_transit_time' => $data['max_transit_time'],
                 'room_basis' => $data['room_basis'],
                 'commission_percentage' => $data['commission_percentage'],
                 'commission_amount' => $data['commission_amount'],
