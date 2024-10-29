@@ -6,6 +6,7 @@ use App\Filament\Resources\DestinationResource\Pages;
 use App\Filament\Resources\DestinationResource\RelationManagers;
 use App\Models\Destination;
 use Filament\Forms;
+use Filament\Forms\Components\SpatieTagsInput;
 use Filament\Forms\Form;
 use Filament\Forms\Get;
 use Filament\Resources\Resource;
@@ -23,6 +24,7 @@ class DestinationResource extends Resource
     {
         return $form
             ->schema([
+                SpatieTagsInput::make('tags'),
                 Forms\Components\TextInput::make('name')
                     ->required()
                     ->maxLength(255),
@@ -39,6 +41,20 @@ class DestinationResource extends Resource
                 Forms\Components\TextInput::make('country')
                     ->required()
                     ->maxLength(255),
+                Forms\Components\TextInput::make('address')
+                    ->maxLength(255),
+                Forms\Components\TextInput::make('region')
+                    ->maxLength(255),
+                Forms\Components\TextInput::make('neighborhood')
+                    ->maxLength(255),
+                Forms\Components\TextInput::make('latitude')
+                    ->numeric()
+                    ->rule('between:-90,90')
+                    ->step(0.000001),
+                Forms\Components\TextInput::make('longitude')
+                    ->numeric()
+                    ->rule('between:-180,180')
+                    ->step(0.000001),
                 Forms\Components\Select::make('board_options')
                     ->multiple()
                     ->label('Board Options')
