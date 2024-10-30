@@ -17,10 +17,7 @@ class Kernel extends ConsoleKernel
      */
     protected function schedule(Schedule $schedule): void
     {
-        //todo: run monthly, running it once for now to test it
-        $schedule->call(function () {
-            CheckDirectFlightForPackageConfigJob::dispatch();
-        })->cron('* * * * *');
+        $schedule->job(new CheckDirectFlightForPackageConfigJob())->dailyAt('00:00');
     }
 
     /**
