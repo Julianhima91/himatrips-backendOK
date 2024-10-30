@@ -205,67 +205,67 @@ class PackageConfigResource extends Resource
                 //
             ])
             ->actions([
-                Tables\Actions\Action::make('Choose Package Config')
-                    ->label('Check Flights')
-                    ->form([
-                        Forms\Components\DatePicker::make('from_date')
-                            ->required()
-                            ->label('Start Date'),
-                        Forms\Components\DatePicker::make('to_date')
-                            ->required()
-                            ->label('To Date'),
-
-                        Forms\Components\Toggle::make('is_direct_flight')
-                            ->default(true)
-                            ->disabled()
-                            ->label('Direct Flight'),
-                        Forms\Components\Select::make('airline_id')->label('Airline')
-                            ->getSearchResultsUsing(function (string $search) {
-                                return \App\Models\Airline::where('nameAirline', 'like', "%{$search}%")
-                                    ->limit(50)
-                                    ->pluck('nameAirline', 'id');
-                            })
-                            ->searchable()
-                            ->hint('Start typing to search for an airline'),
-                    ])
-                    ->action(function ($record, array $data) {
-                        try {
-                            $validator = Validator::make(array_merge($data, [
-                                'package_config_id' => $record->id,
-                            ]), [
-                                'package_config_id' => 'required|exists:package_configs,id',
-                                'from_date' => 'required|date',
-                                'to_date' => 'required|date|after_or_equal:from_date',
-                                'airline_id' => 'nullable|exists:airlines,id',
-                                'is_direct_flight' => 'nullable|boolean',
-                            ]);
-
-                            $validatedData = $validator->validate();
-
-                            $request = new CheckFlightAvailabilityRequest($validatedData);
-                            $result = (new CheckFlightAvailability)->handle($request);
-
-                            if ($result) {
-                                Notification::make()
-                                    ->success()
-                                    ->title('Flight Availability is being updated!')
-                                    ->send();
-                            } else {
-                                Notification::make()
-                                    ->danger()
-                                    ->title('Something went wrong')
-                                    ->send();
-                            }
-                        } catch (ValidationException $e) {
-                            Notification::make()
-                                ->danger()
-                                ->title('Validation Failed')
-                                ->body(implode("\n", $e->errors()))
-                                ->send();
-
-                            return;
-                        }
-                    }),
+                //                Tables\Actions\Action::make('Choose Package Config')
+                //                    ->label('Check Flights')
+                //                    ->form([
+                //                        Forms\Components\DatePicker::make('from_date')
+                //                            ->required()
+                //                            ->label('Start Date'),
+                //                        Forms\Components\DatePicker::make('to_date')
+                //                            ->required()
+                //                            ->label('To Date'),
+                //
+                //                        Forms\Components\Toggle::make('is_direct_flight')
+                //                            ->default(true)
+                //                            ->disabled()
+                //                            ->label('Direct Flight'),
+                //                        Forms\Components\Select::make('airline_id')->label('Airline')
+                //                            ->getSearchResultsUsing(function (string $search) {
+                //                                return \App\Models\Airline::where('nameAirline', 'like', "%{$search}%")
+                //                                    ->limit(50)
+                //                                    ->pluck('nameAirline', 'id');
+                //                            })
+                //                            ->searchable()
+                //                            ->hint('Start typing to search for an airline'),
+                //                    ])
+                //                    ->action(function ($record, array $data) {
+                //                        try {
+                //                            $validator = Validator::make(array_merge($data, [
+                //                                'package_config_id' => $record->id,
+                //                            ]), [
+                //                                'package_config_id' => 'required|exists:package_configs,id',
+                //                                'from_date' => 'required|date',
+                //                                'to_date' => 'required|date|after_or_equal:from_date',
+                //                                'airline_id' => 'nullable|exists:airlines,id',
+                //                                'is_direct_flight' => 'nullable|boolean',
+                //                            ]);
+                //
+                //                            $validatedData = $validator->validate();
+                //
+                //                            $request = new CheckFlightAvailabilityRequest($validatedData);
+                //                            $result = (new CheckFlightAvailability)->handle($request);
+                //
+                //                            if ($result) {
+                //                                Notification::make()
+                //                                    ->success()
+                //                                    ->title('Flight Availability is being updated!')
+                //                                    ->send();
+                //                            } else {
+                //                                Notification::make()
+                //                                    ->danger()
+                //                                    ->title('Something went wrong')
+                //                                    ->send();
+                //                            }
+                //                        } catch (ValidationException $e) {
+                //                            Notification::make()
+                //                                ->danger()
+                //                                ->title('Validation Failed')
+                //                                ->body(implode("\n", $e->errors()))
+                //                                ->send();
+                //
+                //                            return;
+                //                        }
+                //                    }),
                 Tables\Actions\Action::make('insertDates')
                     ->label('Insert Dates')
                     ->form([
