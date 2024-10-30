@@ -74,10 +74,10 @@ class ClientSearchesResource extends Resource
                             ."&rooms={$record->hotelData->room_count}"
                             .'&directFlightsOnly='.($record->inboundFlight->stop_count === 0 ? 'true' : 'false')
                             .'&sort_by=total_price'
-                            .'&sort_order='.strtoupper('asc')
+                            .'&sort_order=ASC'
                             ."&adults={$record->hotelData->adults}"
-                            ."&children={$record->hotelData->children}"
                             ."&infants={$record->hotelData->infants}"
+                            ."&children={$record->hotelData->children}"
                             .'&refresh=0')
                         )
                         ->color('success')
