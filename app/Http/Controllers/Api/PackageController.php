@@ -114,8 +114,6 @@ class PackageController extends Controller
 
                     break;
                 }
-
-                sleep(1); // Sleep for a bit to avoid high CPU usage
             }
         } catch (\Throwable $e) {
             return response()->json(['message' => $e->getMessage()], 500);
