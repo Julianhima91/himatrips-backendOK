@@ -2,6 +2,7 @@
 
 namespace App\Filament\Pages;
 
+use App\Settings\MaxTransitTime;
 use App\Settings\PackageHourly;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Form;
@@ -15,6 +16,9 @@ class Settings extends SettingsPage
 
     public function form(Form $form): Form
     {
+        $packageHourlySettings = app(PackageHourly::class);
+        $maxTransitTimeSettings = app(MaxTransitTime::class);
+
         return $form
             ->schema([
                 TextInput::make('hourly')
@@ -22,6 +26,21 @@ class Settings extends SettingsPage
                     ->numeric()
                     ->label('Package hourly deletion')
                     ->required(),
+                TextInput::make('minutes')
+                    ->minValue(1)
+                    ->numeric()
+                    ->label('Max Transit time')
+                    ->required()
+                    ->formatStateUsing(fn ($state) => $state ?? app(MaxTransitTime::class)->minutes),
             ]);
+    }
+
+    public function save(): void
+    {
+        parent::save();
+
+        $maxTransitTimeSettings = app(MaxTransitTime::class);
+        $maxTransitTimeSettings->minutes = $this->form->getState()['minutes'];
+        $maxTransitTimeSettings->save();
     }
 }
