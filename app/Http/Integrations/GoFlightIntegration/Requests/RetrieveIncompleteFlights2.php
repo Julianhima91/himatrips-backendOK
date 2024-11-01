@@ -108,15 +108,16 @@ class RetrieveIncompleteFlights2 extends SoloRequest
     {
         $timeBetweenFlights = [];
 
-        $segments = $itinerary['legs'][0]['segments'];
-
-        for ($i = 0; $i < count($segments) - 1; $i++) {
-            $arrivalTime = $segments[$i]['arrival'];
-            //get the departure time for the next segment
-            $departureTime = $segments[$i + 1]['departure'];
-            //get the difference in minutes; example value is 2023-12-02T15:40:00
-            $diffInMinutes = Carbon::parse($departureTime)->diffInMinutes(Carbon::parse($arrivalTime));
-            $timeBetweenFlights[] = $diffInMinutes;
+        foreach ($itinerary['legs'] as $leg) {
+            $segments = $leg['segments'];
+            for ($i = 0; $i < count($segments) - 1; $i++) {
+                $arrivalTime = $segments[$i]['arrival'];
+                //get the departure time for the next segment
+                $departureTime = $segments[$i + 1]['departure'];
+                //get the difference in minutes; example value is 2023-12-02T15:40:00
+                $diffInMinutes = Carbon::parse($departureTime)->diffInMinutes(Carbon::parse($arrivalTime));
+                $timeBetweenFlights[] = $diffInMinutes;
+            }
         }
 
         return $timeBetweenFlights;
