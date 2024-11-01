@@ -5,6 +5,7 @@ namespace App\Actions;
 use App\Events\LiveSearchFailed;
 use App\Models\FlightData;
 use App\Models\PackageConfig;
+use App\Settings\MaxTransitTime;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
@@ -52,15 +53,16 @@ class FlightsAction
             });
 
             $outbound_flight = $outbound_flight_max_stops;
+            $maxTransitTimeSettings = app(MaxTransitTime::class);
 
-            if ($packageConfig->max_wait_time !== 0) {
-                $outbound_flight_max_wait = $outbound_flight_max_stops->filter(function ($flight) use ($packageConfig) {
+            if ($maxTransitTimeSettings->minutes !== 0) {
+                $outbound_flight_max_wait = $outbound_flight_max_stops->filter(function ($flight) use ($maxTransitTimeSettings) {
                     if ($flight == null) {
                         return false;
                     }
 
-                    return collect($flight->timeBetweenFlights)->every(function ($timeBetweenFlight) use ($packageConfig) {
-                        return $timeBetweenFlight <= $packageConfig->max_wait_time;
+                    return collect($flight->timeBetweenFlights)->every(function ($timeBetweenFlight) use ($maxTransitTimeSettings) {
+                        return $timeBetweenFlight <= $maxTransitTimeSettings->minutes;
                     });
                 });
 
@@ -160,14 +162,16 @@ class FlightsAction
 
             $inbound_flight = $inbound_flight_max_stops;
 
-            if ($packageConfig->max_wait_time !== 0) {
-                $inbound_flight_max_wait = $inbound_flight_max_stops->filter(function ($flight) use ($packageConfig) {
+            $maxTransitTimeSettings = app(MaxTransitTime::class);
+
+            if ($maxTransitTimeSettings->minutes !== 0) {
+                $inbound_flight_max_wait = $inbound_flight_max_stops->filter(function ($flight) use ($maxTransitTimeSettings) {
                     if ($flight == null) {
                         return false;
                     }
 
-                    return collect($flight->timeBetweenFlights)->every(function ($timeBetweenFlight) use ($packageConfig) {
-                        return $timeBetweenFlight <= $packageConfig->max_wait_time;
+                    return collect($flight->timeBetweenFlights)->every(function ($timeBetweenFlight) use ($maxTransitTimeSettings) {
+                        return $timeBetweenFlight <= $maxTransitTimeSettings->minutes;
                     });
                 });
 
@@ -175,6 +179,7 @@ class FlightsAction
             }
         }
 
+        ray($inbound_flight);
         $inbound_flight_evening = $inbound_flight->when($destination->prioritize_evening_flights, function (Collection $collection) use ($destination) {
             return $collection->filter(function ($flight) use ($destination) {
                 if ($flight == null) {

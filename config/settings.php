@@ -1,5 +1,6 @@
 <?php
 
+use App\Settings\MaxTransitTime;
 use App\Settings\PackageHourly;
 
 return [
@@ -10,6 +11,7 @@ return [
      */
     'settings' => [
         PackageHourly::class,
+        MaxTransitTime::class,
     ],
 
     /*
