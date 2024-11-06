@@ -41,11 +41,7 @@ class Destination extends Model
 
     public function packages(): HasManyDeep
     {
-        return $this->hasManyDeep(
-            Package::class, // The final model you're interested in (packages)
-            [DestinationOrigin::class, PackageConfig::class], // The intermediary models
-            ['destination_id', 'destination_origins_id'] // Foreign keys in intermediary models
-        );
+        return $this->hasManyDeepFromRelations($this->destinationOrigin(), (new DestinationOrigin)->packageConfigs(), (new PackageConfig)->packages());
     }
 
     public function hotelData(): HasManyDeep
