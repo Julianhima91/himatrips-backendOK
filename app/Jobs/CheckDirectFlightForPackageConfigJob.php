@@ -12,6 +12,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Log;
 
 class CheckDirectFlightForPackageConfigJob implements ShouldQueue
@@ -65,19 +66,31 @@ class CheckDirectFlightForPackageConfigJob implements ShouldQueue
 
         while ($startDate < $endDate) {
             $yearMonth = $startDate->format('Y-m');
+            $lastProcessedMonth = $packageConfig->last_processed_month;
 
-            // Check if data for this package and month already exists
-            $existingData = DirectFlightAvailability::where('destination_origin_id', $packageConfig->destination_origin_id)
-                ->where('date', 'LIKE', "{$yearMonth}-%")
-                ->exists();
+            if ($lastProcessedMonth) {
+                $yearMonthDate = Carbon::createFromFormat('Y-m', $yearMonth);
+                $lastProcessedMonthDate = Carbon::createFromFormat('Y-m', $lastProcessedMonth);
 
-            if (! $existingData) {
-                ray($packageConfig->id, $yearMonth);
+                if ($yearMonthDate->greaterThan($lastProcessedMonthDate)) {
+                    Log::info('Calling API for year month '.$yearMonth);
+
+                    $this->checkFlights($originAirport, $destinationAirport, $yearMonth, $packageConfig->destination_origin_id, false);
+                    $this->checkFlights($destinationAirport, $originAirport, $yearMonth, $packageConfig->destination_origin_id, true);
+
+                    $packageConfig->last_processed_month = $yearMonth;
+                    $packageConfig->save();
+                } else {
+                    Log::info("Skipping ... Latest processed month for package: {$packageConfig->id} is {$lastProcessedMonth}. Current year-month: {$yearMonth}");
+                }
+            } else {
+                Log::info('No last processed month found, calling API for year month '.$yearMonth);
 
                 $this->checkFlights($originAirport, $destinationAirport, $yearMonth, $packageConfig->destination_origin_id, false);
                 $this->checkFlights($destinationAirport, $originAirport, $yearMonth, $packageConfig->destination_origin_id, true);
-            } else {
-                Log::info("Flights for {$yearMonth} already exist for package config ID: {$packageConfig->id}");
+
+                $packageConfig->last_processed_month = $yearMonth;
+                $packageConfig->save();
             }
 
             $startDate->modify('first day of next month');
@@ -122,11 +135,13 @@ class CheckDirectFlightForPackageConfigJob implements ShouldQueue
                     $date = new DateTime;
                     $date->setDate($year, $month, $index + 1);
 
-                    DirectFlightAvailability::updateOrCreate([
+                    $directFlightAvailability = DirectFlightAvailability::updateOrCreate([
                         'date' => $date->format('Y-m-d'),
                         'destination_origin_id' => $destinationOriginId,
                         'is_return_flight' => $isReturnFlight,
                     ]);
+
+                    Log::info("Added ID: {$directFlightAvailability->id}");
                 }
             }
         } catch (\Exception $e) {
