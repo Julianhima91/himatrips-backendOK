@@ -144,7 +144,7 @@ class PopularPackages extends BaseWidget
                     ->form([
                         Select::make('destination_country')
                             ->label('Select Destination Country')
-                            ->options(Origin::select('country')->distinct()->pluck('country', 'country'))
+                            ->options(Destination::select('country')->distinct()->pluck('country', 'country'))
                             ->reactive()
                             ->searchable(),
                     ])
