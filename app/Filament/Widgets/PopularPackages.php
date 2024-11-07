@@ -17,27 +17,52 @@ class PopularPackages extends BaseWidget
 
     public $originId = null;
 
+    public $destinationId = null;
+
     public function table(Table $table): Table
     {
         $destinations = Destination::query()
-            ->selectRaw('destinations.id, destinations.name, destinations.country, COUNT(packages.id) AS package_count')
+            ->selectRaw('
+                destinations.id,
+                destinations.name,
+                destinations.country,
+                origins.name AS origin_name,
+                origins.country AS origin_country,
+                flight_data.origin AS origin_airport,
+                flight_data.destination AS destination_airport,
+                COUNT(DISTINCT packages.batch_id) AS search_count
+            ')
             ->leftJoin('destination_origins', 'destinations.id', '=', 'destination_origins.destination_id')
+            ->leftJoin('origins', 'destination_origins.origin_id', '=', 'origins.id')
             ->leftJoin('package_configs', 'destination_origins.id', '=', 'package_configs.destination_origin_id')
             ->leftJoin('packages', 'packages.package_config_id', '=', 'package_configs.id')
-            ->groupBy('destinations.id')
-            ->orderBy('package_count', 'desc');
+            ->leftJoin('flight_data', 'flight_data.id', '=', 'packages.outbound_flight_id')
+            ->groupBy('destinations.id', 'destination_origins.origin_id', 'flight_data.origin', 'flight_data.destination')
+            ->orderBy('search_count', 'desc');
 
         return $table
             ->query($destinations)
             ->columns([
+                Tables\Columns\TextColumn::make('origin_name')
+                    ->label('Origin Name')
+                    ->sortable(),
+                Tables\Columns\TextColumn::make('origin_country')
+                    ->label('Origin country')
+                    ->sortable(),
+                Tables\Columns\TextColumn::make('origin_airport')
+                    ->label('Origin airport')
+                    ->sortable(),
                 Tables\Columns\TextColumn::make('name')
                     ->label('Destination Name')
                     ->sortable(),
                 Tables\Columns\TextColumn::make('country')
-                    ->label('Destination Country')
+                    ->label('Destination country')
                     ->sortable(),
-                Tables\Columns\TextColumn::make('package_count')
-                    ->label('Package Count')
+                Tables\Columns\TextColumn::make('destination_airport')
+                    ->label('Destination airport')
+                    ->sortable(),
+                Tables\Columns\TextColumn::make('search_count')
+                    ->label('Search Count')
                     ->sortable(),
             ])
             ->filters([
@@ -51,6 +76,23 @@ class PopularPackages extends BaseWidget
                         $data['start_date'] ?? now()->subYear(),
                         $data['end_date'] ?? now(),
                     ])),
+
+                Tables\Filters\Filter::make('origin_country')
+                    ->label('Origin Country')
+                    ->form([
+                        Select::make('origin_country')
+                            ->label('Select Origin Country')
+                            ->options(Origin::select('country')->distinct()->pluck('country', 'country'))
+                            ->reactive()
+                            ->searchable(),
+                    ])
+                    ->query(function ($query, array $data) {
+                        if (! empty($data['origin_country'])) {
+                            return $query->where('origins.country', $data['origin_country']);
+                        }
+
+                        return $query;
+                    }),
 
                 Tables\Filters\Filter::make('origin')
                     ->label('Origin')
@@ -72,13 +114,13 @@ class PopularPackages extends BaseWidget
                     }),
 
                 Tables\Filters\Filter::make('airport')
-                    ->label('Airport')
+                    ->label('Origin Airport')
                     ->form([
                         Select::make('airport_id')
-                            ->label('Select Airport')
+                            ->label('Select Origin Airport')
                             ->options(function () {
                                 if (! empty($this->originId)) {
-                                    return Airport::where('origin_id', $this->originId)->pluck('nameAirport', 'id');
+                                    return Airport::where('origin_id', $this->originId)->pluck('nameAirport', 'codeIataAirport');
                                 }
 
                                 return [];
@@ -87,12 +129,30 @@ class PopularPackages extends BaseWidget
                             ->reactive(),
                     ])
                     ->query(function ($query, array $data) {
-                        //todo: after we implement airport id to the workflow
-                        //                        if (!empty($data['airport_id'])) {
-                        //                            return $query->where('destination_origins.airport_id', $data['airport_id']);
-                        //                        }
+                        if (! empty($data['airport_id'])) {
+                            return $query->where('flight_data.origin', $data['airport_id']);
+                        }
+
                         return $query;
                     }),
+
+                Tables\Filters\Filter::make('destination_country')
+                    ->label('Destination Country')
+                    ->form([
+                        Select::make('destination_country')
+                            ->label('Select Destination Country')
+                            ->options(Origin::select('country')->distinct()->pluck('country', 'country'))
+                            ->reactive()
+                            ->searchable(),
+                    ])
+                    ->query(function ($query, array $data) {
+                        if (! empty($data['destination_country'])) {
+                            return $query->where('destinations.country', $data['destination_country']);
+                        }
+
+                        return $query;
+                    }),
+
                 Tables\Filters\Filter::make('destination')
                     ->label('Destination')
                     ->form([
@@ -104,9 +164,33 @@ class PopularPackages extends BaseWidget
                     ])
                     ->query(function ($query, array $data) {
                         if (! empty($data['destination_id'])) {
-                            $this->originId = $data['destination_id'];
+                            $this->destinationId = $data['destination_id'];
 
                             return $query->where('destination_origins.destination_id', $data['destination_id']);
+                        }
+
+                        return $query;
+                    }),
+                Tables\Filters\Filter::make('destination_airport')
+                    ->label('Destination Airport')
+                    ->form([
+                        Select::make('destination_airport_id')
+                            ->label('Select Destination Airport')
+                            ->options(function () {
+                                if (! empty($this->originId)) {
+                                    return Airport::whereHas('destinations', function ($query) {
+                                        return $query->where('destination_id', $this->destinationId);
+                                    })->pluck('nameAirport', 'codeIataAirport');
+                                }
+
+                                return [];
+                            })
+                            ->searchable()
+                            ->reactive(),
+                    ])
+                    ->query(function ($query, array $data) {
+                        if (! empty($data['destination_airport_id'])) {
+                            return $query->where('flight_data.destination', $data['destination_airport_id']);
                         }
 
                         return $query;
