@@ -26,10 +26,6 @@ class PopularPackages extends BaseWidget
                 destinations.id,
                 destinations.name,
                 destinations.country,
-                origins.name AS origin_name,
-                origins.country AS origin_country,
-                flight_data.origin AS origin_airport,
-                flight_data.destination AS destination_airport,
                 COUNT(DISTINCT packages.batch_id) AS search_count
             ')
             ->leftJoin('destination_origins', 'destinations.id', '=', 'destination_origins.destination_id')
@@ -37,24 +33,24 @@ class PopularPackages extends BaseWidget
             ->leftJoin('package_configs', 'destination_origins.id', '=', 'package_configs.destination_origin_id')
             ->leftJoin('packages', 'packages.package_config_id', '=', 'package_configs.id')
             ->leftJoin('flight_data', 'flight_data.id', '=', 'packages.outbound_flight_id')
-            ->groupBy('destinations.id', 'destination_origins.origin_id', 'flight_data.origin', 'flight_data.destination')
+            ->groupBy('destinations.id')
             ->orderBy('search_count', 'desc');
 
         return $table
             ->query($destinations)
             ->columns([
-                Tables\Columns\TextColumn::make('origin_name')
-                    ->label('Origin Name')
-                    ->toggleable()
-                    ->sortable(),
-                Tables\Columns\TextColumn::make('origin_country')
-                    ->label('Origin country')
-                    ->toggleable()
-                    ->sortable(),
-                Tables\Columns\TextColumn::make('origin_airport')
-                    ->label('Origin airport')
-                    ->toggleable()
-                    ->sortable(),
+                //                Tables\Columns\TextColumn::make('origin_name')
+                //                    ->label('Origin Name')
+                //                    ->toggleable()
+                //                    ->sortable(),
+                //                Tables\Columns\TextColumn::make('origin_country')
+                //                    ->label('Origin country')
+                //                    ->toggleable()
+                //                    ->sortable(),
+                //                Tables\Columns\TextColumn::make('origin_airport')
+                //                    ->label('Origin airport')
+                //                    ->toggleable()
+                //                    ->sortable(),
                 Tables\Columns\TextColumn::make('name')
                     ->label('Destination Name')
                     ->toggleable()
@@ -63,10 +59,10 @@ class PopularPackages extends BaseWidget
                     ->label('Destination country')
                     ->toggleable()
                     ->sortable(),
-                Tables\Columns\TextColumn::make('destination_airport')
-                    ->label('Destination airport')
-                    ->toggleable()
-                    ->sortable(),
+                //                Tables\Columns\TextColumn::make('destination_airport')
+                //                    ->label('Destination airport')
+                //                    ->toggleable()
+                //                    ->sortable(),
                 Tables\Columns\TextColumn::make('search_count')
                     ->label('Search Count')
                     ->toggleable()
