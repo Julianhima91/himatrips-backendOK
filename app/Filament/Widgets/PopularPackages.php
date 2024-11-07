@@ -45,24 +45,31 @@ class PopularPackages extends BaseWidget
             ->columns([
                 Tables\Columns\TextColumn::make('origin_name')
                     ->label('Origin Name')
+                    ->toggleable()
                     ->sortable(),
                 Tables\Columns\TextColumn::make('origin_country')
                     ->label('Origin country')
+                    ->toggleable()
                     ->sortable(),
                 Tables\Columns\TextColumn::make('origin_airport')
                     ->label('Origin airport')
+                    ->toggleable()
                     ->sortable(),
                 Tables\Columns\TextColumn::make('name')
                     ->label('Destination Name')
+                    ->toggleable()
                     ->sortable(),
                 Tables\Columns\TextColumn::make('country')
                     ->label('Destination country')
+                    ->toggleable()
                     ->sortable(),
                 Tables\Columns\TextColumn::make('destination_airport')
                     ->label('Destination airport')
+                    ->toggleable()
                     ->sortable(),
                 Tables\Columns\TextColumn::make('search_count')
                     ->label('Search Count')
+                    ->toggleable()
                     ->sortable(),
             ])
             ->filters([
