@@ -75,10 +75,13 @@ class PopularPackages extends BaseWidget
                         DatePicker::make('start_date')->label('Start Date'),
                         DatePicker::make('end_date')->label('End Date'),
                     ])
-                    ->query(fn ($query, array $data) => $query->whereBetween('packages.created_at', [
-                        $data['start_date'] ?? now()->subYear(),
-                        $data['end_date'] ?? now(),
-                    ])),
+                    ->query(function ($query, array $data) {
+                        $startDate = $data['start_date'] ?? '2024-01-01';
+                        $endDate = $data['end_date'] ?? now();
+
+                        return $query->whereDate('packages.created_at', '>=', $startDate)
+                            ->whereDate('packages.created_at', '<=', $endDate);
+                    }),
 
                 Tables\Filters\Filter::make('origin_country')
                     ->label('Origin Country')
