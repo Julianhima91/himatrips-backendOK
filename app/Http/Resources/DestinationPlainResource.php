@@ -19,6 +19,7 @@ class DestinationPlainResource extends JsonResource
             'name' => $this->name,
             'description' => $this->description,
             'city' => $this->city,
+            'region' => $this->region,
             'country' => $this->country,
             'show_in_homepage' => $this->show_in_homepage,
             'morning_flight_start_time' => $this->morning_flight_start_time,
