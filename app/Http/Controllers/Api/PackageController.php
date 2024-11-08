@@ -523,10 +523,19 @@ class PackageController extends Controller
                     $cheapestPackage = $filteredPackages->sortBy('total_price')->first();
 
                     if ($cheapestPackage) {
+                        $outboundDate = new DateTime($cheapestPackage->outboundFlight->departure);
+                        $inboundDate = new DateTime($cheapestPackage->inboundFlight->departure);
+                        $nights = $inboundDate->diff($outboundDate)->days;
+
                         return array_merge(
                             $destination->only(['id', 'name', 'description', 'city', 'country', 'created_at', 'updated_at', 'show_in_homepage']),
                             ['price' => $cheapestPackage->total_price],
                             ['batch_id' => $cheapestPackage->batch_id],
+                            ['adults' => $cheapestPackage->outboundFlight->adults],
+                            ['children' => $cheapestPackage->outboundFlight->children],
+                            ['infants' => $cheapestPackage->outboundFlight->infants],
+                            ['nights' => $nights],
+                            ['checkin_date' => $cheapestPackage->outboundFlight->departure->format('Y-m-d')],
                             ['photos' => $destination->destinationPhotos],
                             ['destination_origin' => $cheapestPackage->packageConfig->destination_origin]
                         );
