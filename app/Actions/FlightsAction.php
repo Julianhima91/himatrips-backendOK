@@ -29,7 +29,7 @@ class FlightsAction
                 return false;
             }
 
-            return $flight->stopCount === 0;
+            return $flight->stopCount === 0 && $flight->stopCount_back === 0;
         });
 
         $packageConfig = PackageConfig::query()
@@ -134,8 +134,8 @@ class FlightsAction
             'infants' => $first_outbound_flight->infants,
             'extra_data' => json_encode($first_outbound_flight),
             'segments' => $first_outbound_flight->segments,
-            //todo: Default package config id?
             'package_config_id' => $packageConfig->id,
+            'all_flights' => json_encode($outbound_flight),
         ]);
 
         $inbound_flight = Cache::get('flight_'.$return_date);
@@ -145,7 +145,7 @@ class FlightsAction
                 return false;
             }
 
-            return $flight->stopCount === 0;
+            return $flight->stopCount === 0 && $flight->stopCount_back === 0;
         });
 
         //if we have direct flights, keep only direct flights
@@ -179,7 +179,6 @@ class FlightsAction
             }
         }
 
-        ray($inbound_flight);
         $inbound_flight_evening = $inbound_flight->when($destination->prioritize_evening_flights, function (Collection $collection) use ($destination) {
             return $collection->filter(function ($flight) use ($destination) {
                 if ($flight == null) {
@@ -244,6 +243,7 @@ class FlightsAction
             'extra_data' => json_encode($first_inbound_flight),
             'segments' => $first_inbound_flight->segments_back,
             'package_config_id' => $packageConfig->id,
+            'all_flights' => json_encode($inbound_flight),
         ]);
 
         return [$outbound_flight_hydrated, $inbound_flight_hydrated];
