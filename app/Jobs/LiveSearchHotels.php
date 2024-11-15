@@ -156,24 +156,119 @@ class LiveSearchHotels implements ShouldQueue
 
     public function getHotelData(string $hotelIds, mixed $arrivalDate, mixed $nights, $adults, $children, $infants, $rooms, $boardOptions): mixed
     {
-        //$children and infants will be an integer
-        //for every children we need to create this string
-        //<ChildAge>9</ChildAge>
-        //for every infant we need to create this string
-        //<ChildAge>1</ChildAge>
+        //todo: Add All possible variations
+        $oneRoom = [
+            [1, 0],  // 1 adult, 0 children
+            [1, 1],  // 1 adult, 1 child
+            [1, 2],  // 1 adult, 2 children
+            [1, 3],  // 1 adult, 3 children
+            [2, 0],  // 2 adults, 0 children
+            [2, 1],  // 2 adults, 1 child
+            [2, 2],  // 2 adults, 2 children
+            [3, 0],  // 3 adults, 0 children
+        ];
 
-        $childrenString = '';
-        for ($i = 0; $i < $children; $i++) {
-            $childrenString .= '<ChildAge>9</ChildAge>';
+        $doubleSearch = [
+            [2, 3],  // 2 adults, 3 children
+            [3, 1],  // 3 adults, 1 child
+            [3, 2],  // 3 adults, 2 children
+            [4, 0],  // 4 adults, 0 children
+            [4, 1],  // 4 adults, 1 child
+            [4, 2],  // 4 adults, 2 children
+        ];
+
+        $split = [
+            [2, 4],  // 2 adults, 4 children
+            [2, 5],  // 2 adults, 5 children
+            [3, 3],  // 3 adults, 3 children
+            [3, 4],  // 3 adults, 4 children
+            [3, 5],  // 3 adults, 5 children
+            [4, 3],  // 4 adults, 3 children
+            [4, 4],  // 4 adults, 4 children
+            [4, 5],  // 4 adults, 5 children
+            [5, 0],  // 5 adults, 0 children
+            [5, 1],  // 5 adults, 1 child
+            [5, 2],  // 5 adults, 2 children
+            [5, 3],  // 5 adults, 3 children
+            [5, 4],  // 5 adults, 4 children
+            [5, 5],  // 5 adults, 5 children
+        ];
+
+        foreach ($oneRoom as $combination) {
+            [$roomAdults, $roomChildren] = $combination;
+            if ($adults == $roomAdults && $children == $roomChildren) {
+                //$combinationType = 'oneRoom';
+
+                $roomAssignments[] = [
+                    'room' => 1,
+                    'adults' => $adults,
+                    'children' => $children,
+                    'infants' => $infants,
+                ];
+
+                return $this->sendXmlRequest($boardOptions, $hotelIds, $arrivalDate, $nights, $roomAssignments);
+            }
         }
 
-        $infantsString = '';
+        if (! isset($combinationType)) {
+            foreach ($doubleSearch as $combination) {
+                [$roomAdults, $roomChildren] = $combination;
+                if ($adults == $roomAdults && $children == $roomChildren) {
+                    //$combinationType = 'doubleSearch';
 
-        for ($i = 0; $i < $infants; $i++) {
-            $infantsString .= '<ChildAge>1</ChildAge>';
+                    $roomAssignments[] = [
+                        'room' => 1,
+                        'adults' => $adults,
+                        'children' => $children,
+                        'infants' => $infants,
+                    ];
+                    $normalSearch = $this->sendXmlRequest($boardOptions, $hotelIds, $arrivalDate, $nights, $roomAssignments);
+                    $normalSearchPrice = json_decode($normalSearch->MakeRequestResult)->Hotels[0]->Offers[0]->TotalPrice;
+
+                    $roomAssignments = $this->dividePeopleIntoRooms($adults, $children, $infants);
+                    $splitSearch = $this->sendXmlRequest($boardOptions, $hotelIds, $arrivalDate, $nights, $roomAssignments);
+                    $splitSearchPrice = json_decode($splitSearch->MakeRequestResult)->Hotels[0]->Offers[0]->TotalPrice;
+
+                    return $normalSearchPrice < $splitSearchPrice ? $normalSearch : $splitSearchPrice;
+                }
+            }
         }
 
-        $totalChildren = $infants + $children;
+        //        if (!isset($combinationType)) {
+        //            foreach ($split as $combination) {
+        //                list($roomAdults, $roomChildren) = $combination;
+        //                if ($adults == $roomAdults && $children == $roomChildren) {
+        //$combinationType = 'split';
+
+        $roomAssignments = $this->dividePeopleIntoRooms($adults, $children, $infants);
+
+        return $this->sendXmlRequest($boardOptions, $hotelIds, $arrivalDate, $nights, $roomAssignments);
+        //                }
+        //            }
+        //        }
+
+    }
+
+    private function sendXmlRequest($boardOptions, $hotelIds, $arrivalDate, $nights, $roomAssignments)
+    {
+        $roomsXml = '';
+        foreach ($roomAssignments as $roomAssignment) {
+            $childrenString = '';
+            for ($i = 0; $i < $roomAssignment['children']; $i++) {
+                $childrenString .= '<ChildAge>9</ChildAge>';
+            }
+
+            $infantsString = '';
+            for ($i = 0; $i < ($roomAssignment['infants']); $i++) {
+                $infantsString .= '<ChildAge>1</ChildAge>';
+            }
+
+            $totalChildren = $roomAssignment['children'] + $roomAssignment['infants'];
+
+            $roomsXml .= "<Room Adults=\"{$roomAssignment['adults']}\" RoomCount=\"1\" ChildCount=\"{$totalChildren}\">".
+                "{$childrenString}{$infantsString}".
+                '</Room>';
+        }
 
         $filterRoomBasisesXml = '<FilterRoomBasises>';
 
@@ -203,10 +298,7 @@ class LiveSearchHotels implements ShouldQueue
         <ArrivalDate>{$arrivalDate}</ArrivalDate>
         <Nights>{$nights}</Nights>
         <Rooms>
-            <Room Adults="{$adults}" RoomCount="{$rooms}" ChildCount="{$totalChildren}">
-            "{$childrenString}"
-            "{$infantsString}"
-            </Room>
+            $roomsXml
         </Rooms>
     </Main>
 </Root>
@@ -244,5 +336,37 @@ XML;
                 'requestType' => 11,
                 'xmlRequest' => $xmlRequestBody,
             ]);
+    }
+
+    private function dividePeopleIntoRooms($adults, $children, $infants)
+    {
+        // We can change this in the future if we need more rooms
+        $rooms = 2;
+        $adultsPerRoom = intdiv($adults, $rooms);
+        $remainingAdults = $adults % $rooms;
+
+        $childrenPerRoom = intdiv($children, $rooms);
+        $remainingChildren = $children % $rooms;
+
+        // Distributing them into rooms
+        $roomAssignments = [];
+        for ($i = 0; $i < $rooms; $i++) {
+            $adultsInRoom = $adultsPerRoom + ($i < $remainingAdults ? 1 : 0);
+            $childrenInRoom = $childrenPerRoom + ($i < $remainingChildren ? 1 : 0);
+            $infantsInRoom = 0;
+
+            if ($i == 0) {
+                $infantsInRoom = (int) $infants;
+            }
+
+            $roomAssignments[] = [
+                'room' => $i + 1,
+                'adults' => $adultsInRoom,
+                'children' => $childrenInRoom,
+                'infants' => $infantsInRoom,
+            ];
+        }
+
+        return $roomAssignments;
     }
 }

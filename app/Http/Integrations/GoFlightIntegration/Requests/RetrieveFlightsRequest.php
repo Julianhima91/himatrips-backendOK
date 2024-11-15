@@ -5,7 +5,6 @@ namespace App\Http\Integrations\GoFlightIntegration\Requests;
 use App\Data\FlightDataDTO;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\Log;
 use Saloon\Enums\Method;
 use Saloon\Http\Request;
 use Saloon\Http\SoloRequest;
@@ -58,8 +57,6 @@ class RetrieveFlightsRequest extends SoloRequest
             if (count(array_unique($carriers)) != 1) {
                 return null;
             }
-
-            Log::info($itinerary['legs'][0]['origin']['id']);
 
             return new FlightDataDTO(
                 id: Optional::create(),

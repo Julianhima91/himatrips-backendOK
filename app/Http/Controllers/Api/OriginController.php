@@ -17,7 +17,6 @@ class OriginController extends Controller
                     return $pivotQuery;
                 });
             })
-            ->with('destinations')
             ->get();
 
         if ($origins->isEmpty()) {
