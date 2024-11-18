@@ -106,7 +106,7 @@ class LiveSearchHotels implements ShouldQueue
                     hotel_id: $hotel,
                     check_in_date: Carbon::createFromFormat('Y-m-d', $this->checkin_date),
                     number_of_nights: $this->nights,
-                    room_count: $this->rooms,
+                    room_count: count($this->rooms),
                     adults: $this->adults,
                     children: $this->children,
                     infants: $this->infants,
@@ -194,27 +194,32 @@ class LiveSearchHotels implements ShouldQueue
             [5, 5],  // 5 adults, 5 children
         ];
 
-        foreach ($oneRoom as $combination) {
-            [$roomAdults, $roomChildren] = $combination;
-            if ($adults == $roomAdults && $children == $roomChildren) {
-                //$combinationType = 'oneRoom';
+        $roomsXml = '';
 
-                $roomAssignments[] = [
-                    'room' => 1,
-                    'adults' => $adults,
-                    'children' => $children,
-                    'infants' => $infants,
-                ];
+        foreach ($rooms as $room) {
+            foreach ($oneRoom as $combination) {
+                [$roomAdults, $roomChildren] = $combination;
+                if ($room['adults'] == $roomAdults && $room['children'] == $roomChildren) {
+                    $combinationType = 'oneRoom';
 
-                return $this->sendXmlRequest($boardOptions, $hotelIds, $arrivalDate, $nights, $roomAssignments);
+                    $roomAssignments[] = [
+                        'room' => 1,
+                        'adults' => $adults,
+                        'children' => $children,
+                        'infants' => $infants,
+                    ];
+
+                    $roomsXml = $this->prepareRooms($room, $roomsXml);
+                }
             }
+
         }
 
         if (! isset($combinationType)) {
             foreach ($doubleSearch as $combination) {
                 [$roomAdults, $roomChildren] = $combination;
-                if ($adults == $roomAdults && $children == $roomChildren) {
-                    //$combinationType = 'doubleSearch';
+                if ($room['adults'] == $roomAdults && $room['children'] == $roomChildren) {
+                    $combinationType = 'doubleSearch';
 
                     $roomAssignments[] = [
                         'room' => 1,
@@ -224,12 +229,16 @@ class LiveSearchHotels implements ShouldQueue
                     ];
                     $normalSearch = $this->sendXmlRequest($boardOptions, $hotelIds, $arrivalDate, $nights, $roomAssignments);
                     $normalSearchPrice = json_decode($normalSearch->MakeRequestResult)->Hotels[0]->Offers[0]->TotalPrice;
-
+                    //
+                    //                    ray('HELLO');
+                    //                    ray(json_decode($normalSearch->MakeRequestResult));
                     $roomAssignments = $this->dividePeopleIntoRooms($adults, $children, $infants);
                     $splitSearch = $this->sendXmlRequest($boardOptions, $hotelIds, $arrivalDate, $nights, $roomAssignments);
                     $splitSearchPrice = json_decode($splitSearch->MakeRequestResult)->Hotels[0]->Offers[0]->TotalPrice;
 
-                    return $normalSearchPrice < $splitSearchPrice ? $normalSearch : $splitSearchPrice;
+                    ray($normalSearchPrice < $splitSearchPrice ? $normalSearch : $splitSearchPrice);
+
+                    return $normalSearchPrice < $splitSearchPrice ? $normalSearch : $splitSearch;
                 }
             }
         }
@@ -240,35 +249,59 @@ class LiveSearchHotels implements ShouldQueue
         //                if ($adults == $roomAdults && $children == $roomChildren) {
         //$combinationType = 'split';
 
-        $roomAssignments = $this->dividePeopleIntoRooms($adults, $children, $infants);
+        //        $roomAssignments = $this->dividePeopleIntoRooms($adults, $children, $infants);
 
-        return $this->sendXmlRequest($boardOptions, $hotelIds, $arrivalDate, $nights, $roomAssignments);
+        return $this->sendXmlRequest($boardOptions, $hotelIds, $arrivalDate, $nights, $roomsXml);
         //                }
         //            }
         //        }
 
     }
 
-    private function sendXmlRequest($boardOptions, $hotelIds, $arrivalDate, $nights, $roomAssignments)
+    private function prepareRooms($room, $roomsXml)
     {
-        $roomsXml = '';
-        foreach ($roomAssignments as $roomAssignment) {
-            $childrenString = '';
-            for ($i = 0; $i < $roomAssignment['children']; $i++) {
-                $childrenString .= '<ChildAge>9</ChildAge>';
-            }
-
-            $infantsString = '';
-            for ($i = 0; $i < ($roomAssignment['infants']); $i++) {
-                $infantsString .= '<ChildAge>1</ChildAge>';
-            }
-
-            $totalChildren = $roomAssignment['children'] + $roomAssignment['infants'];
-
-            $roomsXml .= "<Room Adults=\"{$roomAssignment['adults']}\" RoomCount=\"1\" ChildCount=\"{$totalChildren}\">".
-                "{$childrenString}{$infantsString}".
-                '</Room>';
+        ray('rooms:', $room);
+        $childrenString = '';
+        for ($i = 0; $i < $room['children']; $i++) {
+            $childrenString .= '<ChildAge>9</ChildAge>';
         }
+
+        $infantsString = '';
+        for ($i = 0; $i < ($room['infants']); $i++) {
+            $infantsString .= '<ChildAge>1</ChildAge>';
+        }
+
+        $totalChildren = $room['children'] + $room['infants'];
+
+        $roomsXml .= "<Room Adults=\"{$room['adults']}\" RoomCount=\"1\" ChildCount=\"{$totalChildren}\">".
+            "{$childrenString}{$infantsString}".
+            '</Room>';
+
+        ray($roomsXml);
+
+        return $roomsXml;
+    }
+
+    private function sendXmlRequest($boardOptions, $hotelIds, $arrivalDate, $nights, $roomsXml)
+    {
+        //        $roomsXml = '';
+        //        foreach ($roomAssignments as $roomAssignment) {
+        //            $childrenString = '';
+        //            for ($i = 0; $i < $roomAssignment['children']; $i++) {
+        //                $childrenString .= '<ChildAge>9</ChildAge>';
+        //            }
+        //
+        //            $infantsString = '';
+        //            for ($i = 0; $i < ($roomAssignment['infants']); $i++) {
+        //                $infantsString .= '<ChildAge>1</ChildAge>';
+        //            }
+        //
+        //            $totalChildren = $roomAssignment['children'] + $roomAssignment['infants'];
+        //
+        //            $roomsXml .= "<Room Adults=\"{$roomAssignment['adults']}\" RoomCount=\"1\" ChildCount=\"{$totalChildren}\">".
+        //                "{$childrenString}{$infantsString}".
+        //                '</Room>';
+        //        }
 
         $filterRoomBasisesXml = '<FilterRoomBasises>';
 
@@ -304,6 +337,7 @@ class LiveSearchHotels implements ShouldQueue
 </Root>
 XML;
 
+        ray($xmlRequestBody);
         $header = Soap::header(
             'authentication',
             'random-namespace',
