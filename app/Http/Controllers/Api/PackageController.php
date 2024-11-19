@@ -24,6 +24,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
 class PackageController extends Controller
@@ -66,7 +67,6 @@ class PackageController extends Controller
         $totalAdults = collect($request->input('rooms'))->pluck('adults')->sum();
         $totalChildren = collect($request->input('rooms'))->pluck('children')->sum();
         $totalInfants = collect($request->input('rooms'))->pluck('infants')->sum();
-        //        dd($totalAdults, $totalChildren, $totalInfants);
         ray()->newScreen();
 
         $return_date = Carbon::parse($request->date)->addDays($request->nights)->format('Y-m-d');
@@ -96,39 +96,42 @@ class PackageController extends Controller
             foreach ($jobs as $job) {
                 Bus::dispatch($job);
             }
-            $startTime = microtime(true); // Initialize the timer
-            ray("Start time: {$startTime} seconds");
+            $startTime = microtime(true);
+            Log::info("Start time: {$startTime} seconds");
 
             // Continuously check the shared state until one job completes
             while (true) {
                 if (Cache::get("job_completed_{$batchId}") && Cache::get("hotel_job_completed_{$batchId}")) {
                     // One job has completed, break the loop
-                    $jobsFinished = microtime(true); // Time when jobs are finished
-                    $jobsElapsed = $jobsFinished - $startTime; // Time elapsed for jobs
-                    ray("Jobs finished time: {$jobsElapsed} seconds");
+                    $jobsFinished = microtime(true);
+                    $jobsElapsed = $jobsFinished - $startTime;
+                    Log::info("Jobs finished time: {$jobsElapsed} seconds");
+
                     ray('job completed');
 
                     [$outbound_flight_hydrated, $inbound_flight_hydrated] = $flights->handle($date, $destination, $batchId, $return_date);
-                    $flightsFinished = microtime(true); // Time when queries are finished
-                    $flightsElapsed = $flightsFinished - $jobsFinished; // Time elapsed for queries
-                    ray("Flights finished time: {$flightsElapsed} seconds");
+                    $flightsFinished = microtime(true);
+                    $flightsElapsed = $flightsFinished - $jobsFinished;
+                    Log::info("Flights finished time: {$flightsElapsed} seconds");
 
                     if (is_null($outbound_flight_hydrated) || is_null($inbound_flight_hydrated)) {
                         broadcast(new LiveSearchFailed('No flights found', $batchId));
 
                         break;
                     }
+
                     $package_ids = $hotels->handle($destination, $outbound_flight_hydrated, $inbound_flight_hydrated, $batchId);
-                    $hotelsFinished = microtime(true); // Time when queries are finished
-                    $hotelsElapsed = $hotelsFinished - $flightsFinished; // Time elapsed for queries
-                    ray("Hotels finished time: {$hotelsElapsed} seconds");
+                    $hotelsFinished = microtime(true);
+                    $hotelsElapsed = $hotelsFinished - $flightsFinished;
+                    Log::info("Hotels finished time: {$hotelsElapsed} seconds");
+
                     [$packages, $minTotalPrice, $maxTotalPrice] = $packagesAction->handle($package_ids);
 
                     //fire off event
-                    //                    broadcast(new LiveSearchCompleted($packages, $batchId, $minTotalPrice, $maxTotalPrice));
-                    $queriesFinished = microtime(true); // Time when queries are finished
-                    $queriesElapsed = $queriesFinished - $jobsFinished; // Time elapsed for queries
-                    ray("Queries finished time: {$queriesElapsed} seconds");
+                    broadcast(new LiveSearchCompleted($packages, $batchId, $minTotalPrice, $maxTotalPrice));
+                    $queriesFinished = microtime(true);
+                    $queriesElapsed = $queriesFinished - $jobsFinished;
+                    Log::info("Queries finished time: {$queriesElapsed} seconds");
 
                     break;
                 }
