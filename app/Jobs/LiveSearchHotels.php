@@ -195,52 +195,78 @@ class LiveSearchHotels implements ShouldQueue
         ];
 
         $roomsXml = '';
+        $roomsTwoXml = '';
+        $combinationType = [];
 
         foreach ($rooms as $room) {
             foreach ($oneRoom as $combination) {
                 [$roomAdults, $roomChildren] = $combination;
                 if ($room['adults'] == $roomAdults && $room['children'] == $roomChildren) {
-                    $combinationType = 'oneRoom';
+                    $combinationType[] = 'oneRoom';
+                    //                    ray('ONE SEARCH');
 
-                    $roomAssignments[] = [
-                        'room' => 1,
-                        'adults' => $adults,
-                        'children' => $children,
-                        'infants' => $infants,
-                    ];
+                    //                    $roomAssignments[] = [
+                    //                        'room' => 1,
+                    //                        'adults' => $adults,
+                    //                        'children' => $children,
+                    //                        'infants' => $infants,
+                    //                    ];
 
                     $roomsXml = $this->prepareRooms($room, $roomsXml);
+                    $roomsTwoXml = $this->prepareRooms($room, $roomsTwoXml);
+
+                    break;
                 }
             }
 
-        }
-
-        if (! isset($combinationType)) {
             foreach ($doubleSearch as $combination) {
                 [$roomAdults, $roomChildren] = $combination;
                 if ($room['adults'] == $roomAdults && $room['children'] == $roomChildren) {
-                    $combinationType = 'doubleSearch';
+                    $combinationType[] = 'doubleSearch';
 
-                    $roomAssignments[] = [
-                        'room' => 1,
-                        'adults' => $adults,
-                        'children' => $children,
-                        'infants' => $infants,
-                    ];
-                    $normalSearch = $this->sendXmlRequest($boardOptions, $hotelIds, $arrivalDate, $nights, $roomAssignments);
-                    $normalSearchPrice = json_decode($normalSearch->MakeRequestResult)->Hotels[0]->Offers[0]->TotalPrice;
+                    $roomsXml = $this->prepareRooms($room, $roomsXml);
+
+                    $tests = $this->dividePeopleIntoRooms($room['adults'], $room['children'], $room['infants']);
+                    foreach ($tests as $test) {
+                        $roomsTwoXml = $this->prepareRooms($test, $roomsTwoXml);
+                    }
+                    //                        ray($tests);
+                    //                        ray($room);
+
+                    //                        $roomAssignments[] = [
+                    //                            'room' => 1,
+                    //                            'adults' => $adults,
+                    //                            'children' => $children,
+                    //                            'infants' => $infants,
+                    //                        ];
+                    //                        $normalSearch = $this->sendXmlRequest($boardOptions, $hotelIds, $arrivalDate, $nights, $roomAssignments);
+                    //                        $normalSearchPrice = json_decode($normalSearch->MakeRequestResult)->Hotels[0]->Offers[0]->TotalPrice;
                     //
                     //                    ray('HELLO');
                     //                    ray(json_decode($normalSearch->MakeRequestResult));
-                    $roomAssignments = $this->dividePeopleIntoRooms($adults, $children, $infants);
-                    $splitSearch = $this->sendXmlRequest($boardOptions, $hotelIds, $arrivalDate, $nights, $roomAssignments);
-                    $splitSearchPrice = json_decode($splitSearch->MakeRequestResult)->Hotels[0]->Offers[0]->TotalPrice;
+                    //                        $roomAssignments = $this->dividePeopleIntoRooms($adults, $children, $infants);
+                    //                        $splitSearch = $this->sendXmlRequest($boardOptions, $hotelIds, $arrivalDate, $nights, $roomAssignments);
+                    //                        $splitSearchPrice = json_decode($splitSearch->MakeRequestResult)->Hotels[0]->Offers[0]->TotalPrice;
+                    //
+                    //                        ray($normalSearchPrice < $splitSearchPrice ? $normalSearch : $splitSearchPrice);
 
-                    ray($normalSearchPrice < $splitSearchPrice ? $normalSearch : $splitSearchPrice);
-
-                    return $normalSearchPrice < $splitSearchPrice ? $normalSearch : $splitSearch;
+                    //                        return $normalSearchPrice < $splitSearchPrice ? $normalSearch : $splitSearch;
                 }
             }
+
+            foreach ($split as $combination) {
+                [$roomAdults, $roomChildren] = $combination;
+                if ($room['adults'] == $roomAdults && $room['children'] == $roomChildren) {
+                    $combinationType[] = 'split';
+
+                    $tests = $this->dividePeopleIntoRooms($room['adults'], $room['children'], $room['infants']);
+                    foreach ($tests as $test) {
+                        $roomsXml = $this->prepareRooms($test, $roomsXml);
+                        $roomsTwoXml = $this->prepareRooms($test, $roomsTwoXml);
+                    }
+                }
+            }
+
         }
 
         //        if (!isset($combinationType)) {
@@ -251,7 +277,20 @@ class LiveSearchHotels implements ShouldQueue
 
         //        $roomAssignments = $this->dividePeopleIntoRooms($adults, $children, $infants);
 
-        return $this->sendXmlRequest($boardOptions, $hotelIds, $arrivalDate, $nights, $roomsXml);
+        if (in_array('doubleSearch', $combinationType)) {
+            $normalSearch = $this->sendXmlRequest($boardOptions, $hotelIds, $arrivalDate, $nights, $roomsXml);
+            $normalSearchPrice = json_decode($normalSearch->MakeRequestResult)->Hotels[0]->Offers[0]->TotalPrice;
+
+            $splitSearch = $this->sendXmlRequest($boardOptions, $hotelIds, $arrivalDate, $nights, $roomsTwoXml);
+            $splitSearchPrice = json_decode($splitSearch->MakeRequestResult)->Hotels[0]->Offers[0]->TotalPrice;
+
+            return $normalSearchPrice < $splitSearchPrice ? $normalSearch : $splitSearch;
+        } else {
+            ray($combinationType);
+
+            return $this->sendXmlRequest($boardOptions, $hotelIds, $arrivalDate, $nights, $roomsXml);
+        }
+
         //                }
         //            }
         //        }
@@ -260,7 +299,7 @@ class LiveSearchHotels implements ShouldQueue
 
     private function prepareRooms($room, $roomsXml)
     {
-        ray('rooms:', $room);
+        //        ray('rooms:', $room);
         $childrenString = '';
         for ($i = 0; $i < $room['children']; $i++) {
             $childrenString .= '<ChildAge>9</ChildAge>';
@@ -277,7 +316,7 @@ class LiveSearchHotels implements ShouldQueue
             "{$childrenString}{$infantsString}".
             '</Room>';
 
-        ray($roomsXml);
+        //        ray($roomsXml);
 
         return $roomsXml;
     }
@@ -337,7 +376,6 @@ class LiveSearchHotels implements ShouldQueue
 </Root>
 XML;
 
-        ray($xmlRequestBody);
         $header = Soap::header(
             'authentication',
             'random-namespace',
@@ -374,7 +412,6 @@ XML;
 
     private function dividePeopleIntoRooms($adults, $children, $infants)
     {
-        // We can change this in the future if we need more rooms
         $rooms = 2;
         $adultsPerRoom = intdiv($adults, $rooms);
         $remainingAdults = $adults % $rooms;
@@ -394,7 +431,6 @@ XML;
             }
 
             $roomAssignments[] = [
-                'room' => $i + 1,
                 'adults' => $adultsInRoom,
                 'children' => $childrenInRoom,
                 'infants' => $infantsInRoom,

@@ -15,6 +15,8 @@ class HotelsAction
         //array of hotel data DTOs
         $hotel_results = Cache::get('hotels');
 
+        //        ray('HOTELSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSs');
+        ray($hotel_results);
         $packageConfig = PackageConfig::query()
             ->whereHas('destination_origin', function ($query) {
                 $query->where([
@@ -25,7 +27,10 @@ class HotelsAction
 
         $package_ids = [];
 
+        $test = 0;
+
         foreach ($hotel_results as $hotel_result) {
+            $test += count($hotel_result->hotel_offers);
             $hotel_data = HotelData::create([
                 'hotel_id' => $hotel_result->hotel_id,
                 'check_in_date' => $hotel_result->check_in_date,
@@ -46,21 +51,41 @@ class HotelsAction
                 }
             }
 
-            foreach ($hotel_result->hotel_offers as $offer) {
+            $i = 0;
+            $batchOffers = [];
 
+            foreach ($hotel_result->hotel_offers as $offer) {
+                //
+                //                if ($i === 0)
+                //                {
                 $calculatedCommissionPercentage = ($packageConfig->commission_percentage / 100) * ($outbound_flight_hydrated->price + $transferPrice + $offer->price);
                 $fixedCommissionRate = $packageConfig->commission_amount;
                 $commission = max($fixedCommissionRate, $calculatedCommissionPercentage);
 
-                HotelOffer::create([
+                $batchOffers[] = [
                     'hotel_data_id' => $hotel_data->id,
                     'room_basis' => $offer->room_basis,
                     'room_type' => json_encode($offer->room_type),
                     'price' => $offer->price,
                     'total_price_for_this_offer' => $outbound_flight_hydrated->price + $transferPrice + $offer->price + $commission,
                     'reservation_deadline' => $offer->reservation_deadline,
-                ]);
+                ];
+                //                    HotelOffer::create([
+                //                        'hotel_data_id' => $hotel_data->id,
+                //                        'room_basis' => $offer->room_basis,
+                //                        'room_type' => json_encode($offer->room_type),
+                //                        'price' => $offer->price,
+                //                        'total_price_for_this_offer' => $outbound_flight_hydrated->price + $transferPrice + $offer->price + $commission,
+                //                        'reservation_deadline' => $offer->reservation_deadline,
+                //                    ]);
+                //                } else {
+                //                    break;
+                //                }
+                //
+                //                $i++;
             }
+
+            HotelOffer::insert($batchOffers);
 
             $first_offer = $hotel_data->offers()->orderBy('price')->first();
             $cheapestOffer = collect($hotel_data->offers)->sortBy('TotalPrice')->first();
@@ -69,9 +94,9 @@ class HotelsAction
             //calculate commission (20%)
             //$commission = ($outbound_flight_hydrated->price + $inbound_flight_hydrated->price + $first_offer->price) * $commission_percentage;
 
-            //            $calculatedCommissionPercentage = ($packageConfig->commission_percentage / 100) * $first_offer->total_price_for_this_offer;
-            //            $fixedCommissionRate = $packageConfig->commission_amount;
-            //            $commission = max($fixedCommissionRate, $calculatedCommissionPercentage);
+            //$calculatedCommissionPercentage = ($packageConfig->commission_percentage / 100) * $first_offer->total_price_for_this_offer;
+            //$fixedCommissionRate = $packageConfig->commission_amount;
+            //$commission = max($fixedCommissionRate, $calculatedCommissionPercentage);
             //create the package here
             $package = Package::create([
                 'hotel_data_id' => $hotel_data->id,
@@ -84,6 +109,8 @@ class HotelsAction
             ]);
             $package_ids[] = $package->id;
         }
+
+        ray($test);
 
         return $package_ids;
     }

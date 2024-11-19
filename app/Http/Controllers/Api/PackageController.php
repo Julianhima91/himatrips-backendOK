@@ -96,22 +96,22 @@ class PackageController extends Controller
             foreach ($jobs as $job) {
                 Bus::dispatch($job);
             }
-            //            $startTime = microtime(true); // Initialize the timer
-            //            ray("Start time: {$startTime} seconds");
+            $startTime = microtime(true); // Initialize the timer
+            ray("Start time: {$startTime} seconds");
 
             // Continuously check the shared state until one job completes
             while (true) {
                 if (Cache::get("job_completed_{$batchId}") && Cache::get("hotel_job_completed_{$batchId}")) {
                     // One job has completed, break the loop
-                    //                    $jobsFinished = microtime(true); // Time when jobs are finished
-                    //                    $jobsElapsed = $jobsFinished - $startTime; // Time elapsed for jobs
-                    //                    ray("Jobs finished time: {$jobsElapsed} seconds");
-                    //                    ray('job completed');
+                    $jobsFinished = microtime(true); // Time when jobs are finished
+                    $jobsElapsed = $jobsFinished - $startTime; // Time elapsed for jobs
+                    ray("Jobs finished time: {$jobsElapsed} seconds");
+                    ray('job completed');
 
                     [$outbound_flight_hydrated, $inbound_flight_hydrated] = $flights->handle($date, $destination, $batchId, $return_date);
-                    //                    $flightsFinished = microtime(true); // Time when queries are finished
-                    //                    $flightsElapsed = $flightsFinished - $jobsFinished; // Time elapsed for queries
-                    //                    ray("Flights finished time: {$flightsElapsed} seconds");
+                    $flightsFinished = microtime(true); // Time when queries are finished
+                    $flightsElapsed = $flightsFinished - $jobsFinished; // Time elapsed for queries
+                    ray("Flights finished time: {$flightsElapsed} seconds");
 
                     if (is_null($outbound_flight_hydrated) || is_null($inbound_flight_hydrated)) {
                         broadcast(new LiveSearchFailed('No flights found', $batchId));
@@ -119,24 +119,24 @@ class PackageController extends Controller
                         break;
                     }
                     $package_ids = $hotels->handle($destination, $outbound_flight_hydrated, $inbound_flight_hydrated, $batchId);
-                    //                    $hotelsFinished = microtime(true); // Time when queries are finished
-                    //                    $hotelsElapsed = $hotelsFinished - $flightsFinished; // Time elapsed for queries
-                    //                    ray("Hotels finished time: {$hotelsElapsed} seconds");
+                    $hotelsFinished = microtime(true); // Time when queries are finished
+                    $hotelsElapsed = $hotelsFinished - $flightsFinished; // Time elapsed for queries
+                    ray("Hotels finished time: {$hotelsElapsed} seconds");
                     [$packages, $minTotalPrice, $maxTotalPrice] = $packagesAction->handle($package_ids);
 
                     //fire off event
                     //                    broadcast(new LiveSearchCompleted($packages, $batchId, $minTotalPrice, $maxTotalPrice));
-                    //                    $queriesFinished = microtime(true); // Time when queries are finished
-                    //                    $queriesElapsed = $queriesFinished - $jobsFinished; // Time elapsed for queries
-                    //                    ray("Queries finished time: {$queriesElapsed} seconds");
+                    $queriesFinished = microtime(true); // Time when queries are finished
+                    $queriesElapsed = $queriesFinished - $jobsFinished; // Time elapsed for queries
+                    ray("Queries finished time: {$queriesElapsed} seconds");
 
                     break;
                 }
             }
 
-            //            $endTime = microtime(true); // Final time after everything is done
-            //            $totalElapsed = $endTime - $startTime; // Total elapsed time
-            //            ray("Total elapsed time: {$totalElapsed} seconds");
+            $endTime = microtime(true); // Final time after everything is done
+            $totalElapsed = $endTime - $startTime; // Total elapsed time
+            ray("Total elapsed time: {$totalElapsed} seconds");
         } catch (\Throwable $e) {
             return response()->json(['message' => $e->getMessage()], 500);
         }
