@@ -137,9 +137,9 @@ class PackageController extends Controller
                 }
             }
 
-            $endTime = microtime(true); // Final time after everything is done
-            $totalElapsed = $endTime - $startTime; // Total elapsed time
-            ray("Total elapsed time: {$totalElapsed} seconds");
+            $endTime = microtime(true);
+            $totalElapsed = $endTime - $startTime;
+            Log::info("Total elapsed time: {$totalElapsed} seconds");
         } catch (\Throwable $e) {
             return response()->json(['message' => $e->getMessage()], 500);
         }
