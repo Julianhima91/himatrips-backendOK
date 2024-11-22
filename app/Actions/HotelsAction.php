@@ -10,16 +10,16 @@ use Illuminate\Support\Facades\Cache;
 
 class HotelsAction
 {
-    public function handle($destination, $outbound_flight_hydrated, $inbound_flight_hydrated, $batchId)
+    public function handle($destination, $outbound_flight_hydrated, $inbound_flight_hydrated, $batchId, $origin_id, $destination_id)
     {
         //array of hotel data DTOs
         $hotel_results = Cache::get('hotels');
 
         $packageConfig = PackageConfig::query()
-            ->whereHas('destination_origin', function ($query) {
+            ->whereHas('destination_origin', function ($query) use ($origin_id, $destination_id) {
                 $query->where([
-                    ['destination_id', request()->destination_id],
-                    ['origin_id', request()->origin_id],
+                    ['destination_id', $destination_id],
+                    ['origin_id', $origin_id],
                 ]);
             })->first();
 

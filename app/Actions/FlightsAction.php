@@ -12,7 +12,7 @@ use Illuminate\Support\Facades\Cache;
 
 class FlightsAction
 {
-    public function handle($date, $destination, $batchId, $return_date)
+    public function handle($date, $destination, $batchId, $return_date, $origin_id, $destination_id)
     {
         $outbound_flight = Cache::get('flight_'.$date);
 
@@ -33,10 +33,10 @@ class FlightsAction
         });
 
         $packageConfig = PackageConfig::query()
-            ->whereHas('destination_origin', function ($query) {
+            ->whereHas('destination_origin', function ($query) use ($destination_id, $origin_id) {
                 $query->where([
-                    ['destination_id', request()->destination_id],
-                    ['origin_id', request()->origin_id],
+                    ['destination_id', $destination_id],
+                    ['origin_id', $origin_id],
                 ]);
             })->first();
 

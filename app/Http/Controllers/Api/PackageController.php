@@ -109,7 +109,7 @@ class PackageController extends Controller
 
                     ray('job completed');
 
-                    [$outbound_flight_hydrated, $inbound_flight_hydrated] = $flights->handle($date, $destination, $batchId, $return_date);
+                    [$outbound_flight_hydrated, $inbound_flight_hydrated] = $flights->handle($date, $destination, $batchId, $return_date, $request->origin_id, $request->destination_id);
                     $flightsFinished = microtime(true);
                     $flightsElapsed = $flightsFinished - $jobsFinished;
                     Log::info("Flights finished time: {$flightsElapsed} seconds");
@@ -120,7 +120,7 @@ class PackageController extends Controller
                         break;
                     }
 
-                    $package_ids = $hotels->handle($destination, $outbound_flight_hydrated, $inbound_flight_hydrated, $batchId);
+                    $package_ids = $hotels->handle($destination, $outbound_flight_hydrated, $inbound_flight_hydrated, $batchId, $request->origin_id, $request->destination_id);
                     $hotelsFinished = microtime(true);
                     $hotelsElapsed = $hotelsFinished - $flightsFinished;
                     Log::info("Hotels finished time: {$hotelsElapsed} seconds");
@@ -319,9 +319,9 @@ class PackageController extends Controller
         ], 200);
     }
 
-    public function paginateLiveSearch(Request $request)
+    public function paginateLiveSearch(Request $request, FlightsAction $flights, HotelsAction $hotels, PackagesAction $packagesAction)
     {
-        $packages = Package::where('batch_id', $request->batch_id)
+        $packages = Package::withTrashed()->where('batch_id', $request->batch_id)
             ->when($request->price_range, function ($query) use ($request) {
                 $query->whereBetween('total_price', $request->price_range);
             })
@@ -361,6 +361,55 @@ class PackageController extends Controller
             ->values()
             ->all();
 
+        if ($packages[0]->deleted_at) {
+            $livesearchRequest = new LivesearchRequest;
+
+            $roomCount = $packages[0]->packageConfig->hotelData[0]->room_count;
+            $adults = $packages[0]->packageConfig->hotelData[0]->adults;
+            $children = $packages[0]->packageConfig->hotelData[0]->children;
+            $infants = $packages[0]->packageConfig->hotelData[0]->infants;
+
+            $totalPeople = $adults + $children + $infants;
+            $peoplePerRoom = intdiv($totalPeople, $roomCount);
+            $extraPeople = $totalPeople % $roomCount;
+
+            $rooms = [];
+            for ($i = 0; $i < $roomCount; $i++) {
+                $assignedPeople = $peoplePerRoom;
+
+                if ($extraPeople > 0) {
+                    $assignedPeople++;
+                    $extraPeople--;
+                }
+
+                $assignedAdults = min($assignedPeople, $adults);
+                $assignedPeople -= $assignedAdults;
+                $adults -= $assignedAdults;
+
+                $assignedChildren = min($assignedPeople, $children);
+                $assignedPeople -= $assignedChildren;
+                $children -= $assignedChildren;
+
+                $assignedInfants = $assignedPeople;
+                $infants -= $assignedInfants;
+
+                $rooms[] = [
+                    'adults' => $assignedAdults,
+                    'children' => $assignedChildren,
+                    'infants' => $assignedInfants,
+                ];
+            }
+
+            $livesearchRequest->merge([
+                'nights' => $packages[0]->hotelData->number_of_nights,
+                'date' => $packages[0]->outboundFlight->departure->format('Y-m-d'),
+                'origin_id' => $packages[0]->packageConfig->destination_origin->origin_id,
+                'destination_id' => $packages[0]->packageConfig->destination_origin->destination_id,
+                'rooms' => $rooms,
+            ]);
+
+            return $this->liveSearch($livesearchRequest, $flights, $hotels, $packagesAction);
+        }
         $packages = collect($packages);
 
         $page = $request->page ?? 1;
