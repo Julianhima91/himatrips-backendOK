@@ -361,7 +361,7 @@ class PackageController extends Controller
             ->values()
             ->all();
 
-        if ($packages[0]->deleted_at) {
+        if ($packages && $packages[0]->deleted_at) {
             $livesearchRequest = new LivesearchRequest;
 
             $roomCount = $packages[0]->packageConfig->hotelData[0]->room_count;
