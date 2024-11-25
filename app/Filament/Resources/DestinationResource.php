@@ -31,6 +31,9 @@ class DestinationResource extends Resource
                 Forms\Components\Toggle::make('show_in_homepage')
                     ->inline(false)
                     ->label('Show in homepage'),
+                Forms\Components\Toggle::make('is_active')
+                    ->inline(false)
+                    ->label('Is Active'),
                 Forms\Components\Textarea::make('description')
                     ->required()
                     ->maxLength(255)
@@ -112,6 +115,8 @@ class DestinationResource extends Resource
                 Tables\Columns\IconColumn::make('destinationPhotos')
                     ->label('Has Photo')
                     ->icon(fn (Destination $destination) => $destination->destinationPhotos()->exists() ? 'heroicon-o-check-circle' : 'heroicon-o-x-circle'),
+                Tables\Columns\ToggleColumn::make('is_active')
+                    ->disabled(),
                 Tables\Columns\TextColumn::make('created_at')
                     ->dateTime()
                     ->sortable()
