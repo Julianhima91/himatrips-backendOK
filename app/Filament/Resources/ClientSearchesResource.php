@@ -6,6 +6,7 @@ use App\Filament\Resources\PackageSearchesResource\Pages;
 use App\Models\ClientSearches;
 use Filament\Forms;
 use Filament\Forms\Components\Actions\Action;
+use Filament\Forms\Components\Textarea;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
@@ -83,7 +84,6 @@ class ClientSearchesResource extends Resource
                         ->color('success')
                         ->openUrlInNewTab()
                     ),
-
             ])
             ->filters([
                 Tables\Filters\SelectFilter::make('origin')
@@ -105,6 +105,21 @@ class ClientSearchesResource extends Resource
                     }),
             ])
             ->actions([
+                Tables\Actions\Action::make('Flights Json')
+                    ->action(fn (ClientSearches $record) => true)
+                    ->fillForm(fn (ClientSearches $record): array => [
+                        'all_flights' => $record->inboundFlight->all_flights,
+                    ])
+                    ->form([
+                        TextArea::make('all_flights')
+                            ->disabled()
+                            ->autosize(true)
+                            ->label('Flight Json'),
+                    ])
+                    ->modalHeading('View All flights json')
+                    ->modalDescription('Json response for all flights')
+                    ->modalSubmitActionLabel('Close')
+                    ->slideOver(),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
