@@ -24,6 +24,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
 class PackageController extends Controller
@@ -63,6 +64,9 @@ class PackageController extends Controller
 
     public function liveSearch(LivesearchRequest $request, FlightsAction $flights, HotelsAction $hotels, PackagesAction $packagesAction)
     {
+        $totalAdults = collect($request->input('rooms'))->pluck('adults')->sum();
+        $totalChildren = collect($request->input('rooms'))->pluck('children')->sum();
+        $totalInfants = collect($request->input('rooms'))->pluck('infants')->sum();
         ray()->newScreen();
 
         $return_date = Carbon::parse($request->date)->addDays($request->nights)->format('Y-m-d');
@@ -84,37 +88,58 @@ class PackageController extends Controller
             Cache::put("hotel_job_completed_{$batchId}", false, now()->addMinutes(1));
 
             $jobs = [
-                new LiveSearchFlightsApi2($origin_airport, $destination_airport, $date, $return_date, $origin_airport, $destination_airport, $request->adults, $request->children, $request->infants, $batchId),
-                new LiveSearchFlights($request->date, $return_date, $origin_airport, $destination_airport, $request->adults, $request->children, $request->infants, $batchId),
-                new LiveSearchHotels($request->date, $request->nights, $request->destination_id, $request->adults, $request->children, $request->infants, $request->rooms, $batchId),
+                new LiveSearchFlightsApi2($origin_airport, $destination_airport, $date, $return_date, $origin_airport, $destination_airport, $totalAdults, $totalChildren, $totalInfants, $batchId),
+                new LiveSearchFlights($request->date, $return_date, $origin_airport, $destination_airport, $totalAdults, $totalChildren, $totalInfants, $batchId),
+                new LiveSearchHotels($request->date, $request->nights, $request->destination_id, $totalAdults, $totalChildren, $totalInfants, $request->rooms, $batchId),
             ];
 
             foreach ($jobs as $job) {
                 Bus::dispatch($job);
             }
+            //            $startTime = microtime(true);
+            //            Log::info("Start time: {$startTime} seconds");
 
             // Continuously check the shared state until one job completes
             while (true) {
                 if (Cache::get("job_completed_{$batchId}") && Cache::get("hotel_job_completed_{$batchId}")) {
                     // One job has completed, break the loop
+                    //                    $jobsFinished = microtime(true);
+                    //                    $jobsElapsed = $jobsFinished - $startTime;
+                    //                    Log::info("Jobs finished time: {$jobsElapsed} seconds");
+
                     ray('job completed');
 
-                    [$outbound_flight_hydrated, $inbound_flight_hydrated] = $flights->handle($date, $destination, $batchId, $return_date);
+                    [$outbound_flight_hydrated, $inbound_flight_hydrated] = $flights->handle($date, $destination, $batchId, $return_date, $request->origin_id, $request->destination_id);
+                    //                    $flightsFinished = microtime(true);
+                    //                    $flightsElapsed = $flightsFinished - $jobsFinished;
+                    //                    Log::info("Flights finished time: {$flightsElapsed} seconds");
 
                     if (is_null($outbound_flight_hydrated) || is_null($inbound_flight_hydrated)) {
                         broadcast(new LiveSearchFailed('No flights found', $batchId));
 
                         break;
                     }
-                    $package_ids = $hotels->handle($destination, $outbound_flight_hydrated, $inbound_flight_hydrated, $batchId);
+
+                    $package_ids = $hotels->handle($destination, $outbound_flight_hydrated, $inbound_flight_hydrated, $batchId, $request->origin_id, $request->destination_id);
+                    //                    $hotelsFinished = microtime(true);
+                    //                    $hotelsElapsed = $hotelsFinished - $flightsFinished;
+                    //                    Log::info("Hotels finished time: {$hotelsElapsed} seconds");
+
                     [$packages, $minTotalPrice, $maxTotalPrice] = $packagesAction->handle($package_ids);
 
                     //fire off event
                     broadcast(new LiveSearchCompleted($packages, $batchId, $minTotalPrice, $maxTotalPrice));
+                    //                    $queriesFinished = microtime(true);
+                    //                    $queriesElapsed = $queriesFinished - $jobsFinished;
+                    //                    Log::info("Queries finished time: {$queriesElapsed} seconds");
 
                     break;
                 }
             }
+
+            //            $endTime = microtime(true);
+            //            $totalElapsed = $endTime - $startTime;
+            //            Log::info("Total elapsed time: {$totalElapsed} seconds");
         } catch (\Throwable $e) {
             return response()->json(['message' => $e->getMessage()], 500);
         }
@@ -294,9 +319,9 @@ class PackageController extends Controller
         ], 200);
     }
 
-    public function paginateLiveSearch(Request $request)
+    public function paginateLiveSearch(Request $request, FlightsAction $flights, HotelsAction $hotels, PackagesAction $packagesAction)
     {
-        $packages = Package::where('batch_id', $request->batch_id)
+        $packages = Package::withTrashed()->where('batch_id', $request->batch_id)
             ->when($request->price_range, function ($query) use ($request) {
                 $query->whereBetween('total_price', $request->price_range);
             })
@@ -336,6 +361,55 @@ class PackageController extends Controller
             ->values()
             ->all();
 
+        if ($packages && $packages[0]->deleted_at) {
+            $livesearchRequest = new LivesearchRequest;
+
+            $roomCount = $packages[0]->packageConfig->hotelData[0]->room_count;
+            $adults = $packages[0]->packageConfig->hotelData[0]->adults;
+            $children = $packages[0]->packageConfig->hotelData[0]->children;
+            $infants = $packages[0]->packageConfig->hotelData[0]->infants;
+
+            $totalPeople = $adults + $children + $infants;
+            $peoplePerRoom = intdiv($totalPeople, $roomCount);
+            $extraPeople = $totalPeople % $roomCount;
+
+            $rooms = [];
+            for ($i = 0; $i < $roomCount; $i++) {
+                $assignedPeople = $peoplePerRoom;
+
+                if ($extraPeople > 0) {
+                    $assignedPeople++;
+                    $extraPeople--;
+                }
+
+                $assignedAdults = min($assignedPeople, $adults);
+                $assignedPeople -= $assignedAdults;
+                $adults -= $assignedAdults;
+
+                $assignedChildren = min($assignedPeople, $children);
+                $assignedPeople -= $assignedChildren;
+                $children -= $assignedChildren;
+
+                $assignedInfants = $assignedPeople;
+                $infants -= $assignedInfants;
+
+                $rooms[] = [
+                    'adults' => $assignedAdults,
+                    'children' => $assignedChildren,
+                    'infants' => $assignedInfants,
+                ];
+            }
+
+            $livesearchRequest->merge([
+                'nights' => $packages[0]->hotelData->number_of_nights,
+                'date' => $packages[0]->outboundFlight->departure->format('Y-m-d'),
+                'origin_id' => $packages[0]->packageConfig->destination_origin->origin_id,
+                'destination_id' => $packages[0]->packageConfig->destination_origin->destination_id,
+                'rooms' => $rooms,
+            ]);
+
+            return $this->liveSearch($livesearchRequest, $flights, $hotels, $packagesAction);
+        }
         $packages = collect($packages);
 
         $page = $request->page ?? 1;

@@ -10,16 +10,16 @@ use Illuminate\Support\Facades\Cache;
 
 class HotelsAction
 {
-    public function handle($destination, $outbound_flight_hydrated, $inbound_flight_hydrated, $batchId)
+    public function handle($destination, $outbound_flight_hydrated, $inbound_flight_hydrated, $batchId, $origin_id, $destination_id)
     {
         //array of hotel data DTOs
         $hotel_results = Cache::get('hotels');
 
         $packageConfig = PackageConfig::query()
-            ->whereHas('destination_origin', function ($query) {
+            ->whereHas('destination_origin', function ($query) use ($origin_id, $destination_id) {
                 $query->where([
-                    ['destination_id', request()->destination_id],
-                    ['origin_id', request()->origin_id],
+                    ['destination_id', $destination_id],
+                    ['origin_id', $origin_id],
                 ]);
             })->first();
 
@@ -46,21 +46,24 @@ class HotelsAction
                 }
             }
 
-            foreach ($hotel_result->hotel_offers as $offer) {
+            $batchOffers = [];
 
+            foreach ($hotel_result->hotel_offers as $offer) {
                 $calculatedCommissionPercentage = ($packageConfig->commission_percentage / 100) * ($outbound_flight_hydrated->price + $transferPrice + $offer->price);
                 $fixedCommissionRate = $packageConfig->commission_amount;
                 $commission = max($fixedCommissionRate, $calculatedCommissionPercentage);
 
-                HotelOffer::create([
+                $batchOffers[] = [
                     'hotel_data_id' => $hotel_data->id,
                     'room_basis' => $offer->room_basis,
                     'room_type' => json_encode($offer->room_type),
                     'price' => $offer->price,
                     'total_price_for_this_offer' => $outbound_flight_hydrated->price + $transferPrice + $offer->price + $commission,
                     'reservation_deadline' => $offer->reservation_deadline,
-                ]);
+                ];
             }
+
+            HotelOffer::insert($batchOffers);
 
             $first_offer = $hotel_data->offers()->orderBy('price')->first();
             $cheapestOffer = collect($hotel_data->offers)->sortBy('TotalPrice')->first();
@@ -69,9 +72,9 @@ class HotelsAction
             //calculate commission (20%)
             //$commission = ($outbound_flight_hydrated->price + $inbound_flight_hydrated->price + $first_offer->price) * $commission_percentage;
 
-            //            $calculatedCommissionPercentage = ($packageConfig->commission_percentage / 100) * $first_offer->total_price_for_this_offer;
-            //            $fixedCommissionRate = $packageConfig->commission_amount;
-            //            $commission = max($fixedCommissionRate, $calculatedCommissionPercentage);
+            //$calculatedCommissionPercentage = ($packageConfig->commission_percentage / 100) * $first_offer->total_price_for_this_offer;
+            //$fixedCommissionRate = $packageConfig->commission_amount;
+            //$commission = max($fixedCommissionRate, $calculatedCommissionPercentage);
             //create the package here
             $package = Package::create([
                 'hotel_data_id' => $hotel_data->id,

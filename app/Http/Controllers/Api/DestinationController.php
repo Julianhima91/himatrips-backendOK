@@ -92,15 +92,16 @@ class DestinationController extends Controller
     {
         $originId = $origin->id;
 
-        $destinations = Destination::whereHas('destinationOrigin', function ($query) use ($originId) {
-            $query->where('origin_id', $originId)
-                ->whereHas('packageConfigs');
-        })
-            ->with(['origins' => function ($query) use ($originId) {
-                $query->where('origin_id', $originId);
-            }])
-            ->withCount('packages')
-            ->with('destinationPhotos')
+        $destinations = Destination::select('destinations.*')
+            ->selectRaw('COUNT(packages.id) AS packages_count')
+            ->leftJoin('destination_origins', 'destinations.id', '=', 'destination_origins.destination_id')
+            ->leftJoin('package_configs', 'destination_origins.id', '=', 'package_configs.destination_origin_id')
+            ->leftJoin('packages', function ($join) {
+                $join->on('packages.package_config_id', '=', 'package_configs.id')
+                    ->whereNull('packages.deleted_at');
+            })
+            ->where('destination_origins.origin_id', $originId)
+            ->groupBy('destinations.id')
             ->get();
 
         return response()->json([
