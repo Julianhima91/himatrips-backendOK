@@ -96,23 +96,23 @@ class PackageController extends Controller
             foreach ($jobs as $job) {
                 Bus::dispatch($job);
             }
-            $startTime = microtime(true);
-            Log::info("Start time: {$startTime} seconds");
+            //            $startTime = microtime(true);
+            //            Log::info("Start time: {$startTime} seconds");
 
             // Continuously check the shared state until one job completes
             while (true) {
                 if (Cache::get("job_completed_{$batchId}") && Cache::get("hotel_job_completed_{$batchId}")) {
                     // One job has completed, break the loop
-                    $jobsFinished = microtime(true);
-                    $jobsElapsed = $jobsFinished - $startTime;
-                    Log::info("Jobs finished time: {$jobsElapsed} seconds");
+                    //                    $jobsFinished = microtime(true);
+                    //                    $jobsElapsed = $jobsFinished - $startTime;
+                    //                    Log::info("Jobs finished time: {$jobsElapsed} seconds");
 
                     ray('job completed');
 
                     [$outbound_flight_hydrated, $inbound_flight_hydrated] = $flights->handle($date, $destination, $batchId, $return_date, $request->origin_id, $request->destination_id);
-                    $flightsFinished = microtime(true);
-                    $flightsElapsed = $flightsFinished - $jobsFinished;
-                    Log::info("Flights finished time: {$flightsElapsed} seconds");
+                    //                    $flightsFinished = microtime(true);
+                    //                    $flightsElapsed = $flightsFinished - $jobsFinished;
+                    //                    Log::info("Flights finished time: {$flightsElapsed} seconds");
 
                     if (is_null($outbound_flight_hydrated) || is_null($inbound_flight_hydrated)) {
                         broadcast(new LiveSearchFailed('No flights found', $batchId));
@@ -121,25 +121,25 @@ class PackageController extends Controller
                     }
 
                     $package_ids = $hotels->handle($destination, $outbound_flight_hydrated, $inbound_flight_hydrated, $batchId, $request->origin_id, $request->destination_id);
-                    $hotelsFinished = microtime(true);
-                    $hotelsElapsed = $hotelsFinished - $flightsFinished;
-                    Log::info("Hotels finished time: {$hotelsElapsed} seconds");
+                    //                    $hotelsFinished = microtime(true);
+                    //                    $hotelsElapsed = $hotelsFinished - $flightsFinished;
+                    //                    Log::info("Hotels finished time: {$hotelsElapsed} seconds");
 
                     [$packages, $minTotalPrice, $maxTotalPrice] = $packagesAction->handle($package_ids);
 
                     //fire off event
                     broadcast(new LiveSearchCompleted($packages, $batchId, $minTotalPrice, $maxTotalPrice));
-                    $queriesFinished = microtime(true);
-                    $queriesElapsed = $queriesFinished - $jobsFinished;
-                    Log::info("Queries finished time: {$queriesElapsed} seconds");
+                    //                    $queriesFinished = microtime(true);
+                    //                    $queriesElapsed = $queriesFinished - $jobsFinished;
+                    //                    Log::info("Queries finished time: {$queriesElapsed} seconds");
 
                     break;
                 }
             }
 
-            $endTime = microtime(true);
-            $totalElapsed = $endTime - $startTime;
-            Log::info("Total elapsed time: {$totalElapsed} seconds");
+            //            $endTime = microtime(true);
+            //            $totalElapsed = $endTime - $startTime;
+            //            Log::info("Total elapsed time: {$totalElapsed} seconds");
         } catch (\Throwable $e) {
             return response()->json(['message' => $e->getMessage()], 500);
         }

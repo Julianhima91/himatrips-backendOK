@@ -218,9 +218,9 @@ class LiveSearchHotels implements ShouldQueue
 
                     $roomsXml = $this->prepareRooms($room, $roomsXml);
 
-                    $tests = $this->dividePeopleIntoRooms($room['adults'], $room['children'], $room['infants']);
-                    foreach ($tests as $test) {
-                        $roomsTwoXml = $this->prepareRooms($test, $roomsTwoXml);
+                    $totalRooms = $this->dividePeopleIntoRooms($room['adults'], $room['children'], $room['infants']);
+                    foreach ($totalRooms as $room) {
+                        $roomsTwoXml = $this->prepareRooms($room, $roomsTwoXml);
                     }
                 }
             }
@@ -230,10 +230,10 @@ class LiveSearchHotels implements ShouldQueue
                 if ($room['adults'] == $roomAdults && $room['children'] == $roomChildren) {
                     $combinationType[] = 'split';
 
-                    $tests = $this->dividePeopleIntoRooms($room['adults'], $room['children'], $room['infants']);
-                    foreach ($tests as $test) {
-                        $roomsXml = $this->prepareRooms($test, $roomsXml);
-                        $roomsTwoXml = $this->prepareRooms($test, $roomsTwoXml);
+                    $totalRooms = $this->dividePeopleIntoRooms($room['adults'], $room['children'], $room['infants']);
+                    foreach ($totalRooms as $room) {
+                        $roomsXml = $this->prepareRooms($room, $roomsXml);
+                        $roomsTwoXml = $this->prepareRooms($room, $roomsTwoXml);
                     }
                 }
             }
