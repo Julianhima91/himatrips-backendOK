@@ -2,6 +2,7 @@
 
 namespace App\Actions;
 
+use App\Models\Airport;
 use App\Models\Destination;
 use App\Models\DestinationOrigin;
 use App\Models\Origin;
@@ -21,7 +22,10 @@ class DestinationOriginAction
                     ->where('destination_id', $destination->id)
                     ->exists();
 
-                if (! $exists) {
+                $originAirport = Airport::query()->where('origin_id', $origin->id)->first();
+                $destinationAirport = $destination->airports()->first();
+
+                if (! $exists && $origin->name !== $destination->name && $originAirport && $destinationAirport) {
                     $destinationOrigin = DestinationOrigin::create([
                         'origin_id' => $origin->id,
                         'destination_id' => $destination->id,
