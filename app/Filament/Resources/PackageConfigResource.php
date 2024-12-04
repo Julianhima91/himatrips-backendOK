@@ -97,6 +97,11 @@ class PackageConfigResource extends Resource
                     ->multiple()
                     ->searchable(),
 
+                Forms\Components\Toggle::make('is_active')
+                    ->inline(false)
+                    ->default(true)
+                    ->label('Is Active'),
+
                 Forms\Components\Toggle::make('is_direct_flight')
                     ->inline(false)
                     ->label('Is Direct Flight'),
@@ -194,6 +199,8 @@ class PackageConfigResource extends Resource
 
                         return $latestDate ?? '-';
                     })->alignCenter(),
+                Tables\Columns\ToggleColumn::make('is_active')
+                    ->disabled(),
 
                 //show the numbers of packages
                 //                Tables\Columns\TextColumn::make('packages_count')
