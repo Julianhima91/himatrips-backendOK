@@ -120,7 +120,7 @@ class PackageController extends Controller
                         break;
                     }
 
-                    $package_ids = $hotels->handle($destination, $outbound_flight_hydrated, $inbound_flight_hydrated, $batchId, $request->origin_id, $request->destination_id);
+                    $package_ids = $hotels->handle($destination, $outbound_flight_hydrated, $inbound_flight_hydrated, $batchId, $request->origin_id, $request->destination_id, $request->input('rooms'));
                     //                    $hotelsFinished = microtime(true);
                     //                    $hotelsElapsed = $hotelsFinished - $flightsFinished;
                     //                    Log::info("Hotels finished time: {$hotelsElapsed} seconds");

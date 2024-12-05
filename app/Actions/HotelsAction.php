@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\Cache;
 
 class HotelsAction
 {
-    public function handle($destination, $outbound_flight_hydrated, $inbound_flight_hydrated, $batchId, $origin_id, $destination_id)
+    public function handle($destination, $outbound_flight_hydrated, $inbound_flight_hydrated, $batchId, $origin_id, $destination_id, $roomObject)
     {
         //array of hotel data DTOs
         $hotel_results = Cache::get('hotels');
@@ -35,6 +35,7 @@ class HotelsAction
                 'children' => $hotel_result->children,
                 'infants' => $hotel_result->infants,
                 'package_config_id' => $packageConfig->id,
+                'room_object' => json_encode($roomObject),
             ]);
 
             $transferPrice = 0;
