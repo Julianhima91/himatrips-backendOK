@@ -68,21 +68,22 @@ class ClientSearchesResource extends Resource
                             str_replace(' ', '-', "{$record->packageConfig->destination_origin->destination->name}")
                         ).'?batch_id='.$record->batch_id
                                 .'&query='.base64_encode(http_build_query([
-                                'batch_id' => $record->batch_id,
-                                'nights' => $record->hotelData->number_of_nights,
-                                'checkin_date' => $record->hotelData->check_in_date,
-                                'origin_id' => $record->packageConfig->destination_origin->origin->id,
-                                'destination_id' => $record->packageConfig->destination_origin->destination->id,
-                                'page' => 1,
-                                'rooms' => $record->hotelData->room_count,
-                                'directFlightsOnly' => $record->inboundFlight->stop_count === 0 ? 'true' : 'false',
-                                'sort_by' => 'total_price',
-                                'sort_order' => 'ASC',
-                                'adults' => $record->hotelData->adults,
-                                'infants' => $record->hotelData->infants,
-                                'children' => $record->hotelData->children,
-                                'refresh' => 0,
-                            ])))
+                                    'batch_id' => $record->batch_id,
+                                    'nights' => $record->hotelData->number_of_nights,
+                                    'checkin_date' => $record->hotelData->check_in_date,
+                                    'origin_id' => $record->packageConfig->destination_origin->origin->id,
+                                    'destination_id' => $record->packageConfig->destination_origin->destination->id,
+                                    'page' => 1,
+                                    'rooms' => $record->hotelData->room_count,
+                                    'directFlightsOnly' => $record->inboundFlight->stop_count === 0 ? 'true' : 'false',
+                                    'sort_by' => 'total_price',
+                                    'sort_order' => 'ASC',
+                                    'adults' => $record->hotelData->adults,
+                                    'infants' => $record->hotelData->infants,
+                                    'children' => $record->hotelData->children,
+                                    'room_object' => $record->hotelData->room_object,
+                                    'refresh' => 0,
+                                ])))
                         ->color('success')
                         ->openUrlInNewTab()
                     ),
