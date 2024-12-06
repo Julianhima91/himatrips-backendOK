@@ -28,12 +28,12 @@ class EditHotel extends EditRecord
             Action::make('getPhotos')
                 ->label('Get Photos')
                 ->icon('heroicon-o-link')
-                ->modalHeading('Paste Photo URL')
+                ->modalHeading('Paste Booking URL')
                 ->modalWidth('md')
                 ->form([
                     TextInput::make('photo_url')
-                        ->label('Photo URL')
-                        ->placeholder('https://example.com/photo.jpg')
+                        ->label('Hotel Booking URL')
+                        ->placeholder('https://www.booking.com/hotel/ch/art-house-basel.en-gb.html')
                         ->required()
                         ->default(fn ($record) => $record->booking_url)
                         ->rules(['regex:/\.html$/']),
