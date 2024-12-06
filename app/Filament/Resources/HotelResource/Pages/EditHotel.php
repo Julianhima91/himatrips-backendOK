@@ -3,10 +3,15 @@
 namespace App\Filament\Resources\HotelResource\Pages;
 
 use App\Filament\Resources\HotelResource;
+use App\Models\Hotel;
 use App\Models\HotelPhoto;
 use Filament\Actions\Action;
+use Filament\Forms\Components\TextInput;
+use Filament\Notifications\Notification;
 use Filament\Resources\Pages\EditRecord;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use RicorocksDigitalAgency\Soap\Facades\Soap;
 use Saloon\XmlWrangler\XmlReader;
@@ -20,8 +25,72 @@ class EditHotel extends EditRecord
         return [
             Action::make('save')
                 ->action('save'),
-            Action::make('Get Photos')
-                ->action('getPhotos'),
+            Action::make('getPhotos')
+                ->label('Get Photos')
+                ->icon('heroicon-o-link')
+                ->modalHeading('Paste Booking URL')
+                ->modalWidth('md')
+                ->form([
+                    TextInput::make('photo_url')
+                        ->label('Hotel Booking URL')
+                        ->placeholder('https://www.booking.com/hotel/ch/art-house-basel.en-gb.html')
+                        ->required()
+                        ->default(fn ($record) => $record->booking_url)
+                        ->rules(['regex:/\.html$/']),
+                ])
+                ->action(function (array $data): void {
+                    $photoUrl = $data['photo_url'];
+
+                    $apiUrl = 'https://booking-com18.p.rapidapi.com/web/stays/details-by-url';
+                    $response = Http::withHeaders([
+                        'x-rapidapi-host' => 'booking-com18.p.rapidapi.com',
+                        'x-rapidapi-key' => 'eff37b01a1msh6090de6dea39514p108435jsnf7c09e43a0a5',
+                    ])->get($apiUrl, [
+                        'url' => $photoUrl,
+                    ]);
+
+                    if ($response->successful()) {
+                        $photos = $response->json()['data']['hotelPhotos'];
+                        $highresUrls = collect($photos)->pluck('highres_url', 'id');
+                        $recordId = $this->record->id;
+
+                        foreach ($highresUrls as $index => $url) {
+                            try {
+                                if ($url) {
+                                    $fileName = $index.'.jpg';
+                                    $imageContent = file_get_contents($url);
+                                    $relativeFilePath = 'hotels/'.$recordId.'/'.$fileName;
+                                    Storage::disk('public')->put($relativeFilePath, $imageContent);
+
+                                    Log::info('Downloaded image', ['url' => $url, 'filePath' => $relativeFilePath]);
+
+                                    HotelPhoto::updateOrCreate([
+                                        'hotel_id' => $recordId,
+                                        'file_path' => $relativeFilePath,
+                                    ]);
+                                }
+                            } catch (\Exception $e) {
+                                Log::error('Failed to download image', ['url' => $url, 'error' => $e->getMessage()]);
+                            }
+                        }
+
+                        $hotel = Hotel::find($recordId);
+                        $hotel->booking_url = $data['photo_url'];
+                        $hotel->save();
+
+                        Notification::make()
+                            ->title('Success')
+                            ->body('The photos were successfully retrieved.')
+                            ->success()
+                            ->send();
+                    } else {
+                        Notification::make()
+                            ->title('Error')
+                            ->body('Failed to retrieve photos. Please check the URL or try again later.')
+                            ->danger()
+                            ->send();
+                    }
+                }),
         ];
     }
 

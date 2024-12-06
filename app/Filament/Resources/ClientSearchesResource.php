@@ -66,7 +66,7 @@ class ClientSearchesResource extends Resource
                             str_replace(' ', '-', "{$record->packageConfig->destination_origin->origin->name}").
                             '-to-'.
                             str_replace(' ', '-', "{$record->packageConfig->destination_origin->destination->name}")
-                        ).'&query='.base64_encode(http_build_query([
+                        ).'?&query='.base64_encode(http_build_query([
                             'batch_id' => $record->batch_id,
                             'nights' => $record->hotelData->number_of_nights,
                             'checkin_date' => $record->hotelData->check_in_date,
