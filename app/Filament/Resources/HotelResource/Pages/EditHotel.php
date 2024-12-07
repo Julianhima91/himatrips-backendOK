@@ -54,6 +54,8 @@ class EditHotel extends EditRecord
                         $highresUrls = collect($photos)->pluck('highres_url', 'id');
                         $recordId = $this->record->id;
 
+                        HotelPhoto::where('hotel_id', $hotelId)->delete();
+
                         foreach ($highresUrls as $index => $url) {
                             try {
                                 if ($url) {
