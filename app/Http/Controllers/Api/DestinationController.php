@@ -101,6 +101,7 @@ class DestinationController extends Controller
                     ->whereNull('packages.deleted_at');
             })
             ->where('destination_origins.origin_id', $originId)
+            ->where('package_configs.is_active', true)
             ->groupBy('destinations.id')
             ->get();
 
