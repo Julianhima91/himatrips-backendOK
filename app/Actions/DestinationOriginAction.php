@@ -7,6 +7,7 @@ use App\Models\Destination;
 use App\Models\DestinationOrigin;
 use App\Models\Origin;
 use App\Models\PackageConfig;
+use App\Models\Scopes\ActiveScope;
 
 class DestinationOriginAction
 {
@@ -32,6 +33,7 @@ class DestinationOriginAction
                     ]);
 
                     $hasPackageConfig = PackageConfig::query()
+                        ->withoutGlobalScope(ActiveScope::class)
                         ->where('destination_origin_id', $destinationOrigin->id)->first();
 
                     if (! $hasPackageConfig) {
