@@ -237,17 +237,42 @@ class LiveSearchHotels implements ShouldQueue
                     }
                 }
             }
-
         }
 
         if (in_array('doubleSearch', $combinationType)) {
             $normalSearch = $this->sendXmlRequest($boardOptions, $hotelIds, $arrivalDate, $nights, $roomsXml);
-            $normalSearchPrice = json_decode($normalSearch->MakeRequestResult)->Hotels[0]->Offers[0]->TotalPrice;
 
             $splitSearch = $this->sendXmlRequest($boardOptions, $hotelIds, $arrivalDate, $nights, $roomsTwoXml);
-            $splitSearchPrice = json_decode($splitSearch->MakeRequestResult)->Hotels[0]->Offers[0]->TotalPrice;
 
-            return $normalSearchPrice < $splitSearchPrice ? $normalSearch : $splitSearch;
+            $normalSearchHotels = json_decode($normalSearch->MakeRequestResult)->Hotels;
+            $splitSearchHotels = json_decode($splitSearch->MakeRequestResult)->Hotels;
+
+            $allHotels = array_merge($normalSearchHotels, $splitSearchHotels);
+
+            $groupedHotels = [];
+            foreach ($allHotels as $hotel) {
+                $hotelId = $hotel->HotelCode;
+                $offerPrice = $hotel->Offers[0]->TotalPrice;
+
+                if (! isset($groupedHotels[$hotelId])) {
+                    $groupedHotels[$hotelId] = $hotel;
+                } else {
+                    $existingOfferPrice = $groupedHotels[$hotelId]->Offers[0]->TotalPrice;
+
+                    if ($offerPrice < $existingOfferPrice) {
+                        $groupedHotels[$hotelId] = $hotel;
+                    }
+                }
+            }
+
+            $finalHotels = array_values($groupedHotels);
+
+            $normalSearchDecoded = json_decode($normalSearch->MakeRequestResult, true);
+            $normalSearchDecoded['Hotels'] = $finalHotels;
+
+            $normalSearch->MakeRequestResult = json_encode($normalSearchDecoded);
+
+            return $normalSearch;
         } else {
             return $this->sendXmlRequest($boardOptions, $hotelIds, $arrivalDate, $nights, $roomsXml);
         }
