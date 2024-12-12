@@ -16,6 +16,7 @@
         "laravel/tinker": "^2.8",
         "pusher/pusher-php-server": "^7.2",
         "ricorocks-digital-agency/soap": "*",
+        "saade/filament-laravel-log": "^3.0",
         "saloonphp/laravel-plugin": "^3.0",
         "saloonphp/rate-limit-plugin": "^2.0",
         "saloonphp/saloon": "^3.0",
