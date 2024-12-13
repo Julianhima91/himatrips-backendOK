@@ -49,8 +49,6 @@ class CheckPackageFlights extends Command
                         ]);
                     }
                 }
-            } else {
-                Log::channel('daily')->info('No Direct Flight detected');
             }
         }
         $this->info('Package flight validation completed.');
