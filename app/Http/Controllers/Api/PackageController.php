@@ -125,10 +125,10 @@ class PackageController extends Controller
                     //                    $hotelsElapsed = $hotelsFinished - $flightsFinished;
                     //                    Log::info("Hotels finished time: {$hotelsElapsed} seconds");
 
-                    [$packages, $minTotalPrice, $maxTotalPrice] = $packagesAction->handle($package_ids);
+                    [$packages, $minTotalPrice, $maxTotalPrice, $packageConfigId] = $packagesAction->handle($package_ids);
 
                     //fire off event
-                    broadcast(new LiveSearchCompleted($packages, $batchId, $minTotalPrice, $maxTotalPrice));
+                    broadcast(new LiveSearchCompleted($packages, $batchId, $minTotalPrice, $maxTotalPrice, $packageConfigId));
                     //                    $queriesFinished = microtime(true);
                     //                    $queriesElapsed = $queriesFinished - $jobsFinished;
                     //                    Log::info("Queries finished time: {$queriesElapsed} seconds");
@@ -419,6 +419,7 @@ class PackageController extends Controller
 
         return response()->json([
             'data' => [
+                'content_id' => $packages[0]->package_config_id,
                 'data' => $paginatedData,
                 'current_page' => $page,
                 'per_page' => $perPage,
