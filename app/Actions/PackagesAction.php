@@ -10,6 +10,7 @@ class PackagesAction
     {
         $maxTotalPrice = Package::whereIn('id', $package_ids)->max('total_price');
         $minTotalPrice = Package::whereIn('id', $package_ids)->min('total_price');
+        $packageConfigId = Package::whereIn('id', $package_ids)->first()->package_config_id;
 
         $packages = Package::whereIn('id', $package_ids)
             ->with([
@@ -25,6 +26,6 @@ class PackagesAction
             ])
             ->paginate(10);
 
-        return [$packages, $minTotalPrice, $maxTotalPrice];
+        return [$packages, $minTotalPrice, $maxTotalPrice, $packageConfigId];
     }
 }

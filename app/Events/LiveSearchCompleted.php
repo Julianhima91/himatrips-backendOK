@@ -20,15 +20,18 @@ class LiveSearchCompleted implements ShouldBroadcast
 
     public $max;
 
+    public $content_id;
+
     /**
      * Create a new event instance.
      */
-    public function __construct($packages, $batch_id, $min, $max)
+    public function __construct($packages, $batch_id, $min, $max, $packageConfigId)
     {
         $this->packages = $packages;
         $this->batch_id = $batch_id;
         $this->min = $min;
         $this->max = $max;
+        $this->content_id = $packageConfigId;
     }
 
     /**
