@@ -66,7 +66,9 @@ class FlightsAction
                     });
                 });
 
-                $outbound_flight = $outbound_flight_max_wait;
+                if ($outbound_flight_max_wait->isNotEmpty()) {
+                    $outbound_flight = $outbound_flight_max_wait;
+                }
             }
         }
 
@@ -175,7 +177,9 @@ class FlightsAction
                     });
                 });
 
-                $inbound_flight = $inbound_flight_max_wait;
+                if ($inbound_flight_max_wait->isNotEmpty()) {
+                    $inbound_flight = $inbound_flight_max_wait;
+                }
             }
         }
 
