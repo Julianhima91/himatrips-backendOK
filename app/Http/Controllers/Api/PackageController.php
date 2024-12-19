@@ -584,6 +584,7 @@ class PackageController extends Controller
                     $filteredPackages = $allPackages->filter(function ($package) {
                         $outboundFlight = $package->outboundFlight;
                         $inboundFlight = $package->inboundFlight;
+                        $today = new DateTime('today');
 
                         $outboundDate = new DateTime($outboundFlight->departure);
                         $inboundDate = new DateTime($inboundFlight->departure);
@@ -592,7 +593,8 @@ class PackageController extends Controller
                         return $nightsStay >= 2
                             && $outboundFlight->adults == 2
                             && $outboundFlight->children == 0
-                            && $outboundFlight->infants == 0;
+                            && $outboundFlight->infants == 0
+                            && $outboundDate > $today;
                     });
 
                     $cheapestPackage = $filteredPackages->sortBy('total_price')->first();
