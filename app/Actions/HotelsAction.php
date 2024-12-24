@@ -6,12 +6,50 @@ use App\Models\HotelData;
 use App\Models\HotelOffer;
 use App\Models\Package;
 use App\Models\PackageConfig;
+use App\Models\Tag;
 use Illuminate\Support\Facades\Cache;
 
 class HotelsAction
 {
-    public function handle($destination, $outbound_flight_hydrated, $inbound_flight_hydrated, $batchId, $origin_id, $destination_id, $roomObject)
+    public function handle($destination, $outbound_flight_hydrated, $inbound_flight_hydrated, $batchId, $origin_id, $destination_id, $roomObject, $holidays)
     {
+        $isHoliday = false;
+        $isWeekend = false;
+
+        $outboundDate = $outbound_flight_hydrated->departure;
+        $inboundDate = $inbound_flight_hydrated->arrival;
+
+        $outboundDayMonth = date('d-m', strtotime($outboundDate));
+        $inboundDayMonth = date('d-m', strtotime($inboundDate));
+
+        $outboundYear = date('Y', strtotime($outboundDate));
+        $inboundYear = date('Y', strtotime($inboundDate));
+        $spansNextYear = $outboundYear !== $inboundYear;
+
+        if ($outboundDate->isFriday() && $inboundDate->isSunday()) {
+            $isWeekend = true;
+            $weekendTag = Tag::firstOrCreate(
+                ['name->en' => 'Weekend']
+            );
+        }
+
+        foreach ($holidays as $holiday) {
+            $holidayDayMonth = $holiday->day;
+
+            $holidayFullDateOutboundYear = date('Y-m-d', strtotime("$outboundYear-$holidayDayMonth"));
+            $holidayFullDateInboundYear = $spansNextYear ? date('Y-m-d', strtotime("$inboundYear-$holidayDayMonth")) : null;
+
+            $isInOutboundYear = $holidayFullDateOutboundYear >= $outboundDate && $holidayFullDateOutboundYear <= $inboundDate;
+            $isInInboundYear = $spansNextYear && $holidayFullDateInboundYear >= $outboundDate && $holidayFullDateInboundYear <= $inboundDate;
+
+            if ($isInOutboundYear || $isInInboundYear) {
+                $isHoliday = true;
+                $holidayTag = Tag::firstOrCreate(
+                    ['name->en' => 'Holidays']
+                );
+            }
+        }
+
         //array of hotel data DTOs
         $hotel_results = Cache::get('hotels');
 
@@ -86,6 +124,15 @@ class HotelsAction
                 'batch_id' => $batchId,
                 'package_config_id' => $packageConfig->id ?? null,
             ]);
+
+            if ($isHoliday) {
+                $package->tags()->attach($holidayTag->id);
+            }
+
+            if ($isWeekend) {
+                $package->tags()->attach($weekendTag->id);
+            }
+
             $package_ids[] = $package->id;
         }
 

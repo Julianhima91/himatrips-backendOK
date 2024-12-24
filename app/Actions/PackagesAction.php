@@ -20,6 +20,7 @@ class PackagesAction
                 'hotelData.hotel.hotelPhotos',
                 'outboundFlight',
                 'inboundFlight',
+                'tags',
                 'hotelData.offers' => function ($query) {
                     $query->orderBy('price', 'asc');
                 },

@@ -24,4 +24,9 @@ class Origin extends Model
     {
         return $this->hasMany(DestinationOrigin::class);
     }
+
+    public function holidays(): HasMany
+    {
+        return $this->hasMany(Holiday::class);
+    }
 }
