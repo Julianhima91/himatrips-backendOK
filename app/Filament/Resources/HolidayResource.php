@@ -4,11 +4,16 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\HolidayResource\Pages;
 use App\Models\Holiday;
+use App\Models\Origin;
 use Filament\Forms;
+use Filament\Forms\Components\FileUpload;
+use Filament\Forms\Components\Select;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Validator;
 
 class HolidayResource extends Resource
 {
@@ -20,9 +25,14 @@ class HolidayResource extends Resource
     {
         return $form
             ->schema([
-                Forms\Components\Select::make('origin_id')
-                    ->label('Origin')
-                    ->relationship('origin', 'name')
+                Forms\Components\Select::make('country')
+                    ->label('Country')
+                    ->options(
+                        Origin::query()
+                            ->select('country')
+                            ->distinct()
+                            ->pluck('country', 'country')
+                    )
                     ->required(),
                 Forms\Components\TextInput::make('name')
                     ->label('Holiday Name')
@@ -42,8 +52,8 @@ class HolidayResource extends Resource
     {
         return $table
             ->columns([
-                Tables\Columns\TextColumn::make('origin.name')
-                    ->label('Origin')
+                Tables\Columns\TextColumn::make('country')
+                    ->label('Country')
                     ->sortable()
                     ->searchable(),
                 Tables\Columns\TextColumn::make('name')
@@ -63,6 +73,52 @@ class HolidayResource extends Resource
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),
+            ])
+            ->headerActions([
+                Tables\Actions\Action::make('Import')
+                    ->modalHeading('Import Data via CSV')
+                    ->form([
+                        Select::make('country')
+                            ->label('Country')
+                            ->options(
+                                Origin::query()
+                                    ->distinct()
+                                    ->pluck('country', 'country')
+                            )
+                            ->required(),
+                        FileUpload::make('file')
+                            ->label('CSV File')
+                            ->required()
+                            ->acceptedFileTypes(['text/csv', 'application/csv'])
+                            ->helperText('Upload your CSV file with holidays.'),
+                    ])
+                    ->action(function (array $data) {
+                        $fileName = $data['file'];
+                        $country = $data['country'];
+
+                        $filePath = storage_path('app/public/'.$fileName);
+                        $csvData = array_map('str_getcsv', file($filePath));
+
+                        foreach (array_slice($csvData, 1) as $row) {
+                            if (! empty($row[0])) {
+                                Validator::make(
+                                    ['name' => $row[0], 'day' => $row[1]],
+                                    [
+                                        'name' => 'required|string',
+                                        'day' => ['required', 'regex:/^(0[1-9]|[12][0-9]|3[01])-(0[1-9]|1[0-2])$/'],
+                                    ]
+                                )->validate();
+
+                                Holiday::create([
+                                    'name' => $row[0],
+                                    'day' => $row[1],
+                                    'country' => $country,
+                                ]);
+                            }
+                        }
+
+                        Storage::delete('public/'.$fileName);
+                    }),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([

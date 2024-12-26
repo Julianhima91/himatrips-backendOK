@@ -17,6 +17,7 @@ use App\Models\Destination;
 use App\Models\DestinationOrigin;
 use App\Models\DirectFlightAvailability;
 use App\Models\Holiday;
+use App\Models\Origin;
 use App\Models\Package;
 use App\Models\PackageConfig;
 use Carbon\Carbon;
@@ -80,7 +81,8 @@ class PackageController extends Controller
             $query->where('destination_id', $request->destination_id);
         })->first();
 
-        $holidays = Holiday::query()->where('origin_id', $request->origin_id)->get();
+        $originCountry = Origin::find($request->origin_id)->country;
+        $holidays = Holiday::query()->where('country', $originCountry)->get();
         $destination = Destination::where('id', $request->destination_id)->first();
 
         try {

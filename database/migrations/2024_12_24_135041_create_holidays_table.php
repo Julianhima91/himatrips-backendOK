@@ -13,7 +13,7 @@ return new class extends Migration
     {
         Schema::create('holidays', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('origin_id')->constrained('origins')->onDelete('cascade');
+            $table->string('country');
             $table->string('name');
             $table->string('day', 5); //'DD-MM'
             $table->timestamps();
