@@ -87,10 +87,20 @@ class PackageController extends Controller
             Cache::put("job_completed_{$batchId}", false, now()->addMinutes(1));
             Cache::put("hotel_job_completed_{$batchId}", false, now()->addMinutes(1));
 
+            $longFlightDestinations = ['Maldives', 'Zanzibar', 'Bali', 'Thailand'];
+
+            if (in_array($destination->name, $longFlightDestinations)) {
+                $return_date = Carbon::parse($return_date)->addDay()->format('Y-m-d');
+
+                $hotelStartDate = Carbon::parse($date)->addDay()->format('Y-m-d');
+            } else {
+                $hotelStartDate = $date;
+            }
+
             $jobs = [
                 new LiveSearchFlightsApi2($origin_airport, $destination_airport, $date, $return_date, $origin_airport, $destination_airport, $totalAdults, $totalChildren, $totalInfants, $batchId),
-                new LiveSearchFlights($request->date, $return_date, $origin_airport, $destination_airport, $totalAdults, $totalChildren, $totalInfants, $batchId),
-                new LiveSearchHotels($request->date, $request->nights, $request->destination_id, $totalAdults, $totalChildren, $totalInfants, $request->rooms, $batchId),
+                new LiveSearchFlights($date, $return_date, $origin_airport, $destination_airport, $totalAdults, $totalChildren, $totalInfants, $batchId),
+                new LiveSearchHotels($hotelStartDate, $request->nights, $request->destination_id, $totalAdults, $totalChildren, $totalInfants, $request->rooms, $batchId),
             ];
 
             foreach ($jobs as $job) {
