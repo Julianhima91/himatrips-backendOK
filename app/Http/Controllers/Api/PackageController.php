@@ -16,7 +16,6 @@ use App\Models\Airport;
 use App\Models\Destination;
 use App\Models\DestinationOrigin;
 use App\Models\DirectFlightAvailability;
-use App\Models\Holiday;
 use App\Models\Origin;
 use App\Models\Package;
 use App\Models\PackageConfig;
@@ -81,8 +80,6 @@ class PackageController extends Controller
             $query->where('destination_id', $request->destination_id);
         })->first();
 
-        $originCountry = Origin::find($request->origin_id)->country;
-        $holidays = Holiday::query()->where('country', $originCountry)->get();
         $destination = Destination::where('id', $request->destination_id)->first();
 
         try {
@@ -124,7 +121,7 @@ class PackageController extends Controller
                         break;
                     }
 
-                    $package_ids = $hotels->handle($destination, $outbound_flight_hydrated, $inbound_flight_hydrated, $batchId, $request->origin_id, $request->destination_id, $request->input('rooms'), $holidays);
+                    $package_ids = $hotels->handle($destination, $outbound_flight_hydrated, $inbound_flight_hydrated, $batchId, $request->origin_id, $request->destination_id, $request->input('rooms'));
                     //                    $hotelsFinished = microtime(true);
                     //                    $hotelsElapsed = $hotelsFinished - $flightsFinished;
                     //                    Log::info("Hotels finished time: {$hotelsElapsed} seconds");
@@ -346,7 +343,6 @@ class PackageController extends Controller
             })
             ->with([
                 'hotelData',
-                'tags',
                 'hotelData.hotel',
                 'hotelData.hotel.transfers',
                 'hotelData.hotel.hotelPhotos',

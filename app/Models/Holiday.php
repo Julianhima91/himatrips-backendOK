@@ -9,8 +9,8 @@ class Holiday extends Model
 {
     protected $guarded = [];
 
-    public function origin(): BelongsTo
+    public function country(): BelongsTo
     {
-        return $this->belongsTo(Origin::class);
+        return $this->belongsTo(Country::class);
     }
 }

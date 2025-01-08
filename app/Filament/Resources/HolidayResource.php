@@ -3,8 +3,8 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\HolidayResource\Pages;
+use App\Models\Country;
 use App\Models\Holiday;
-use App\Models\Origin;
 use Filament\Forms;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Select;
@@ -25,13 +25,11 @@ class HolidayResource extends Resource
     {
         return $form
             ->schema([
-                Forms\Components\Select::make('country')
+                Forms\Components\Select::make('country_id')
                     ->label('Country')
                     ->options(
-                        Origin::query()
-                            ->select('country')
-                            ->distinct()
-                            ->pluck('country', 'country')
+                        Country::query()
+                            ->pluck('name', 'id')
                     )
                     ->required(),
                 Forms\Components\TextInput::make('name')
@@ -52,7 +50,7 @@ class HolidayResource extends Resource
     {
         return $table
             ->columns([
-                Tables\Columns\TextColumn::make('country')
+                Tables\Columns\TextColumn::make('country.name')
                     ->label('Country')
                     ->sortable()
                     ->searchable(),
@@ -78,12 +76,11 @@ class HolidayResource extends Resource
                 Tables\Actions\Action::make('Import')
                     ->modalHeading('Import Data via CSV')
                     ->form([
-                        Select::make('country')
+                        Select::make('country_id')
                             ->label('Country')
                             ->options(
-                                Origin::query()
-                                    ->distinct()
-                                    ->pluck('country', 'country')
+                                Country::query()
+                                    ->pluck('name', 'id')
                             )
                             ->required(),
                         FileUpload::make('file')
@@ -94,7 +91,7 @@ class HolidayResource extends Resource
                     ])
                     ->action(function (array $data) {
                         $fileName = $data['file'];
-                        $country = $data['country'];
+                        $country = $data['country_id'];
 
                         $filePath = storage_path('app/public/'.$fileName);
                         $csvData = array_map('str_getcsv', file($filePath));
@@ -112,7 +109,7 @@ class HolidayResource extends Resource
                                 Holiday::create([
                                     'name' => $row[0],
                                     'day' => $row[1],
-                                    'country' => $country,
+                                    'country_id' => $country,
                                 ]);
                             }
                         }
