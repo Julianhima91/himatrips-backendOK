@@ -19,6 +19,11 @@ class Country extends Model
         return $this->hasMany(Origin::class);
     }
 
+    public function airports(): HasMany
+    {
+        return $this->hasMany(Airport::class);
+    }
+
     public function holidays(): HasMany
     {
         return $this->hasMany(Holiday::class);

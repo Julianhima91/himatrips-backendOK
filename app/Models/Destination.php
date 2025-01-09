@@ -25,6 +25,11 @@ class Destination extends Model
         return $this->belongsTo(Country::class);
     }
 
+    public function adConfigs(): BelongsToMany
+    {
+        return $this->belongsToMany(AdConfig::class);
+    }
+
     public function hotels(): BelongsToMany
     {
         return $this->belongsToMany(Hotel::class, 'destination_hotel');
