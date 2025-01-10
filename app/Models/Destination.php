@@ -65,4 +65,14 @@ class Destination extends Model
     {
         return $this->hasMany(DestinationPhoto::class);
     }
+
+    public function getOfferCategoryAttribute($value)
+    {
+        return json_decode($value, true);
+    }
+
+    public function setOfferCategoryAttribute($value): void
+    {
+        $this->attributes['offer_category'] = json_encode($value);
+    }
 }

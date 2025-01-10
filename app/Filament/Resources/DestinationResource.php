@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources;
 
+use App\Enums\OfferCategoryEnum;
 use App\Filament\Resources\DestinationResource\Pages;
 use App\Filament\Resources\DestinationResource\RelationManagers;
 use App\Models\Destination;
@@ -34,6 +35,24 @@ class DestinationResource extends Resource
                 Forms\Components\Toggle::make('is_active')
                     ->inline(false)
                     ->label('Is Active'),
+                Forms\Components\Select::make('offer_category')
+                    ->label('Offer Categories')
+                    ->multiple()
+                    ->options(OfferCategoryEnum::class)
+                    ->placeholder('Select offer categories')
+                    ->required(),
+                Forms\Components\TextInput::make('ad_min_nights')
+                    ->label('Ad Min Nights')
+                    ->numeric()
+                    ->minValue(0)
+                    ->placeholder('Minimum nights for ads')
+                    ->required(),
+                Forms\Components\TextInput::make('ad_max_nights')
+                    ->label('Ad Max Nights')
+                    ->numeric()
+                    ->minValue(0)
+                    ->placeholder('Maximum nights for ads')
+                    ->required(),
                 Forms\Components\Textarea::make('description')
                     ->required()
                     ->maxLength(255)
