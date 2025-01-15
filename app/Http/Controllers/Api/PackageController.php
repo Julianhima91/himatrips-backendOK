@@ -576,32 +576,32 @@ class PackageController extends Controller
     {
         $originId = (int) ($request->origin_id ?? 1);
 
-        $cheapestPackages = Cache::remember("cheapest_packages_{$originId}", 180, function () use ($originId) {
+        $cheapestPackages = Cache::remember($originId, 180, function () use ($originId) {
             $packages = collect();
 
-            $destinations = Destination::query()
+            Destination::query()
                 ->select(['id', 'name', 'description', 'city', 'country', 'created_at', 'updated_at', 'show_in_homepage'])
                 ->with([
-                    'destinationPhotos:id,destination_id,file_path',
-                    'destinationOrigin' => function ($query) use ($originId) {
-                        $query->where('origin_id', $originId)
-                            ->with(['packages.outboundFlight:id,package_id,departure,adults,children,infants']);
-                    },
+                    'destinationPhotos:id,destination_id,file_path', // Eager load photos with necessary fields
+                    'destinationOrigin.packages.outboundFlight:id,package_config_id,departure,adults,children,infants', // Load outbound flight
+                    'destinationOrigin.packages.inboundFlight:id,package_config_id,departure', // Load inbound flight
+                    'destinationOrigin.packages.packageConfig:id,destination_origin_id', // Load package config
                 ])
                 ->whereHas('destinationOrigin.packages')
-                ->cursor();
+                ->chunk(100, function ($destinations) use (&$packages, $originId) {
+                    foreach ($destinations as $destination) {
+                        $filteredPackages = $destination->destinationOrigin
+                            ->filter(fn ($origin) => $origin->origin_id === $originId)
+                            ->flatMap(fn ($origin) => $origin->packages)
+                            ->filter(fn ($package) => $this->isValidPackage($package));
 
-            foreach ($destinations as $destination) {
-                $filteredPackages = $destination->destinationOrigin
-                    ->flatMap(fn ($origin) => $origin->packages)
-                    ->filter(fn ($package) => $this->isValidPackage($package));
+                        $cheapestPackage = $filteredPackages->sortBy('total_price')->first();
 
-                $cheapestPackage = $filteredPackages->sortBy('total_price')->first();
-
-                if ($cheapestPackage) {
-                    $packages->push($this->formatPackageData($destination, $cheapestPackage));
-                }
-            }
+                        if ($cheapestPackage) {
+                            $packages->push($this->formatPackageData($destination, $cheapestPackage));
+                        }
+                    }
+                });
 
             return $packages->values();
         });
@@ -615,6 +615,7 @@ class PackageController extends Controller
     {
         $outboundFlight = $package->outboundFlight;
         $inboundFlight = $package->inboundFlight;
+        $today = new DateTime('today');
 
         if (! $outboundFlight || ! $inboundFlight) {
             return false;
@@ -628,7 +629,7 @@ class PackageController extends Controller
             && $outboundFlight->adults == 2
             && $outboundFlight->children == 0
             && $outboundFlight->infants == 0
-            && $outboundDate > new DateTime('today');
+            && $outboundDate > $today;
     }
 
     private function formatPackageData($destination, $cheapestPackage)
@@ -645,9 +646,9 @@ class PackageController extends Controller
             ['children' => $cheapestPackage->outboundFlight->children],
             ['infants' => $cheapestPackage->outboundFlight->infants],
             ['nights' => $nights],
-            ['checkin_date' => $cheapestPackage->outboundFlight->departure->format('Y-m-d')],
+            ['checkin_date' => $outboundDate->format('Y-m-d')],
             ['photos' => $destination->destinationPhotos],
-            ['destination_origin' => $cheapestPackage->packageConfig->destination_origin]
+            ['destination_origin' => $cheapestPackage->packageConfig->destination_origin],
         );
     }
 }
