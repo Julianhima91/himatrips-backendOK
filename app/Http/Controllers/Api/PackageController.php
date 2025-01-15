@@ -576,27 +576,32 @@ class PackageController extends Controller
     {
         $originId = (int) ($request->origin_id ?? 1);
 
-        $cheapestPackages = Cache::remember($originId, 180, function () use ($originId) {
+        $cheapestPackages = Cache::remember("cheapest_packages_{$originId}", 180, function () use ($originId) {
             $packages = collect();
 
-            Destination::query()
+            $destinations = Destination::query()
                 ->select(['id', 'name', 'description', 'city', 'country', 'created_at', 'updated_at', 'show_in_homepage'])
-                ->with(['destinationPhotos:id,destination_id,url'])
+                ->with([
+                    'destinationPhotos:id,destination_id,file_path',
+                    'destinationOrigin' => function ($query) use ($originId) {
+                        $query->where('origin_id', $originId)
+                            ->with(['packages.outboundFlight:id,package_id,departure,adults,children,infants']);
+                    },
+                ])
                 ->whereHas('destinationOrigin.packages')
-                ->chunk(100, function ($destinations) use (&$packages, $originId) {
-                    $destinations->each(function ($destination) use (&$packages, $originId) {
-                        $filteredPackages = $destination->destinationOrigin
-                            ->filter(fn ($origin) => $origin->origin_id === $originId)
-                            ->flatMap(fn ($origin) => $origin->packages)
-                            ->filter(fn ($package) => $this->isValidPackage($package));
+                ->cursor();
 
-                        $cheapestPackage = $filteredPackages->sortBy('total_price')->first();
+            foreach ($destinations as $destination) {
+                $filteredPackages = $destination->destinationOrigin
+                    ->flatMap(fn ($origin) => $origin->packages)
+                    ->filter(fn ($package) => $this->isValidPackage($package));
 
-                        if ($cheapestPackage) {
-                            $packages->push($this->formatPackageData($destination, $cheapestPackage));
-                        }
-                    });
-                });
+                $cheapestPackage = $filteredPackages->sortBy('total_price')->first();
+
+                if ($cheapestPackage) {
+                    $packages->push($this->formatPackageData($destination, $cheapestPackage));
+                }
+            }
 
             return $packages->values();
         });
