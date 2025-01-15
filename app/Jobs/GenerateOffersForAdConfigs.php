@@ -11,7 +11,9 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 
 class GenerateOffersForAdConfigs implements ShouldQueue
 {
@@ -69,6 +71,10 @@ class GenerateOffersForAdConfigs implements ShouldQueue
 
         foreach ($adConfig->airports as $airport) {
             foreach ($adConfig->destinations as $destination) {
+                $destinationAirport = Airport::query()->whereHas('destinations', function ($query) use ($destination) {
+                    $query->where('destination_id', $destination->id);
+                })->first();
+
                 if (! $destination->is_active) {
                     Log::info('Skipping inactive destination ID: '.$destination->id);
 
@@ -78,9 +84,9 @@ class GenerateOffersForAdConfigs implements ShouldQueue
                 foreach ($destination->offer_category as $offerCategory) {
 
                     match ($offerCategory) {
-                        OfferCategoryEnum::HOLIDAY->value => $this->createHolidayOffer($adConfig, $airport, $destination),
-                        OfferCategoryEnum::ECONOMIC->value => $this->createEconomicOffer($adConfig, $airport, $destination),
-                        OfferCategoryEnum::WEEKEND->value => $this->createWeekendOffer($adConfig, $airport, $destination),
+                        OfferCategoryEnum::HOLIDAY->value => $this->createHolidayOffer($adConfig, $airport, $destination, $destinationAirport),
+                        OfferCategoryEnum::ECONOMIC->value => $this->createEconomicOffer($adConfig, $airport, $destination, $destinationAirport),
+                        OfferCategoryEnum::WEEKEND->value => $this->createWeekendOffer($adConfig, $airport, $destination, $destinationAirport),
                         default => Log::warning("Unknown offer category: {$offerCategory}"),
                     };
                 }
@@ -88,7 +94,7 @@ class GenerateOffersForAdConfigs implements ShouldQueue
         }
     }
 
-    private function createHolidayOffer(AdConfig $adConfig, Airport $airport, Destination $destination)
+    private function createHolidayOffer(AdConfig $adConfig, Airport $airport, Destination $destination, Airport $destinationAirport)
     {
         $today = now();
         $threeMonthsFromNow = now()->addMonths(3);
@@ -107,7 +113,8 @@ class GenerateOffersForAdConfigs implements ShouldQueue
             ->pluck('day')
             ->toArray();
 
-        $offers = [];
+        $requests[] = [];
+
         foreach ($holidays as $holiday) {
             [$holidayDay, $holidayMonth] = explode('-', $holiday);
 
@@ -122,22 +129,53 @@ class GenerateOffersForAdConfigs implements ShouldQueue
                     $endDate = $startDate->copy()->addDays($nights - 1);
 
                     if ($startDate->between($today, $threeMonthsFromNow) && $endDate->between($today, $threeMonthsFromNow)) {
-                        $offers[] = [
-                            'ad_config_id' => $adConfig->id,
-                            'airport_name' => $airport->nameAirport,
-                            'destination_name' => $destination->name,
-                            'type' => OfferCategoryEnum::HOLIDAY->value,
-                            'start_date' => $startDate->toDateString(),
-                            'end_date' => $endDate->toDateString(),
-                            'holiday' => $holidayDate->toDateString(),
+                        $batchId = Str::orderedUuid();
+
+                        $requests[] = [
+                            'origin_airport' => $airport,
+                            //                            'origin_airport' => $airport->id,
+                            'destination_airport' => $destinationAirport,
+                            //                            'destination_airport' => $destinationAirport->id,
+                            'date' => $startDate->toDateString(),
+                            'nights' => $nights,
+                            'return_date' => $endDate->toDateString(),
+                            'origin_id' => $adConfig->origin_id,
+                            'destination_id' => $destination->id,
+                            'rooms' => [
+                                [
+                                    'adults' => 2,
+                                    'children' => 0,
+                                    'infants' => 0,
+                                ],
+                            ],
+                            'batch_id' => $batchId,
+                            //                            'holiday' => $holidayDate->toDateString(),
+                            //                            'type' => OfferCategoryEnum::HOLIDAY->value,
                         ];
                     }
                 }
             }
         }
 
-        foreach ($offers as $offerData) {
-            Log::info('Offer data: ', $offerData);
+        foreach ($requests as $request) {
+            if (! empty($request)) {
+                //                Log::info('Offer data: ', $request);
+
+                Bus::chain([
+                    new ProcessFlightsJob($request),
+                    new LiveSearchHotels(
+                        $request['date'],
+                        $request['nights'],
+                        $request['destination_id'],
+                        2, // Adults
+                        0, // Children
+                        0, // Infants
+                        $request['rooms'],
+                        $request['batch_id']
+                    ),
+                    new ProcessResponsesJob($request['batch_id']),
+                ])->dispatch();
+            }
         }
     }
 
