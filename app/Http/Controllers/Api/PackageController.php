@@ -582,10 +582,10 @@ class PackageController extends Controller
             Destination::query()
                 ->select(['id', 'name', 'description', 'city', 'country', 'created_at', 'updated_at', 'show_in_homepage'])
                 ->with([
-                    'destinationPhotos:id,destination_id,file_path', // Eager load photos with necessary fields
-                    'destinationOrigin.packages.outboundFlight:id,package_config_id,departure,adults,children,infants', // Load outbound flight
-                    'destinationOrigin.packages.inboundFlight:id,package_config_id,departure', // Load inbound flight
-                    'destinationOrigin.packages.packageConfig:id,destination_origin_id', // Load package config
+                    'destinationPhotos:id,destination_id,file_path',
+                    'destinationOrigin.packages.outboundFlight:id,package_config_id,departure,adults,children,infants',
+                    'destinationOrigin.packages.inboundFlight:id,package_config_id,departure',
+                    'destinationOrigin.packages.packageConfig:id,destination_origin_id',
                 ])
                 ->whereHas('destinationOrigin.packages')
                 ->chunk(100, function ($destinations) use (&$packages, $originId) {
