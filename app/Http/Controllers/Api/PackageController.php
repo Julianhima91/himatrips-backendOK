@@ -655,6 +655,12 @@ class PackageController extends Controller
     public function getAllFlights($batchId)
     {
         $package = Package::where('batch_id', $batchId)->first();
+
+        if (!$package)
+        {
+            return response()->json(['message' => 'Incorrect batch id.'], 400);
+        }
+
         $flights = json_decode($package->outboundFlight->all_flights);
 
         return response()->json([
@@ -669,6 +675,12 @@ class PackageController extends Controller
         ]);
 
         $package = Package::where('batch_id', $batchId)->first();
+
+        if (!$package)
+        {
+            return response()->json(['message' => 'Incorrect batch id.'], 400);
+        }
+
         $outboundFlight = $package->outboundFlight;
         $inboundFlight = $package->inboundFlight;
         $flights = json_decode($outboundFlight->all_flights, true);
