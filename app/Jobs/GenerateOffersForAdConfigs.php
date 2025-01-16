@@ -173,7 +173,7 @@ class GenerateOffersForAdConfigs implements ShouldQueue
                         $request['rooms'],
                         $request['batch_id']
                     ),
-                    new ProcessResponsesJob($request['batch_id']),
+                    new ProcessResponsesJob($request['batch_id'], $request, $adConfig),
                 ])->dispatch();
             }
         }
