@@ -651,4 +651,80 @@ class PackageController extends Controller
             ['destination_origin' => $cheapestPackage->packageConfig->destination_origin],
         );
     }
+
+    public function getAllFlights($batchId)
+    {
+        $package = Package::where('batch_id', $batchId)->first();
+        $flights = json_decode($package->outboundFlight->all_flights);
+
+        return response()->json([
+            'data' => $flights,
+        ], 200);
+    }
+
+    public function updateFlight($batchId, Request $request)
+    {
+        $request->validate([
+            'flight_index' => ['required', 'numeric'],
+        ]);
+
+        $package = Package::where('batch_id', $batchId)->first();
+        $outboundFlight = $package->outboundFlight;
+        $inboundFlight = $package->inboundFlight;
+        $flights = json_decode($outboundFlight->all_flights, true);
+        $flightIndex = $request->input('flight_index');
+
+        if (isset($flights[$flightIndex])) {
+            $oldPrice = $outboundFlight->price;
+            $newPrice = $flights[$flightIndex]['price'];
+            $priceDifference = $newPrice - $oldPrice;
+
+            DB::beginTransaction();
+            $outboundFlight->update([
+                'price' => $flights[$flightIndex]['price'],
+                'departure' => $flights[$flightIndex]['departure'],
+                'arrival' => $flights[$flightIndex]['arrival'],
+                'airline' => $flights[$flightIndex]['airline'],
+                'stop_count' => $flights[$flightIndex]['stopCount'],
+                'origin' => $flights[$flightIndex]['origin'],
+                'destination' => $flights[$flightIndex]['destination'],
+                'adults' => $flights[$flightIndex]['adults'],
+                'children' => $flights[$flightIndex]['children'],
+                'infants' => $flights[$flightIndex]['infants'],
+                'extra_data' => json_encode($flights[$flightIndex]),
+                'segments' => $flights[$flightIndex]['segments'],
+            ]);
+
+            $inboundFlight->update([
+                'price' => $flights[$flightIndex]['price'],
+                'departure' => $flights[$flightIndex]['departure_flight_back'],
+                'arrival' => $flights[$flightIndex]['arrival_flight_back'],
+                'airline' => $flights[$flightIndex]['airline_back'],
+                'stop_count' => $flights[$flightIndex]['stopCount_back'],
+                'origin' => $flights[$flightIndex]['origin_back'],
+                'destination' => $flights[$flightIndex]['destination_back'],
+                'adults' => $flights[$flightIndex]['adults'],
+                'children' => $flights[$flightIndex]['children'],
+                'infants' => $flights[$flightIndex]['infants'],
+                'extra_data' => json_encode($flights[$flightIndex]),
+                'segments' => $flights[$flightIndex]['segments_back'],
+            ]);
+
+            $packages = Package::where('outbound_flight_id', $outboundFlight->id)->get();
+
+            foreach ($packages as $package) {
+                $package->total_price += $priceDifference;
+                $package->save();
+            }
+
+            DB::commit();
+
+            return response()->json([
+                'message' => 'Success',
+            ], 200);
+        } else {
+            return response()->json(['message' => 'Invalid flight index.'], 400);
+        }
+
+    }
 }
