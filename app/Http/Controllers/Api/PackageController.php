@@ -652,19 +652,44 @@ class PackageController extends Controller
         );
     }
 
-    public function getAllFlights($batchId)
+    public function getAllFlights($batchId, Request $request)
     {
         $package = Package::where('batch_id', $batchId)->first();
 
-        if (!$package)
-        {
+        if (! $package) {
             return response()->json(['message' => 'Incorrect batch id.'], 400);
         }
 
-        $flights = json_decode($package->outboundFlight->all_flights);
+        $flights = json_decode($package->outboundFlight->all_flights, true);
+
+        if (! $flights) {
+            return response()->json(['message' => 'No flights available for this package.'], 404);
+        }
+
+        $stops = $request->input('stops');
+
+        $filteredFlights = [];
+        foreach ($flights as $originalIndex => $flight) {
+            if (is_null($stops) || ($stops == 0 && $flight['stopCount'] == $stops && $flight['stopCount_back'] == $stops)) {
+                $filteredFlights[] = [
+                    'filtered_index' => count($filteredFlights),
+                    'original_index' => $originalIndex,
+                    'flight' => $flight,
+                ];
+            } elseif ($stops >= 1 && (
+                ($flight['stopCount'] == $stops && $flight['stopCount_back'] < $stops) ||
+                ($flight['stopCount_back'] == $stops && $flight['stopCount'] < $stops)
+            )) {
+                $filteredFlights[] = [
+                    'filtered_index' => count($filteredFlights),
+                    'original_index' => $originalIndex,
+                    'flight' => $flight,
+                ];
+            }
+        }
 
         return response()->json([
-            'data' => $flights,
+            'data' => $filteredFlights,
         ], 200);
     }
 
@@ -676,8 +701,7 @@ class PackageController extends Controller
 
         $package = Package::where('batch_id', $batchId)->first();
 
-        if (!$package)
-        {
+        if (! $package) {
             return response()->json(['message' => 'Incorrect batch id.'], 400);
         }
 
