@@ -31,8 +31,7 @@ class ProcessFlightsJob implements ShouldQueue
         $flights = Cache::get("batch:{$batchId}:flights");
 
         if ($flights) {
-            Log::info("Flights data successfully cached and retrieved for batch: {$batchId}");
-
+            //            Log::info("Flights data successfully cached and retrieved for batch: {$batchId}");
         } else {
             Log::warning("Flights data not found in cache for batch: {$batchId}");
         }

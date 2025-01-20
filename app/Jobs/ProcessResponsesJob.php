@@ -2,12 +2,12 @@
 
 namespace App\Jobs;
 
+use App\Models\Ad;
 use App\Models\AdConfig;
 use App\Models\Destination;
 use App\Models\FlightData;
 use App\Models\HotelData;
 use App\Models\HotelOffer;
-use App\Models\Package;
 use App\Models\PackageConfig;
 use App\Settings\MaxTransitTime;
 use Illuminate\Bus\Queueable;
@@ -43,11 +43,27 @@ class ProcessResponsesJob implements ShouldQueue
         $hotels = Cache::get("batch:{$this->batchId}:hotels");
 
         if ($flights && $hotels) {
-            Log::info("Aggregated Response for batch {$this->batchId}");
-            //todo: logic around saving
+            //            Log::info("Aggregated Response for batch {$this->batchId}");
             [$outbound_flight_hydrated, $inbound_flight_hydrated] = $this->handleFlights($flights, $this->request['date'], $this->batchId, $this->request['return_date'], $this->request['origin_id'], $this->request['destination_id']);
-            $adIds = $this->handleHotels($hotels, $outbound_flight_hydrated, $inbound_flight_hydrated, $this->batchId, $this->request['origin_id'], $this->request['destination_id'], $this->request['rooms']);
+            if (is_null($outbound_flight_hydrated) && is_null($inbound_flight_hydrated)) {
+                Log::warning('Both outbound and inbound flights are null. Terminating job.', [
+                    'batch_id' => $this->batchId,
+                ]);
 
+                return;
+            }
+            $this->handleHotelsAndPackages($hotels, $outbound_flight_hydrated, $inbound_flight_hydrated, $this->batchId, $this->request['origin_id'], $this->request['destination_id'], $this->request['rooms']);
+            $extraOptions = $this->adConfig->extra_options;
+
+            foreach ($extraOptions as $option) {
+                if ($option === 'cheapest_hotel') {
+                    $this->getCheapestHotel();
+                }
+
+                if ($option === 'cheapest_date') {
+                    $this->getCheapestDate();
+                }
+            }
         } else {
             Log::error("Missing data for batch {$this->batchId}");
         }
@@ -55,8 +71,6 @@ class ProcessResponsesJob implements ShouldQueue
 
     private function handleFlights($flights, $date, $batchId, $return_date, $origin_id, $destination_id): array
     {
-        //        ray($batchId)->purple();
-
         $outbound_flight_direct = $flights->filter(function ($flight) {
             if ($flight == null) {
                 return false;
@@ -72,9 +86,6 @@ class ProcessResponsesJob implements ShouldQueue
                     ['origin_id', $origin_id],
                 ]);
             })->first();
-
-        ray('BEFORE')->purple();
-        ray($flights)->purple();
 
         if ($outbound_flight_direct->isNotEmpty()) {
             $outbound_flight = $outbound_flight_direct;
@@ -106,8 +117,6 @@ class ProcessResponsesJob implements ShouldQueue
                 }
             }
         }
-        ray('AFTER')->purple();
-        ray($flights)->purple();
 
         $destination = Destination::find($destination_id);
 
@@ -139,51 +148,53 @@ class ProcessResponsesJob implements ShouldQueue
         ]);
 
         if ($flights->isEmpty()) {
-            Log::info("No outbound_flight for batch {$this->batchId}");
+            Log::warning("No flight for batch {$this->batchId}");
+
+            return [null, null];
+        } else {
+            $first_outbound_flight = $flights[0];
+
+            $outbound_flight_hydrated = FlightData::create([
+                'price' => $first_outbound_flight->price,
+                'departure' => $first_outbound_flight->departure,
+                'arrival' => $first_outbound_flight->arrival,
+                'airline' => $first_outbound_flight->airline,
+                'stop_count' => $first_outbound_flight->stopCount,
+                'origin' => $first_outbound_flight->origin,
+                'destination' => $first_outbound_flight->destination,
+                'adults' => $first_outbound_flight->adults,
+                'children' => $first_outbound_flight->children,
+                'infants' => $first_outbound_flight->infants,
+                'extra_data' => json_encode($first_outbound_flight),
+                'segments' => $first_outbound_flight->segments,
+                'package_config_id' => $packageConfig->id,
+                'ad_config_id' => $this->adConfig->id,
+                'all_flights' => json_encode($flights),
+            ]);
+
+            $inbound_flight_hydrated = FlightData::create([
+                'price' => $first_outbound_flight->price,
+                'departure' => $first_outbound_flight->departure_flight_back,
+                'arrival' => $first_outbound_flight->arrival_flight_back,
+                'airline' => $first_outbound_flight->airline_back,
+                'stop_count' => $first_outbound_flight->stopCount_back,
+                'origin' => $first_outbound_flight->origin_back,
+                'destination' => $first_outbound_flight->destination_back,
+                'adults' => $first_outbound_flight->adults,
+                'children' => $first_outbound_flight->children,
+                'infants' => $first_outbound_flight->infants,
+                'extra_data' => json_encode($first_outbound_flight),
+                'segments' => $first_outbound_flight->segments_back,
+                'package_config_id' => $packageConfig->id,
+                'ad_config_id' => $this->adConfig->id,
+                'all_flights' => json_encode($first_outbound_flight),
+            ]);
+
+            return [$outbound_flight_hydrated, $inbound_flight_hydrated];
         }
-
-        $first_outbound_flight = $flights->first();
-
-        $outbound_flight_hydrated = FlightData::create([
-            'price' => $first_outbound_flight->price,
-            'departure' => $first_outbound_flight->departure,
-            'arrival' => $first_outbound_flight->arrival,
-            'airline' => $first_outbound_flight->airline,
-            'stop_count' => $first_outbound_flight->stopCount,
-            'origin' => $first_outbound_flight->origin,
-            'destination' => $first_outbound_flight->destination,
-            'adults' => $first_outbound_flight->adults,
-            'children' => $first_outbound_flight->children,
-            'infants' => $first_outbound_flight->infants,
-            'extra_data' => json_encode($first_outbound_flight),
-            'segments' => $first_outbound_flight->segments,
-            'package_config_id' => $packageConfig->id,
-            'ad_config_id' => $this->adConfig->id,
-            'all_flights' => json_encode($flights),
-        ]);
-
-        $inbound_flight_hydrated = FlightData::create([
-            'price' => $first_outbound_flight->price,
-            'departure' => $first_outbound_flight->departure_flight_back,
-            'arrival' => $first_outbound_flight->arrival_flight_back,
-            'airline' => $first_outbound_flight->airline_back,
-            'stop_count' => $first_outbound_flight->stopCount_back,
-            'origin' => $first_outbound_flight->origin_back,
-            'destination' => $first_outbound_flight->destination_back,
-            'adults' => $first_outbound_flight->adults,
-            'children' => $first_outbound_flight->children,
-            'infants' => $first_outbound_flight->infants,
-            'extra_data' => json_encode($first_outbound_flight),
-            'segments' => $first_outbound_flight->segments_back,
-            'package_config_id' => $packageConfig->id,
-            'ad_config_id' => $this->adConfig->id,
-            'all_flights' => json_encode($first_outbound_flight),
-        ]);
-
-        return [$outbound_flight_hydrated, $inbound_flight_hydrated];
     }
 
-    private function handleHotels($hotels, mixed $outbound_flight_hydrated, mixed $inbound_flight_hydrated, $batchId, $origin_id, $destination_id, $roomObject)
+    private function handleHotelsAndPackages($hotels, mixed $outbound_flight_hydrated, mixed $inbound_flight_hydrated, $batchId, $origin_id, $destination_id, $roomObject): void
     {
         $packageConfig = PackageConfig::query()
             ->whereHas('destination_origin', function ($query) use ($origin_id, $destination_id) {
@@ -193,8 +204,6 @@ class ProcessResponsesJob implements ShouldQueue
                 ]);
             })->first();
 
-        $package_ids = [];
-        //todo: insert hotel data with ad config
         foreach ($hotels as $hotel_result) {
             $hotel_data = HotelData::create([
                 'hotel_id' => $hotel_result->hotel_id,
@@ -241,8 +250,7 @@ class ProcessResponsesJob implements ShouldQueue
             $cheapestOffer = collect($hotel_data->offers)->sortBy('TotalPrice')->first();
 
             $hotel_data->update(['price' => $cheapestOffer->total_price_for_this_offer + $transferPrice]);
-
-            $package = Package::create([
+            Ad::create([
                 'hotel_data_id' => $hotel_data->id,
                 'outbound_flight_id' => $outbound_flight_hydrated->id,
                 'inbound_flight_id' => $inbound_flight_hydrated->id,
@@ -250,11 +258,57 @@ class ProcessResponsesJob implements ShouldQueue
                 'total_price' => $first_offer->total_price_for_this_offer,
                 'batch_id' => $batchId,
                 'package_config_id' => $packageConfig->id ?? null,
+                'ad_config_id' => $this->adConfig->id,
             ]);
+        }
+    }
 
-            $package_ids[] = $package->id;
+    private function getCheapestHotel(): void
+    {
+        $ads = Ad::query()->where('batch_id', $this->batchId)->get();
+
+        $cheapestOffer = null;
+        $cheapestAd = null;
+
+        foreach ($ads as $ad) {
+            $hotelData = $ad->hotelData;
+
+            if ($hotelData) {
+                $currentCheapestOffer = $hotelData->offers()->orderBy('price')->first();
+
+                if ($currentCheapestOffer) {
+                    if (! $cheapestOffer || $currentCheapestOffer->price < $cheapestOffer->price) {
+                        $cheapestOffer = $currentCheapestOffer;
+                        $cheapestAd = $ad;
+                    }
+                }
+            }
         }
 
-        return $package_ids;
+        if ($cheapestOffer) {
+            Log::info('Cheapest Ad: '.$cheapestAd);
+
+            $adsToDelete = Ad::query()
+                ->where('batch_id', $this->batchId)
+                ->where('id', '!=', $cheapestAd->id)
+                ->get();
+
+            foreach ($adsToDelete as $ad) {
+                if ($ad->hotelData) {
+                    $ad->hotelData->delete();
+                }
+            }
+
+            Ad::query()
+                ->where('batch_id', $this->batchId)
+                ->where('id', '!=', $cheapestAd->id)
+                ->delete();
+        } else {
+            Log::warning('No offers found for batch', [
+                'batch_id' => $this->batchId,
+            ]);
+        }
     }
+
+    private function getCheapestDate() {}
 }

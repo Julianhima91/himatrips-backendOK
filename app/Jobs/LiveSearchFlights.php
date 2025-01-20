@@ -68,6 +68,25 @@ class LiveSearchFlights implements ShouldQueue
 
         try {
             $response = $request->send();
+
+            if (isset($response->json()['data']['context']['status']) && $response->json()['data']['context']['status'] == 'incomplete') {
+                $response = $this->getIncompleteResults($response->json()['data']['context']['sessionId']);
+            }
+
+            $itineraries = $response->dtoOrFail();
+
+            if ($itineraries->isEmpty()) {
+                ray('empty itineraries 1111');
+                $this->release(1);
+            }
+
+            cache()->put('flight_'.$this->date, $itineraries, now()->addMinutes(5));
+            cache()->put('flight_'.$this->return_date, $itineraries, now()->addMinutes(5));
+            Cache::put("batch:{$this->batchId}:flights", $itineraries, now()->addMinutes(5));
+
+            if (! Cache::get("job_completed_{$this->batchId}")) {
+                Cache::put("job_completed_{$this->batchId}", true);
+            }
         } catch (\Exception $e) {
             //if its the first attempt, retry
             if ($this->attempts() == 1) {
@@ -78,29 +97,21 @@ class LiveSearchFlights implements ShouldQueue
         }
 
         //check if context is set, and if it is incomplete, then we have to hit another endpoint
-        if (isset($response->json()['data']['context']['status']) && $response->json()['data']['context']['status'] == 'incomplete') {
-            $response = $this->getIncompleteResults($response->json()['data']['context']['sessionId']);
-        }
 
-        try {
-            $itineraries = $response->dtoOrFail();
-
-            if ($itineraries->isEmpty()) {
-                ray('empty itineraries 1111');
-                $this->release(1);
-            }
-        } catch (\Exception $e) {
-            $this->fail($e);
-        }
+        //        try {
+        //
+        //        } catch (\Exception $e) {
+        //            $this->fail($e);
+        //        }
 
         //put it in cache
-        cache()->put('flight_'.$this->date, $itineraries, now()->addMinutes(5));
-        cache()->put('flight_'.$this->return_date, $itineraries, now()->addMinutes(5));
-        Cache::put("batch:{$this->batchId}:flights", $itineraries, now()->addMinutes(5));
-
-        if (! Cache::get("job_completed_{$this->batchId}")) {
-            Cache::put("job_completed_{$this->batchId}", true);
-        }
+        //        cache()->put('flight_'.$this->date, $itineraries, now()->addMinutes(5));
+        //        cache()->put('flight_'.$this->return_date, $itineraries, now()->addMinutes(5));
+        //        Cache::put("batch:{$this->batchId}:flights", $itineraries, now()->addMinutes(5));
+        //
+        //        if (! Cache::get("job_completed_{$this->batchId}")) {
+        //            Cache::put("job_completed_{$this->batchId}", true);
+        //        }
     }
 
     private function getIncompleteResults($session)
