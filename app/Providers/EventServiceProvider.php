@@ -2,8 +2,10 @@
 
 namespace App\Providers;
 
-use App\Events\JobChainCompletedEvent;
-use App\Listeners\JobChainCompletedListener;
+use App\Events\CheapestDateEvent;
+use App\Events\CheckChainJobCompletedEvent;
+use App\Listeners\CheapestDateListener;
+use App\Listeners\CheckChainJobCompletedListener;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Auth\Listeners\SendEmailVerificationNotification;
 use Illuminate\Foundation\Support\Providers\EventServiceProvider as ServiceProvider;
@@ -20,8 +22,11 @@ class EventServiceProvider extends ServiceProvider
         Registered::class => [
             SendEmailVerificationNotification::class,
         ],
-        JobChainCompletedEvent::class => [
-            JobChainCompletedListener::class,
+        CheapestDateEvent::class => [
+            CheapestDateListener::class,
+        ],
+        CheckChainJobCompletedEvent::class => [
+            CheckChainJobCompletedListener::class,
         ],
     ];
 

@@ -28,4 +28,9 @@ class Ad extends Model
     {
         return $this->belongsTo(AdConfig::class, 'ad_config_id');
     }
+
+    public function destination(): BelongsTo
+    {
+        return $this->belongsTo(Destination::class, 'destination_id');
+    }
 }

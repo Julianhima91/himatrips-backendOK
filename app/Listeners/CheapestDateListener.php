@@ -2,19 +2,19 @@
 
 namespace App\Listeners;
 
-use App\Events\JobChainCompletedEvent;
+use App\Events\CheapestDateEvent;
 use App\Models\Ad;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 
-class JobChainCompletedListener
+class CheapestDateListener
 {
     public function __construct() {}
 
     /**
      * Handle the event.
      */
-    public function handle(JobChainCompletedEvent $event): void
+    public function handle(CheapestDateEvent $event): void
     {
         $batchIds = Cache::get('batch_ids');
         $currentBatchIds = Cache::get('current_batch_ids');

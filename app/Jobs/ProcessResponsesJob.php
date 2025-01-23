@@ -2,7 +2,8 @@
 
 namespace App\Jobs;
 
-use App\Events\JobChainCompletedEvent;
+use App\Events\CheapestDateEvent;
+use App\Events\CheckChainJobCompletedEvent;
 use App\Models\Ad;
 use App\Models\AdConfig;
 use App\Models\Destination;
@@ -65,9 +66,11 @@ class ProcessResponsesJob implements ShouldQueue
                 }
 
                 if ($option === 'cheapest_date') {
-                    event(new JobChainCompletedEvent($this->request['batch_id'], $this->batchIds));
+                    event(new CheapestDateEvent($this->request['batch_id'], $this->batchIds));
                 }
             }
+
+            event(new CheckChainJobCompletedEvent($this->request['batch_id'], $this->batchIds));
         } else {
             Log::error("Missing data for batch {$this->batchId}");
         }
@@ -142,6 +145,7 @@ class ProcessResponsesJob implements ShouldQueue
             });
         });
 
+        ray($flights)->purple();
         if ($outbound_flight_morning->isNotEmpty()) {
             $flights = $outbound_flight_morning;
         }
@@ -159,6 +163,10 @@ class ProcessResponsesJob implements ShouldQueue
                 unset($batchIds[array_search($this->batchId, $batchIds)]);
                 Cache::put('batch_ids', $batchIds, 90);
             }
+
+            $batchIds = Cache::get('create_csv');
+            unset($batchIds[array_search($this->batchId, $batchIds)]);
+            Cache::put('create_csv', $batchIds, 90);
 
             return [null, null];
         } else {
@@ -269,6 +277,7 @@ class ProcessResponsesJob implements ShouldQueue
                 'batch_id' => $batchId,
                 'package_config_id' => $packageConfig->id ?? null,
                 'ad_config_id' => $this->adConfig->id,
+                'destination_id' => $destination_id,
             ]);
         }
     }
@@ -296,7 +305,7 @@ class ProcessResponsesJob implements ShouldQueue
         }
 
         if ($cheapestOffer) {
-            Log::info('Cheapest Ad: '.$cheapestAd);
+            //            Log::info('Cheapest Ad: '.$cheapestAd);
 
             $adsToDelete = Ad::query()
                 ->where('batch_id', $this->batchId)
