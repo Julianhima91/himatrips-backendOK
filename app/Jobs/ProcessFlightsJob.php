@@ -2,6 +2,7 @@
 
 namespace App\Jobs;
 
+use App\Models\AdConfig;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -16,9 +17,12 @@ class ProcessFlightsJob implements ShouldQueue
 
     private $request;
 
-    public function __construct(array $request)
+    private $adConfigId;
+
+    public function __construct(array $request, $adConfigId)
     {
         $this->request = $request;
+        $this->adConfigId = $adConfigId;
     }
 
     public function handle(): void
@@ -31,7 +35,15 @@ class ProcessFlightsJob implements ShouldQueue
         $flights = Cache::get("batch:{$batchId}:flights");
 
         if ($flights) {
-            //            Log::info("Flights data successfully cached and retrieved for batch: {$batchId}");
+            Log::info("Flights data successfully cached and retrieved for batch: {$batchId}");
+            $adConfig = AdConfig::find($this->adConfigId);
+
+            if (in_array('cheapest_date', $adConfig->extra_options)) {
+                $batchIds = Cache::get('batch_ids');
+                $batchIds[] = (string) $batchId;
+                Cache::put('batch_ids', $batchIds, 90);
+            }
+
         } else {
             Log::warning("Flights data not found in cache for batch: {$batchId}");
         }

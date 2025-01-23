@@ -2,6 +2,7 @@
 
 namespace App\Jobs;
 
+use App\Events\JobChainCompletedEvent;
 use App\Models\Ad;
 use App\Models\AdConfig;
 use App\Models\Destination;
@@ -30,11 +31,14 @@ class ProcessResponsesJob implements ShouldQueue
 
     private $adConfig;
 
-    public function __construct(string $batchId, array $request, AdConfig $adConfig)
+    private $batchIds;
+
+    public function __construct(string $batchId, array $request, AdConfig $adConfig, array $batchIds)
     {
         $this->batchId = $batchId;
         $this->request = $request;
         $this->adConfig = $adConfig;
+        $this->batchIds = $batchIds;
     }
 
     public function handle()
@@ -61,7 +65,7 @@ class ProcessResponsesJob implements ShouldQueue
                 }
 
                 if ($option === 'cheapest_date') {
-                    $this->getCheapestDate();
+                    event(new JobChainCompletedEvent($this->request['batch_id'], $this->batchIds));
                 }
             }
         } else {
@@ -149,6 +153,12 @@ class ProcessResponsesJob implements ShouldQueue
 
         if ($flights->isEmpty()) {
             Log::warning("No flight for batch {$this->batchId}");
+
+            if (in_array('cheapest_date', $this->adConfig->extra_options)) {
+                $batchIds = Cache::get('batch_ids');
+                unset($batchIds[array_search($this->batchId, $batchIds)]);
+                Cache::put('batch_ids', $batchIds, 90);
+            }
 
             return [null, null];
         } else {

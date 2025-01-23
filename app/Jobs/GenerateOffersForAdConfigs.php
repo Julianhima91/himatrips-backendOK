@@ -82,7 +82,6 @@ class GenerateOffersForAdConfigs implements ShouldQueue
                 }
 
                 foreach ($destination->offer_category as $offerCategory) {
-
                     match ($offerCategory) {
                         OfferCategoryEnum::HOLIDAY->value => $this->createHolidayOffer($adConfig, $airport, $destination, $destinationAirport),
                         OfferCategoryEnum::ECONOMIC->value => $this->createEconomicOffer($adConfig, $airport, $destination, $destinationAirport),
@@ -157,12 +156,15 @@ class GenerateOffersForAdConfigs implements ShouldQueue
             }
         }
 
+        $batchIds = array_map('strval', array_column($requests, 'batch_id'));
+        //        Log::warning(count($requests) . ' requests created.');
+
         foreach ($requests as $request) {
             if (! empty($request)) {
                 //                Log::info('Offer data: ', $request);
 
                 Bus::chain([
-                    new ProcessFlightsJob($request),
+                    new ProcessFlightsJob($request, $this->adConfigId),
                     new LiveSearchHotels(
                         $request['date'],
                         $request['nights'],
@@ -173,10 +175,14 @@ class GenerateOffersForAdConfigs implements ShouldQueue
                         $request['rooms'],
                         $request['batch_id']
                     ),
-                    new ProcessResponsesJob($request['batch_id'], $request, $adConfig),
+                    new ProcessResponsesJob($request['batch_id'], $request, $adConfig, $batchIds),
                 ])->dispatch();
             }
         }
+        //
+        //        Bus::chain([
+        //            new CheapestDateJob($requests),
+        //        ])->dispatch();
     }
 
     private function createEconomicOffer(AdConfig $adConfig, mixed $airport, mixed $destination)
