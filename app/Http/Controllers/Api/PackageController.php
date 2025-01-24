@@ -687,8 +687,8 @@ class PackageController extends Controller
                         'flight' => $flight,
                     ];
                 } elseif ($stops >= 1 && (
-                    ($flight['stopCount'] == $stops && $flight['stopCount_back'] < $stops) ||
-                    ($flight['stopCount_back'] == $stops && $flight['stopCount'] < $stops)
+                    ($flight['stopCount'] == $stops && $flight['stopCount_back'] <= $stops) ||
+                    ($flight['stopCount_back'] == $stops && $flight['stopCount'] <= $stops)
                 )) {
                     $filteredFlights[] = [
                         'filtered_index' => count($filteredFlights),
