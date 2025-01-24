@@ -656,6 +656,8 @@ class PackageController extends Controller
     {
         $package = Package::where('batch_id', $batchId)->first();
 
+        $currentPrice = $package->outboundFlight->price;
+
         if (! $package) {
             return response()->json(['message' => 'Incorrect batch id.'], 400);
         }
@@ -667,28 +669,45 @@ class PackageController extends Controller
         }
 
         $stops = $request->input('stops');
+        $allStops = [];
 
+        $flights = array_filter($flights);
         $filteredFlights = [];
         foreach ($flights as $originalIndex => $flight) {
-            if (is_null($stops) || ($stops == 0 && $flight['stopCount'] == $stops && $flight['stopCount_back'] == $stops)) {
-                $filteredFlights[] = [
-                    'filtered_index' => count($filteredFlights),
-                    'original_index' => $originalIndex,
-                    'flight' => $flight,
-                ];
-            } elseif ($stops >= 1 && (
-                ($flight['stopCount'] == $stops && $flight['stopCount_back'] < $stops) ||
-                ($flight['stopCount_back'] == $stops && $flight['stopCount'] < $stops)
-            )) {
-                $filteredFlights[] = [
-                    'filtered_index' => count($filteredFlights),
-                    'original_index' => $originalIndex,
-                    'flight' => $flight,
-                ];
+            if ($flight) {
+                $allStops[] = $flight['stopCount'];
+                $allStops[] = $flight['stopCount_back'];
+                $priceDifference = $flight['price'] - $currentPrice;
+
+                if (is_null($stops) || ($stops == 0 && $flight['stopCount'] == $stops && $flight['stopCount_back'] == $stops)) {
+                    $filteredFlights[] = [
+                        'filtered_index' => count($filteredFlights),
+                        'original_index' => $originalIndex,
+                        'price_difference' => $priceDifference,
+                        'flight' => $flight,
+                    ];
+                } elseif ($stops >= 1 && (
+                    ($flight['stopCount'] == $stops && $flight['stopCount_back'] < $stops) ||
+                    ($flight['stopCount_back'] == $stops && $flight['stopCount'] < $stops)
+                )) {
+                    $filteredFlights[] = [
+                        'filtered_index' => count($filteredFlights),
+                        'original_index' => $originalIndex,
+                        'price_difference' => $priceDifference,
+                        'flight' => $flight,
+                    ];
+                }
+
             }
         }
 
+        $uniqueStops = array_values(array_unique($allStops));
+        sort($uniqueStops);
+
         return response()->json([
+            'filters' => [
+                'stops' => $uniqueStops,
+            ],
             'data' => $filteredFlights,
         ], 200);
     }
