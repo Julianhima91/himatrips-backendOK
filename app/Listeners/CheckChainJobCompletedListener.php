@@ -4,6 +4,7 @@ namespace App\Listeners;
 
 use App\Events\CheckChainJobCompletedEvent;
 use App\Models\Ad;
+use App\Models\AdConfigCsv;
 use App\Models\Holiday;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\File;
@@ -39,8 +40,12 @@ class CheckChainJobCompletedListener
                 ->orderBy('total_price', 'asc')
                 ->get();
             //
-            $csvPath = $this->exportAdsToCsv($ads);
+            [$csvPath, $adConfigId] = $this->exportAdsToCsv($ads);
 
+            AdConfigCsv::create([
+                'ad_config_id' => $adConfigId,
+                'file_path' => $csvPath,
+            ]);
             //            if ($ads->isNotEmpty()) {
             //                $smallestPriceAd = $ads->first();
             //
@@ -71,12 +76,14 @@ class CheckChainJobCompletedListener
         Log::info('Exporting ...');
         Log::info(count($ads));
 
-        $directory = storage_path('app/offers');
+        $adConfig = $ads[0]->ad_config_id;
+        $filename = 'ads_holiday_export_'.now()->format('YmdHis').'.csv';
+
+        $directory = storage_path('app/public/offers');
         if (! File::exists($directory)) {
             File::makeDirectory($directory, 0755, true);
         }
 
-        $filename = 'ads_export_'.now()->format('YmdHis').'.csv';
         $filepath = $directory.'/'.$filename;
 
         $file = fopen($filepath, 'w');
@@ -90,13 +97,14 @@ class CheckChainJobCompletedListener
         ]);
 
         foreach ($ads as $ad) {
+            Log::warning($ad->id);
             $nights = $ad->hotelData->number_of_nights;
             $pricePerPerson = $ad->total_price / 2;
             $departureDate = $ad->outboundFlight->departure->format('d/m');
             $arrivalDate = $ad->inboundFlight->departure->format('d/m');
             $origin = $ad->adConfig->origin->name;
-            $destination = $ad->destination->name;
-
+            $destination = $ad->destination;
+            $boardOptions = $ad->hotelData->cheapestOffer->first()->room_basis;
             //get holiday so we can include it in the description/title
 
             $departureFormatted = str_replace('/', '-', $departureDate);
@@ -114,7 +122,13 @@ class CheckChainJobCompletedListener
                 ->first();
 
             $description = "
-❣️ $holiday->name ne $origin Nga $destination ❣️";
+❣️ $holiday->name";
+
+            if ($boardOptions == 'AI') {
+                $description .= ' All Inclusive';
+            }
+
+            $description .= " ne $origin Nga $destination->name ❣️";
 
             $body = "
 ✈️ $departureDate - $arrivalDate ➥ $pricePerPerson €/P $nights Nete
@@ -142,6 +156,6 @@ Te Perfshira :
 
         fclose($file);
 
-        return $filepath;
+        return [$filename, $adConfig];
     }
 }

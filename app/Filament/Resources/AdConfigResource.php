@@ -3,6 +3,7 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\AdConfigResource\Pages;
+use App\Filament\Resources\AdConfigResource\RelationManagers\CSVRelationManager;
 use App\Models\AdConfig;
 use App\Models\Airport;
 use App\Models\Destination;
@@ -127,7 +128,7 @@ class AdConfigResource extends Resource
     public static function getRelations(): array
     {
         return [
-            //
+            CSVRelationManager::class,
         ];
     }
 

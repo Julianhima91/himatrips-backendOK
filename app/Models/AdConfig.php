@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class AdConfig extends Model
 {
@@ -33,5 +34,10 @@ class AdConfig extends Model
     public function setExtraOptionsAttribute($value)
     {
         $this->attributes['extra_options'] = json_encode($value);
+    }
+
+    public function csvs(): HasMany
+    {
+        return $this->hasMany(AdConfigCsv::class);
     }
 }

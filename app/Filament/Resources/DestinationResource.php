@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources;
 
+use App\Enums\BoardOptionEnum;
 use App\Enums\OfferCategoryEnum;
 use App\Filament\Resources\DestinationResource\Pages;
 use App\Filament\Resources\DestinationResource\RelationManagers;
@@ -80,15 +81,11 @@ class DestinationResource extends Resource
                 Forms\Components\Select::make('board_options')
                     ->multiple()
                     ->label('Board Options')
-                    ->options([
-                        'BB' => 'Bed & Breakfast',
-                        'HB' => 'Half Board',
-                        'FB' => 'Full Board',
-                        'AI' => 'All Inclusive',
-                        'RO' => 'Room Only',
-                        'CB' => 'Continental Breakfast',
-                        'BD' => 'Bed & Dinner',
-                    ])
+                    ->options(
+                        collect(BoardOptionEnum::cases())
+                            ->mapWithKeys(fn (BoardOptionEnum $option) => [$option->name => $option->getLabel()])
+                            ->toArray()
+                    )
                     ->placeholder('Select Board Options'),
                 Forms\Components\TimePicker::make('morning_flight_start_time')
                     ->live()
