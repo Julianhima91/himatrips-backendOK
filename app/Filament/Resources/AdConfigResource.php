@@ -4,12 +4,14 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\AdConfigResource\Pages;
 use App\Filament\Resources\AdConfigResource\RelationManagers\CSVRelationManager;
+use App\Jobs\GenerateOffersForAdConfigs;
 use App\Models\AdConfig;
 use App\Models\Airport;
 use App\Models\Destination;
 use App\Models\Origin;
 use Filament\Forms;
 use Filament\Forms\Form;
+use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Columns\TextColumn;
@@ -114,6 +116,21 @@ class AdConfigResource extends Resource
             ])
             ->filters([
                 //
+            ])
+            ->headerActions([
+                Tables\Actions\Action::make('generateOffers')
+                    ->label('Generate Offers')
+                    ->icon('heroicon-o-sparkles')
+                    ->color('success')
+                    ->action(function () {
+                        GenerateOffersForAdConfigs::dispatch();
+
+                        Notification::make()
+                            ->title('Job Dispatched')
+                            ->body('The GenerateOffersForAdConfigs job has been dispatched successfully.')
+                            ->success()
+                            ->send();
+                    }),
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),
