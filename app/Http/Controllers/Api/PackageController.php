@@ -16,6 +16,7 @@ use App\Models\Airport;
 use App\Models\Destination;
 use App\Models\DestinationOrigin;
 use App\Models\DirectFlightAvailability;
+use App\Models\Origin;
 use App\Models\Package;
 use App\Models\PackageConfig;
 use Carbon\Carbon;
@@ -80,6 +81,7 @@ class PackageController extends Controller
         })->first();
 
         $destination = Destination::where('id', $request->destination_id)->first();
+        $origin = Origin::where('id', $request->origin_id)->first();
 
         try {
             $batchId = Str::orderedUuid();
@@ -100,7 +102,7 @@ class PackageController extends Controller
             $jobs = [
                 new LiveSearchFlightsApi2($origin_airport, $destination_airport, $date, $return_date, $origin_airport, $destination_airport, $totalAdults, $totalChildren, $totalInfants, $batchId),
                 new LiveSearchFlights($date, $return_date, $origin_airport, $destination_airport, $totalAdults, $totalChildren, $totalInfants, $batchId),
-                new LiveSearchHotels($hotelStartDate, $request->nights, $request->destination_id, $totalAdults, $totalChildren, $totalInfants, $request->rooms, $batchId),
+                new LiveSearchHotels($hotelStartDate, $request->nights, $request->destination_id, $totalAdults, $totalChildren, $totalInfants, $request->rooms, $batchId, $origin->country_code ?? 'AL'),
             ];
 
             foreach ($jobs as $job) {
