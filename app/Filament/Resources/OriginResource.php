@@ -34,6 +34,8 @@ class OriginResource extends Resource
                 Forms\Components\TextInput::make('country')
                     ->required()
                     ->maxLength(255),
+                Forms\Components\TextInput::make('country_code')
+                    ->maxLength(2),
             ]);
     }
 
