@@ -90,9 +90,12 @@ class CheckChainJobCompletedListener
 
         fputcsv($file, [
             'ID',
+            'Destination ID',
             'Batch ID',
             'Total Price',
             'Title',
+//            'images with url, tags',
+//            'type (tags of destination)',
             'Description',
         ]);
 
@@ -147,6 +150,7 @@ Te Perfshira :
 
             fputcsv($file, [
                 $ad->id,
+                $destination->id,
                 $ad->batch_id,
                 $ad->total_price,
                 $description,
