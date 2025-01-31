@@ -112,7 +112,8 @@ class DestinationResource extends Resource
                 Forms\Components\Section::make('Destination Photo')
                     ->schema([
                         Forms\Components\FileUpload::make('Images')
-                            ->image()
+                            ->maxSize(30480)
+                            ->multiple()
                             ->panelLayout('square'),
                     ]),
             ]);

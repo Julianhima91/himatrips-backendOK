@@ -94,9 +94,18 @@ class CheckChainJobCompletedListener
             'Batch ID',
             'Total Price',
             'Title',
-//            'images with url, tags',
-//            'type (tags of destination)',
             'Description',
+            'Photos',
+            'Videos',
+            'Destination Tags',
+            'Address',
+            'City',
+            'Country',
+            'Latitude',
+            'Longitude',
+            'Neighborhood',
+            'Product Tag',
+            'Price Change',
         ]);
 
         foreach ($ads as $ad) {
@@ -108,7 +117,6 @@ class CheckChainJobCompletedListener
             $origin = $ad->adConfig->origin->name;
             $destination = $ad->destination;
             $boardOptions = $ad->hotelData->cheapestOffer->first()->room_basis;
-            //get holiday so we can include it in the description/title
 
             $departureFormatted = str_replace('/', '-', $departureDate);
             $arrivalFormatted = str_replace('/', '-', $arrivalDate);
@@ -148,6 +156,39 @@ Te Perfshira :
 📍 Durres : Rruga Aleksander Goga , Perballe shkolles Eftali Koci
 📞 +355699868907";
 
+            $photos = $destination->destinationPhotos->filter(function ($file) {
+                return ! str_ends_with($file->file_path, '.mp4');
+            })->map(function ($photo) {
+                return [
+                    'url' => url('/storage/'.$photo->file_path),
+                    'tags' => implode(', ', $photo->tags->pluck('name')->toArray()),
+                ];
+            });
+
+            $photoData = $photos->map(function ($photo) {
+                return $photo['url'].' '.$photo['tags'];
+            })->implode(', ');
+
+            $videos = $destination->destinationPhotos->filter(function ($file) {
+                return str_ends_with($file->file_path, '.mp4'); // Only videos
+            })->map(function ($video) {
+                return [
+                    'url' => url('/storage/'.$video->file_path),
+                    'tags' => implode(', ', $video->tags->pluck('name')->toArray()),
+                ];
+            });
+
+            $videoData = $videos->map(function ($video) {
+                return $video['url'].' '.$video['tags'];
+            })->implode(', ');
+
+            $destinationTags = implode(', ', $destination->tags->pluck('name')->toArray());
+
+            $mostExpensiveOffer = $ad->hotelData->mostExpensiveOffer;
+            $cheapestOffer = $ad->hotelData->cheapestOffer;
+
+            $priceDiff = $cheapestOffer[0]->price - $mostExpensiveOffer[0]->price;
+
             fputcsv($file, [
                 $ad->id,
                 $destination->id,
@@ -155,6 +196,17 @@ Te Perfshira :
                 $ad->total_price,
                 $description,
                 $body,
+                $photoData,
+                $videoData,
+                $destinationTags,
+                $destination->address,
+                $destination->city,
+                $destination->country,
+                $destination->latitude,
+                $destination->longitude,
+                $destination->neighborhood,
+                'Holiday',
+                $priceDiff,
             ]);
         }
 
