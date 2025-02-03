@@ -9,6 +9,10 @@ class Ad extends Model
 {
     protected $guarded = [];
 
+    protected $casts = [
+        'data' => 'array',
+    ];
+
     public function outboundFlight(): BelongsTo
     {
         return $this->belongsTo(FlightData::class, 'outbound_flight_id');

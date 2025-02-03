@@ -278,6 +278,7 @@ class ProcessResponsesJob implements ShouldQueue
                 'package_config_id' => $packageConfig->id ?? null,
                 'ad_config_id' => $this->adConfig->id,
                 'destination_id' => $destination_id,
+                'request_data' => json_encode($this->request),
             ]);
         }
     }

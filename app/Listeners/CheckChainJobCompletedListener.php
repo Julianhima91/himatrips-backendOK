@@ -106,6 +106,7 @@ class CheckChainJobCompletedListener
             'Neighborhood',
             'Product Tag',
             'Price Change',
+            'URL',
         ]);
 
         foreach ($ads as $ad) {
@@ -189,6 +190,19 @@ Te Perfshira :
 
             $priceDiff = $cheapestOffer[0]->price - $mostExpensiveOffer[0]->price;
 
+            $requestData = json_decode($ad->request_data, true);
+
+            $originName = strtolower($origin);
+            $destinationName = strtolower($destination->name);
+            $url = env('FRONT_URL')."/search-$originName-to-$destinationName/?query=".base64_encode(http_build_query([
+                'nights' => $requestData['nights'],
+                'checkin_date' => $requestData['date'],
+                'origin_id' => $requestData['origin_id'],
+                'destination_id' => $requestData['destination_id'],
+                'rooms' => $requestData['rooms'],
+                'page' => 1,
+            ]));
+
             fputcsv($file, [
                 $ad->id,
                 $destination->id,
@@ -207,6 +221,7 @@ Te Perfshira :
                 $destination->neighborhood,
                 'Holiday',
                 $priceDiff,
+                $url,
             ]);
         }
 
