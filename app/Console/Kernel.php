@@ -22,7 +22,7 @@ class Kernel extends ConsoleKernel
         $schedule->job(new DestinationOriginJob)->dailyAt('00:00');
         $schedule->command('check:package-hotels')->dailyAt('01:00');
         $schedule->command('check:package-flights')->dailyAt('01:00');
-        $schedule->command('flights:truncate')->monthlyOn('0')->at('00:00');
+        $schedule->command('flights:truncate')->monthlyOn(1, '00:00');
     }
 
     /**
