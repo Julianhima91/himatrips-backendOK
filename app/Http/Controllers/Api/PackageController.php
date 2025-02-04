@@ -335,7 +335,7 @@ class PackageController extends Controller
     {
         $packages = Package::withTrashed()->where('batch_id', $request->batch_id)
             ->when($request->price_range, function ($query) use ($request) {
-                $query->whereBetween('total_price', $request->price_range);
+                $query->whereBetween('total_price', [$request->price_range[0], $request->price_range[1]]);
             })
             ->when($request->review_scores, function ($query) use ($request) {
                 $query->whereHas('hotelData.hotel', function ($query) use ($request) {
@@ -373,7 +373,7 @@ class PackageController extends Controller
             ->values()
             ->all();
 
-        if ($packages && $packages[0]->deleted_at) {
+        if (! empty($packages) && isset($packages[0]->deleted_at)) {
             $livesearchRequest = new LivesearchRequest;
 
             $roomCount = $packages[0]->packageConfig->hotelData[0]->room_count;
@@ -431,7 +431,7 @@ class PackageController extends Controller
 
         return response()->json([
             'data' => [
-                'content_id' => $packages[0]->package_config_id,
+                'content_id' => isset($packages[0]->package_config_id),
                 'data' => $paginatedData,
                 'current_page' => $page,
                 'per_page' => $perPage,
