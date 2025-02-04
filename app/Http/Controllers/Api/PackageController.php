@@ -431,7 +431,7 @@ class PackageController extends Controller
 
         return response()->json([
             'data' => [
-                'content_id' => isset($packages[0]->package_config_id),
+                'content_id' => isset($packages[0]->package_config_id) ? $packages[0]->package_config_id : false,
                 'data' => $paginatedData,
                 'current_page' => $page,
                 'per_page' => $perPage,
