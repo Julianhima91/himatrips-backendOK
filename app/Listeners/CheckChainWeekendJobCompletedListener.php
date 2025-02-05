@@ -2,72 +2,61 @@
 
 namespace App\Listeners;
 
-use App\Events\CheckChainJobCompletedEvent;
 use App\Models\Ad;
 use App\Models\AdConfigCsv;
-use App\Models\Holiday;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Log;
 
-class CheckChainJobCompletedListener
+class CheckChainWeekendJobCompletedListener
 {
     public function __construct() {}
 
-    /**
-     * Handle the event.
-     */
-    public function handle(CheckChainJobCompletedEvent $event): void
+    public function handle(object $event): void
     {
+        //        Log::error('INSIDE LISTENER');
         $batchIds = Cache::get('create_csv');
         $currentCsvBatchIds = Cache::get('current_csv_batch_ids');
-        $currentCsvBatchIds[] = (string) $event->batchId;
-        Cache::put('current_csv_batch_ids', $currentCsvBatchIds, 90);
-        //
-        //        //todo when count of both arrays is the same, then proceed to sort them
+        if ($event->batchId) {
+            $currentCsvBatchIds[] = (string) $event->batchId;
+            Cache::put('current_csv_batch_ids', $currentCsvBatchIds, 90);
+        }
+
+        //todo when count of both arrays is the same, then proceed to sort them
         if (isset($currentCsvBatchIds) && isset($batchIds) && count($batchIds) === count($currentCsvBatchIds)) {
             sort($batchIds);
             sort($currentCsvBatchIds);
         }
 
-        //        Log::error($batchIds, $currentCsvBatchIds);
-        //                Log::error('comparison result: '.var_export($batchIds == $currentCsvBatchIds, true));
-        //
+        //        Log::info($batchIds);
+        //        Log::info($currentCsvBatchIds);
         if ($batchIds === $currentCsvBatchIds) {
+            Log::info('WE ARE INSIDE!!!!!!!!!!!!!WOOHOOOOOO');
+
+            Cache::forget('create_csv');
+            Cache::forget('current_csv_batch_ids');
+
+            foreach ($batchIds as $batchId) {
+                $cheapestAd = Ad::where('batch_id', $batchId)
+                    ->orderBy('total_price', 'asc')
+                    ->first();
+
+                Ad::where('batch_id', $batchId)
+                    ->where('id', '!=', optional($cheapestAd)->id)
+                    ->delete();
+            }
 
             $ads = Ad::query()
                 ->whereIn('batch_id', $batchIds)
                 ->orderBy('total_price', 'asc')
                 ->get();
-            //
+
             [$csvPath, $adConfigId] = $this->exportAdsToCsv($ads);
 
             AdConfigCsv::create([
                 'ad_config_id' => $adConfigId,
                 'file_path' => $csvPath,
             ]);
-            //            if ($ads->isNotEmpty()) {
-            //                $smallestPriceAd = $ads->first();
-            //
-            //                $adsToDelete = Ad::query()
-            //                    ->whereIn('batch_id', $batchIds)
-            //                    ->where('id', '!=', $smallestPriceAd->id)
-            //                    ->get();
-            //
-            //                foreach ($adsToDelete as $ad) {
-            //                    $ad->hotelData()->delete();
-            //                    $ad->outboundFlight()->delete();
-            //                    $ad->inboundFlight()->delete();
-            //                }
-            //
-            //                Ad::query()
-            //                    ->whereIn('batch_id', $batchIds)
-            //                    ->where('id', '!=', $smallestPriceAd->id)
-            //                    ->delete();
-            //            }
-            //
-            //            Cache::forget('batch_ids');
-            //            Cache::forget('current_batch_ids');
         }
     }
 
@@ -77,7 +66,7 @@ class CheckChainJobCompletedListener
         Log::info(count($ads));
 
         $adConfig = $ads[0]->ad_config_id;
-        $filename = 'ads_holiday_export_'.now()->format('YmdHis').'.csv';
+        $filename = 'ads_weekend_export_'.now()->format('YmdHis').'.csv';
 
         $directory = storage_path('app/public/offers');
         if (! File::exists($directory)) {
@@ -117,30 +106,8 @@ class CheckChainJobCompletedListener
             $arrivalDate = $ad->inboundFlight->departure->format('d/m');
             $origin = $ad->adConfig->origin->name;
             $destination = $ad->destination;
-            $boardOptions = $ad->hotelData->cheapestOffer->first()->room_basis;
 
-            $departureFormatted = str_replace('/', '-', $departureDate);
-            $arrivalFormatted = str_replace('/', '-', $arrivalDate);
-
-            $holiday = Holiday::query()
-                ->where(function ($query) use ($departureFormatted, $arrivalFormatted) {
-                    $query->whereRaw('STRCMP(?, day) <= 0', [$departureFormatted])
-                        ->orWhereRaw('STRCMP(?, day) >= 0', [$arrivalFormatted]);
-                })
-                ->where(function ($query) use ($departureFormatted, $arrivalFormatted) {
-                    $query->whereRaw('RIGHT(day, 2) = ?', [substr($departureFormatted, -2)])
-                        ->orWhereRaw('RIGHT(day, 2) = ?', [substr($arrivalFormatted, -2)]);
-                })
-                ->first();
-
-            $description = "
-❣️ $holiday->name";
-
-            if ($boardOptions == 'AI') {
-                $description .= ' All Inclusive';
-            }
-
-            $description .= " ne $origin Nga $destination->name ❣️";
+            $description = "❣️ Fundjave ne $origin Nga $destination->name ❣️";
 
             $body = "
 ✈️ $departureDate - $arrivalDate ➥ $pricePerPerson €/P $nights Nete

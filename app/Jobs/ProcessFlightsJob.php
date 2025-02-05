@@ -34,10 +34,7 @@ class ProcessFlightsJob implements ShouldQueue
 
         $flights = Cache::get("batch:{$batchId}:flights");
 
-        ray('FLIGHTS CACHE')->purple();
-        ray($flights)->purple();
         if ($flights) {
-            //            Log::info("Flights data successfully cached and retrieved for batch: {$batchId}");
             $adConfig = AdConfig::find($this->adConfigId);
 
             if (in_array('cheapest_date', $adConfig->extra_options)) {
@@ -49,7 +46,6 @@ class ProcessFlightsJob implements ShouldQueue
             $csvCache = Cache::get('create_csv');
             $csvCache[] = (string) $batchId;
             Cache::put('create_csv', $csvCache, 90);
-
         } else {
             Log::warning("Flights data not found in cache for batch: {$batchId}");
         }

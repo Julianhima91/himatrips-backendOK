@@ -2,8 +2,7 @@
 
 namespace App\Jobs;
 
-use App\Events\CheapestDateEvent;
-use App\Events\CheckChainJobCompletedEvent;
+use App\Events\CheckChainWeekendJobCompletedEvent;
 use App\Models\Ad;
 use App\Models\AdConfig;
 use App\Models\Destination;
@@ -22,7 +21,7 @@ use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 
-class ProcessResponsesJob implements ShouldQueue
+class ProcessWeekendResponsesJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
@@ -42,35 +41,36 @@ class ProcessResponsesJob implements ShouldQueue
         $this->batchIds = $batchIds;
     }
 
-    public function handle()
+    /**
+     * Execute the job.
+     */
+    public function handle(): void
     {
         $flights = Cache::get("batch:{$this->batchId}:flights");
         $hotels = Cache::get("batch:{$this->batchId}:hotels");
 
+        if (! $flights || ! $hotels) {
+            Log::error("Missing data for batch {$this->batchId}");
+            $this->cleanupInvalidBatch();
+            event(new CheckChainWeekendJobCompletedEvent(null, $this->batchIds));
+
+            return;
+        }
+
         if ($flights && $hotels) {
-            //            Log::info("Aggregated Response for batch {$this->batchId}");
             [$outbound_flight_hydrated, $inbound_flight_hydrated] = $this->handleFlights($flights, $this->request['date'], $this->batchId, $this->request['return_date'], $this->request['origin_id'], $this->request['destination_id']);
             if (is_null($outbound_flight_hydrated) && is_null($inbound_flight_hydrated)) {
                 Log::warning('Both outbound and inbound flights are null. Terminating job.', [
                     'batch_id' => $this->batchId,
                 ]);
+                $this->cleanupInvalidBatch();
+                event(new CheckChainWeekendJobCompletedEvent(null, $this->batchIds));
 
                 return;
             }
             $this->handleHotelsAndPackages($hotels, $outbound_flight_hydrated, $inbound_flight_hydrated, $this->batchId, $this->request['origin_id'], $this->request['destination_id'], $this->request['rooms']);
-            $extraOptions = $this->adConfig->extra_options;
 
-            foreach ($extraOptions as $option) {
-                if ($option === 'cheapest_hotel') {
-                    $this->getCheapestHotel();
-                }
-
-                if ($option === 'cheapest_date') {
-                    event(new CheapestDateEvent($this->request['batch_id'], $this->batchIds));
-                }
-            }
-
-            event(new CheckChainJobCompletedEvent($this->request['batch_id'], $this->batchIds));
+            event(new CheckChainWeekendJobCompletedEvent($this->request['batch_id'], $this->batchIds));
         } else {
             Log::error("Missing data for batch {$this->batchId}");
         }
@@ -127,27 +127,39 @@ class ProcessResponsesJob implements ShouldQueue
 
         $destination = Destination::find($destination_id);
 
-        $outbound_flight_morning = $flights->when($destination->prioritize_morning_flights, function (Collection $collection) use ($destination) {
+        $outbound_flight_morning = $flights->when(false, function (Collection $collection) use ($destination) {
             return $collection->filter(function ($flight) use ($destination) {
                 if ($flight == null) {
                     return false;
                 }
-                if ($destination->morning_flight_start_time && $destination->morning_flight_end_time) {
+                if ($destination->morning_flight_start_time && $destination->morning_flight_end_time &&
+                    $destination->evening_flight_start_time && $destination->evening_flight_end_time) {
                     $departure = Carbon::parse($flight->departure);
+                    $departureBack = Carbon::parse($flight->departure_flight_back);
 
+                    //                    Log::info('Destination morning flight start: ' . $destination->morning_flight_start_time);
+                    //                    Log::info('Flight Departure: ' . $departure);
+                    //                    Log::info('Destination morning flight end: ' . $destination->morning_flight_end_time);
                     $morningStart = Carbon::parse($flight->departure->format('Y-m-d').' '.$destination->morning_flight_start_time);
                     $morningEnd = Carbon::parse($flight->departure->format('Y-m-d').' '.$destination->morning_flight_end_time);
 
-                    return $departure->between($morningStart, $morningEnd);
+                    $eveningStart = Carbon::parse($flight->departure_flight_back->format('Y-m-d').' '.$destination->evening_flight_start_time);
+                    $eveningEnd = Carbon::parse($flight->departure_flight_back->format('Y-m-d').' '.$destination->evening_flight_end_time);
+
+                    $isBetween = $departure->between($morningStart, $morningEnd);
+                    $isBetweenBack = $departureBack->between($eveningStart, $eveningEnd);
+                    //                    Log::info('Result: ' . ($isBetween ? 'true' : 'false'));
+
+                    return $isBetween && $isBetweenBack;
                 }
 
                 return true;
             });
         });
 
-        ray($flights)->purple();
         if ($outbound_flight_morning->isNotEmpty()) {
             $flights = $outbound_flight_morning;
+            Log::info('Early morning and late evening flights were found for destination: '.$destination->name);
         }
 
         $flights = $flights->sortBy([
@@ -157,19 +169,14 @@ class ProcessResponsesJob implements ShouldQueue
 
         if ($flights->isEmpty()) {
             Log::warning("No flight for batch {$this->batchId}");
-
-            if (in_array('cheapest_date', $this->adConfig->extra_options)) {
-                $batchIds = Cache::get('batch_ids');
-                unset($batchIds[array_search($this->batchId, $batchIds)]);
-                Cache::put('batch_ids', $batchIds, 90);
-            }
-
-            $batchIds = Cache::get('create_csv');
-            unset($batchIds[array_search($this->batchId, $batchIds)]);
-            Cache::put('create_csv', $batchIds, 90);
+            $this->cleanupInvalidBatch();
 
             return [null, null];
         } else {
+            $flights = $flights->reject(null);
+
+            Log::info($flights[0]->price);
+
             $first_outbound_flight = $flights[0];
 
             $outbound_flight_hydrated = FlightData::create([
@@ -284,52 +291,18 @@ class ProcessResponsesJob implements ShouldQueue
         }
     }
 
-    private function getCheapestHotel(): void
+    private function cleanupInvalidBatch(): void
     {
-        $ads = Ad::query()->where('batch_id', $this->batchId)->get();
-
-        $cheapestOffer = null;
-        $cheapestAd = null;
-
-        foreach ($ads as $ad) {
-            $hotelData = $ad->hotelData;
-
-            if ($hotelData) {
-                $currentCheapestOffer = $hotelData->offers()->orderBy('price')->first();
-
-                if ($currentCheapestOffer) {
-                    if (! $cheapestOffer || $currentCheapestOffer->price < $cheapestOffer->price) {
-                        $cheapestOffer = $currentCheapestOffer;
-                        $cheapestAd = $ad;
-                    }
-                }
-            }
+        $batchIds = Cache::get('create_csv', []);
+        if (($key = array_search($this->batchId, $batchIds)) !== false) {
+            unset($batchIds[$key]);
+            Cache::put('create_csv', array_values($batchIds), 90); // Reindex array
         }
 
-        if ($cheapestOffer) {
-            //            Log::info('Cheapest Ad: '.$cheapestAd);
-
-            $adsToDelete = Ad::query()
-                ->where('batch_id', $this->batchId)
-                ->where('id', '!=', $cheapestAd->id)
-                ->get();
-
-            foreach ($adsToDelete as $ad) {
-                if ($ad->hotelData) {
-                    $ad->hotelData->delete();
-                }
-            }
-
-            Ad::query()
-                ->where('batch_id', $this->batchId)
-                ->where('id', '!=', $cheapestAd->id)
-                ->delete();
-        } else {
-            Log::warning('No offers found for batch', [
-                'batch_id' => $this->batchId,
-            ]);
+        $batchIdsGlobal = Cache::get('batch_ids', []);
+        if (($key = array_search($this->batchId, $batchIdsGlobal)) !== false) {
+            unset($batchIdsGlobal[$key]);
+            Cache::put('batch_ids', array_values($batchIdsGlobal), 90);
         }
     }
-
-    private function getCheapestDate() {}
 }
