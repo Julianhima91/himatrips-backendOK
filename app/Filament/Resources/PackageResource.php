@@ -184,11 +184,9 @@ class PackageResource extends Resource
                     ->sortable(),
                 Tables\Columns\TextColumn::make('hotelData.hotel.name')
                     ->label('Hotel')
-                    ->searchable()
                     ->sortable(),
                 Tables\Columns\TextColumn::make('hotelData.check_in_date')
                     ->label('Check In')
-                    ->searchable()
                     ->sortable(),
                 Tables\Columns\TextColumn::make('hotelData.number_of_nights')
                     ->label('Number of Nights'),
@@ -225,7 +223,19 @@ class PackageResource extends Resource
                 Tables\Filters\SelectFilter::make('destination')
                     ->label('Destination')
                     ->relationship('packageConfig.destination_origin.destination', 'name'),
-
+                Tables\Filters\Filter::make('hotel')
+                    ->label('Hotel')
+                    ->form([
+                        Forms\Components\TextInput::make('hotel_id')
+                            ->label('Hotel ID'),
+                    ])
+                    ->query(function ($query, array $data) {
+                        if (! empty($data['hotel_id'])) {
+                            $query->whereHas('hotelData.hotel', function ($q) use ($data) {
+                                $q->where('hotel_id', $data['hotel_id']);
+                            });
+                        }
+                    }),
             ])
             ->actions([
                 Tables\Actions\ViewAction::make(),
