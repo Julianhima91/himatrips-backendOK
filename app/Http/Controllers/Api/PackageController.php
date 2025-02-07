@@ -770,6 +770,13 @@ class PackageController extends Controller
             $packages = Package::where('outbound_flight_id', $outboundFlight->id)->get();
 
             foreach ($packages as $package) {
+                $offers = $package->hotelData->offers;
+
+                foreach ($offers as $offer) {
+                    $offer->total_price_for_this_offer += $priceDifference;
+                    $offer->save();
+                }
+
                 $package->total_price += $priceDifference;
                 $package->save();
             }
