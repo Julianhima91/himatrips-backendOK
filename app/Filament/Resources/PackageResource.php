@@ -4,6 +4,7 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\PackageResource\Pages;
 use App\Models\FlightData;
+use App\Models\Hotel;
 use App\Models\Package;
 use Filament\Forms;
 use Filament\Forms\Form;
@@ -226,13 +227,21 @@ class PackageResource extends Resource
                 Tables\Filters\Filter::make('hotel')
                     ->label('Hotel')
                     ->form([
-                        Forms\Components\TextInput::make('hotel_id')
-                            ->label('Hotel ID'),
+                        Forms\Components\Select::make('hotel_id')
+                            ->label('Hotel')
+                            ->searchable()
+                            ->getSearchResultsUsing(function (string $search) {
+                                return Hotel::query()
+                                    ->where('name', 'like', '%'.$search.'%')
+                                    ->limit(10)
+                                    ->pluck('name', 'id');
+                            })
+                            ->getOptionLabelUsing(fn ($value) => Hotel::find($value)?->name),
                     ])
                     ->query(function ($query, array $data) {
                         if (! empty($data['hotel_id'])) {
                             $query->whereHas('hotelData.hotel', function ($q) use ($data) {
-                                $q->where('hotel_id', $data['hotel_id']);
+                                $q->where('id', $data['hotel_id']);
                             });
                         }
                     }),
