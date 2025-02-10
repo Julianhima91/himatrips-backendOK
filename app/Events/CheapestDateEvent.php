@@ -14,9 +14,12 @@ class CheapestDateEvent
 
     public $batchIds;
 
-    public function __construct($batchId, $batchIds)
+    public $adConfigId;
+
+    public function __construct($batchId, $batchIds, $adConfigId)
     {
         $this->batchId = $batchId;
         $this->batchIds = $batchIds;
+        $this->adConfigId = $adConfigId;
     }
 }

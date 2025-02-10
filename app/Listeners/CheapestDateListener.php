@@ -16,10 +16,10 @@ class CheapestDateListener
      */
     public function handle(CheapestDateEvent $event): void
     {
-        $batchIds = Cache::get('batch_ids');
-        $currentBatchIds = Cache::get('current_batch_ids');
+        $batchIds = Cache::get("$event->adConfigId:batch_ids");
+        $currentBatchIds = Cache::get("$event->adConfigId:current_batch_ids");
         $currentBatchIds[] = (string) $event->batchId;
-        Cache::put('current_batch_ids', $currentBatchIds, 90);
+        Cache::put("$event->adConfigId:current_batch_ids", $currentBatchIds, 90);
 
         //todo when count of both arrays is the same, then proceed to sort them
         if (isset($currentBatchIds) && isset($batchIds) && count($batchIds) === count($currentBatchIds)) {
@@ -55,8 +55,8 @@ class CheapestDateListener
                     ->delete();
             }
 
-            Cache::forget('batch_ids');
-            Cache::forget('current_batch_ids');
+            Cache::forget("$event->adConfigId:batch_ids");
+            Cache::forget("$event->adConfigId:current_batch_ids");
         }
     }
 }

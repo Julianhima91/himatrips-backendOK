@@ -66,11 +66,11 @@ class ProcessResponsesJob implements ShouldQueue
                 }
 
                 if ($option === 'cheapest_date') {
-                    event(new CheapestDateEvent($this->request['batch_id'], $this->batchIds));
+                    event(new CheapestDateEvent($this->request['batch_id'], $this->batchIds, $this->adConfig->id));
                 }
             }
 
-            event(new CheckChainJobCompletedEvent($this->request['batch_id'], $this->batchIds));
+            event(new CheckChainJobCompletedEvent($this->request['batch_id'], $this->batchIds, $this->adConfig->id));
         } else {
             Log::error("Missing data for batch {$this->batchId}");
         }
@@ -145,7 +145,6 @@ class ProcessResponsesJob implements ShouldQueue
             });
         });
 
-        ray($flights)->purple();
         if ($outbound_flight_morning->isNotEmpty()) {
             $flights = $outbound_flight_morning;
         }
@@ -158,15 +157,16 @@ class ProcessResponsesJob implements ShouldQueue
         if ($flights->isEmpty()) {
             Log::warning("No flight for batch {$this->batchId}");
 
+            $adConfig = $this->adConfig;
             if (in_array('cheapest_date', $this->adConfig->extra_options)) {
-                $batchIds = Cache::get('batch_ids');
+                $batchIds = Cache::get("$adConfig->id:batch_ids");
                 unset($batchIds[array_search($this->batchId, $batchIds)]);
-                Cache::put('batch_ids', $batchIds, 90);
+                Cache::put("$adConfig->id:batch_ids", $batchIds, 90);
             }
 
-            $batchIds = Cache::get('create_csv');
+            $batchIds = Cache::get("$adConfig->id:create_csv");
             unset($batchIds[array_search($this->batchId, $batchIds)]);
-            Cache::put('create_csv', $batchIds, 90);
+            Cache::put("$adConfig->id:create_csv", $batchIds, 90);
 
             return [null, null];
         } else {

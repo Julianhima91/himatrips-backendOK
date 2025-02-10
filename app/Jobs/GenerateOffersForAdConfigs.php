@@ -83,8 +83,8 @@ class GenerateOffersForAdConfigs implements ShouldQueue
 
                 foreach ($destination->offer_category as $offerCategory) {
                     match ($offerCategory) {
-                        //                        OfferCategoryEnum::HOLIDAY->value => $this->createHolidayOffer($adConfig, $airport, $destination, $destinationAirport),
-                        //                        OfferCategoryEnum::ECONOMIC->value => $this->createEconomicOffer($adConfig, $airport, $destination, $destinationAirport),
+                        OfferCategoryEnum::HOLIDAY->value => $this->createHolidayOffer($adConfig, $airport, $destination, $destinationAirport),
+                        OfferCategoryEnum::ECONOMIC->value => $this->createEconomicOffer($adConfig, $airport, $destination, $destinationAirport),
                         OfferCategoryEnum::WEEKEND->value => $this->createWeekendOffer($adConfig, $airport, $destination, $destinationAirport),
                         default => Log::warning("Unknown offer category: {$offerCategory}"),
                     };
@@ -95,6 +95,7 @@ class GenerateOffersForAdConfigs implements ShouldQueue
 
     private function createHolidayOffer(AdConfig $adConfig, Airport $airport, Destination $destination, Airport $destinationAirport)
     {
+        Log::info('HOLIDAYS===================');
         $today = now();
         $threeMonthsFromNow = now()->addMonths(3);
 
@@ -163,7 +164,7 @@ class GenerateOffersForAdConfigs implements ShouldQueue
                 //                Log::info('Offer data: ', $request);
 
                 Bus::chain([
-                    new ProcessFlightsJob($request, $this->adConfigId),
+                    new ProcessFlightsJob($request, $this->adConfigId, 'holiday'),
                     new LiveSearchHotels(
                         $request['date'],
                         $request['nights'],
@@ -198,6 +199,8 @@ class GenerateOffersForAdConfigs implements ShouldQueue
 
     private function createWeekendOffer(AdConfig $adConfig, Airport $airport, Destination $destination, Airport $destinationAirport)
     {
+        Log::info('WEEKENDS===================');
+
         $today = now();
         //todo: change this to 3 months
         $threeMonthsFromNow = now()->addMonths(1);
@@ -259,7 +262,7 @@ class GenerateOffersForAdConfigs implements ShouldQueue
             if (! empty($request) && $count <= 1) {
                 $count++;
                 Bus::chain([
-                    new ProcessFlightsJob($request, $this->adConfigId),
+                    new ProcessFlightsJob($request, $this->adConfigId, 'weekend'),
                     new LiveSearchHotels(
                         $request['date'],
                         $request['nights'],

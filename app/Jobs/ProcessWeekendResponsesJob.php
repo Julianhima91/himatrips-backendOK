@@ -52,7 +52,7 @@ class ProcessWeekendResponsesJob implements ShouldQueue
         if (! $flights || ! $hotels) {
             Log::error("Missing data for batch {$this->batchId}");
             $this->cleanupInvalidBatch();
-            event(new CheckChainWeekendJobCompletedEvent(null, $this->batchIds));
+            event(new CheckChainWeekendJobCompletedEvent(null, $this->batchIds, $this->adConfig->id));
 
             return;
         }
@@ -64,13 +64,13 @@ class ProcessWeekendResponsesJob implements ShouldQueue
                     'batch_id' => $this->batchId,
                 ]);
                 $this->cleanupInvalidBatch();
-                event(new CheckChainWeekendJobCompletedEvent(null, $this->batchIds));
+                event(new CheckChainWeekendJobCompletedEvent(null, $this->batchIds, $this->adConfig->id));
 
                 return;
             }
             $this->handleHotelsAndPackages($hotels, $outbound_flight_hydrated, $inbound_flight_hydrated, $this->batchId, $this->request['origin_id'], $this->request['destination_id'], $this->request['rooms']);
 
-            event(new CheckChainWeekendJobCompletedEvent($this->request['batch_id'], $this->batchIds));
+            event(new CheckChainWeekendJobCompletedEvent($this->request['batch_id'], $this->batchIds, $this->adConfig->id));
         } else {
             Log::error("Missing data for batch {$this->batchId}");
         }
@@ -293,16 +293,17 @@ class ProcessWeekendResponsesJob implements ShouldQueue
 
     private function cleanupInvalidBatch(): void
     {
-        $batchIds = Cache::get('create_csv', []);
+        $adConfig = $this->adConfig;
+        $batchIds = Cache::get("$adConfig->id:weekend_create_csv", []);
         if (($key = array_search($this->batchId, $batchIds)) !== false) {
             unset($batchIds[$key]);
-            Cache::put('create_csv', array_values($batchIds), 90); // Reindex array
+            Cache::put("$adConfig->id:weekend_create_csv", array_values($batchIds), 90);
         }
 
-        $batchIdsGlobal = Cache::get('batch_ids', []);
+        $batchIdsGlobal = Cache::get("$adConfig->id:batch_ids", []);
         if (($key = array_search($this->batchId, $batchIdsGlobal)) !== false) {
             unset($batchIdsGlobal[$key]);
-            Cache::put('batch_ids', array_values($batchIdsGlobal), 90);
+            Cache::put("$adConfig->id:batch_ids", array_values($batchIdsGlobal), 90);
         }
     }
 }

@@ -19,10 +19,11 @@ class CheckChainJobCompletedListener
      */
     public function handle(CheckChainJobCompletedEvent $event): void
     {
-        $batchIds = Cache::get('create_csv');
-        $currentCsvBatchIds = Cache::get('current_csv_batch_ids');
+        Log::error('INSIDE HOLIDAY LISTENER');
+        $batchIds = Cache::get("$event->adConfigId:create_csv");
+        $currentCsvBatchIds = Cache::get("$event->adConfigId:current_csv_batch_ids");
         $currentCsvBatchIds[] = (string) $event->batchId;
-        Cache::put('current_csv_batch_ids', $currentCsvBatchIds, 90);
+        Cache::put("$event->adConfigId:current_csv_batch_ids", $currentCsvBatchIds, 90);
         //
         //        //todo when count of both arrays is the same, then proceed to sort them
         if (isset($currentCsvBatchIds) && isset($batchIds) && count($batchIds) === count($currentCsvBatchIds)) {
@@ -30,10 +31,14 @@ class CheckChainJobCompletedListener
             sort($currentCsvBatchIds);
         }
 
+        Log::info('HOLIDAY');
+        Log::info($batchIds);
+        Log::info($currentCsvBatchIds);
         //        Log::error($batchIds, $currentCsvBatchIds);
         //                Log::error('comparison result: '.var_export($batchIds == $currentCsvBatchIds, true));
         //
         if ($batchIds === $currentCsvBatchIds) {
+            Log::info('WE ARE INSIDE (HOLIDAY) !!!!!!!!!!!!!WOOHOOOOOO');
 
             $ads = Ad::query()
                 ->whereIn('batch_id', $batchIds)
@@ -66,8 +71,8 @@ class CheckChainJobCompletedListener
             //                    ->delete();
             //            }
             //
-            //            Cache::forget('batch_ids');
-            //            Cache::forget('current_batch_ids');
+            Cache::forget("$event->adConfigId:batch_ids");
+            Cache::forget("$event->adConfigId:current_batch_ids");
         }
     }
 

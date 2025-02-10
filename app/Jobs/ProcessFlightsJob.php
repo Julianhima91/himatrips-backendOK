@@ -19,10 +19,13 @@ class ProcessFlightsJob implements ShouldQueue
 
     private $adConfigId;
 
-    public function __construct(array $request, $adConfigId)
+    private $tempCache;
+
+    public function __construct(array $request, $adConfigId, $tempCache)
     {
         $this->request = $request;
         $this->adConfigId = $adConfigId;
+        $this->tempCache = $tempCache;
     }
 
     public function handle(): void
@@ -38,14 +41,20 @@ class ProcessFlightsJob implements ShouldQueue
             $adConfig = AdConfig::find($this->adConfigId);
 
             if (in_array('cheapest_date', $adConfig->extra_options)) {
-                $batchIds = Cache::get('batch_ids');
+                $batchIds = Cache::get("$adConfig->id:batch_ids");
                 $batchIds[] = (string) $batchId;
-                Cache::put('batch_ids', $batchIds, 90);
+                Cache::put("$adConfig->id:batch_ids", $batchIds, 90);
             }
 
-            $csvCache = Cache::get('create_csv');
-            $csvCache[] = (string) $batchId;
-            Cache::put('create_csv', $csvCache, 90);
+            if ($this->tempCache == 'weekend') {
+                $csvCache = Cache::get("$adConfig->id:weekend_create_csv");
+                $csvCache[] = (string) $batchId;
+                Cache::put("$adConfig->id:weekend_create_csv", $csvCache, 90);
+            } else {
+                $csvCache = Cache::get("$adConfig->id:create_csv");
+                $csvCache[] = (string) $batchId;
+                Cache::put("$adConfig->id:create_csv", $csvCache, 90);
+            }
         } else {
             Log::warning("Flights data not found in cache for batch: {$batchId}");
         }

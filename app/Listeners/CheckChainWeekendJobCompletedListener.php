@@ -14,12 +14,12 @@ class CheckChainWeekendJobCompletedListener
 
     public function handle(object $event): void
     {
-        //        Log::error('INSIDE LISTENER');
-        $batchIds = Cache::get('create_csv');
-        $currentCsvBatchIds = Cache::get('current_csv_batch_ids');
+        Log::error('INSIDE WEEKEND LISTENER');
+        $batchIds = Cache::get("$event->adConfigId:weekend_create_csv");
+        $currentCsvBatchIds = Cache::get("$event->adConfigId:current_weekend_csv_batch_ids");
         if ($event->batchId) {
             $currentCsvBatchIds[] = (string) $event->batchId;
-            Cache::put('current_csv_batch_ids', $currentCsvBatchIds, 90);
+            Cache::put("$event->adConfigId:current_weekend_csv_batch_ids", $currentCsvBatchIds, 90);
         }
 
         //todo when count of both arrays is the same, then proceed to sort them
@@ -28,13 +28,14 @@ class CheckChainWeekendJobCompletedListener
             sort($currentCsvBatchIds);
         }
 
-        //        Log::info($batchIds);
-        //        Log::info($currentCsvBatchIds);
+        Log::info('WEEKEND');
+        Log::info($batchIds);
+        Log::info($currentCsvBatchIds);
         if ($batchIds === $currentCsvBatchIds) {
-            Log::info('WE ARE INSIDE!!!!!!!!!!!!!WOOHOOOOOO');
+            Log::info('WE ARE INSIDE (WEEKEND) !!!!!!!!!!!!!WOOHOOOOOO');
 
-            Cache::forget('create_csv');
-            Cache::forget('current_csv_batch_ids');
+            Cache::forget("$event->adConfigId:weekend_create_csv");
+            Cache::forget("$event->adConfigId:current_weekend_csv_batch_ids");
 
             foreach ($batchIds as $batchId) {
                 $cheapestAd = Ad::where('batch_id', $batchId)
