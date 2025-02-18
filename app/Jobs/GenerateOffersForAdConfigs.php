@@ -11,6 +11,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
@@ -161,8 +162,6 @@ class GenerateOffersForAdConfigs implements ShouldQueue
 
         foreach ($requests as $request) {
             if (! empty($request)) {
-                //                Log::info('Offer data: ', $request);
-
                 Bus::chain([
                     new ProcessFlightsJob($request, $this->adConfigId, 'holiday'),
                     new LiveSearchHotels(
@@ -187,14 +186,45 @@ class GenerateOffersForAdConfigs implements ShouldQueue
 
     private function createEconomicOffer(AdConfig $adConfig, Airport $airport, Destination $destination, Airport $destinationAirport)
     {
-        //        $offerData = [
-        //            'ad_config_id' => $adConfig->id,
-        //            'airport_id' => $airport->id,
-        //            'destination_id' => $destination->id,
-        //            'type' => OfferCategoryEnum::ECONOMIC->value,
-        //        ];
-        //
-        //        Log::info('Offer created: ', $offerData);
+        Log::info('ECONOMIC===================');
+
+        $months = collect($destination->active_months)
+            ->map(fn ($month) => now()->format('Y').'-'.$month) // Add current year
+            ->filter(fn ($month) => Carbon::parse($month)->greaterThanOrEqualTo(now()->startOfMonth())) // Remove past months
+            ->mapWithKeys(fn ($month) => [(string) Str::orderedUuid() => $month]) // Generate random ordered batch ID
+            ->toArray();
+
+        $batchIds = collect($months)->keys()->toArray();
+
+        Log::info($adConfig->origin->name);
+        Log::info($destination->name);
+        Log::info($airport->id);
+        Log::info($months);
+
+        foreach ($months as $batchId => $month) {
+            Bus::chain([
+                new CheckEconomicFlightJob($airport, $destinationAirport, $month, $this->adConfigId, $batchId, false),
+                new CheckEconomicFlightJob($airport, $destinationAirport, $month, $this->adConfigId, $batchId, true),
+                new ProcessEconomicResponsesJob($batchId, $this->adConfigId, $destination->ad_min_nights),
+                new EconomicFlightSearch($month, $airport, $destinationAirport, 2, 0, 0, $batchId, $this->adConfigId),
+                new EconomicHotelJob(
+                    $destination->ad_min_nights,
+                    $destination->id,
+                    [
+                        [
+                            'adults' => 2,
+                            'children' => 0,
+                            'infants' => 0,
+                        ],
+                    ],
+                    $batchId,
+                    $month,
+                    $this->adConfigId,
+                ),
+                new TestEconomicFlights($batchId, $adConfig, $month, $adConfig->origin_id, $destination->id, $airport, $destinationAirport, $batchIds),
+            ])->dispatch();
+        }
+
     }
 
     private function createWeekendOffer(AdConfig $adConfig, Airport $airport, Destination $destination, Airport $destinationAirport)

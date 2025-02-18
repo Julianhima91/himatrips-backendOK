@@ -18,6 +18,7 @@ class Destination extends Model
 
     protected $casts = [
         'board_options' => 'array',
+        'active_months' => 'array',
     ];
 
     public function country(): BelongsTo

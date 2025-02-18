@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources;
 
+use App\Enums\ActiveMonthsEnum;
 use App\Enums\BoardOptionEnum;
 use App\Enums\OfferCategoryEnum;
 use App\Filament\Resources\DestinationResource\Pages;
@@ -54,6 +55,11 @@ class DestinationResource extends Resource
                     ->minValue(0)
                     ->placeholder('Maximum nights for ads')
                     ->required(),
+                Forms\Components\Select::make('active_months')
+                    ->label('Active Months')
+                    ->multiple()
+                    ->options(ActiveMonthsEnum::class)
+                    ->placeholder('Select active months'),
                 Forms\Components\Textarea::make('description')
                     ->required()
                     ->maxLength(255)

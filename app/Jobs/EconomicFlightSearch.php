@@ -12,17 +12,17 @@ use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Cache;
 
-class LiveSearchFlights implements ShouldQueue
+class EconomicFlightSearch implements ShouldQueue
 {
     use Batchable, Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
-
-    protected $date;
 
     protected $origin;
 
     protected $destination;
 
-    public int $tries = 2;
+    public int $tries = 3;
+
+    public int $backoff = 3;
 
     protected $adults;
 
@@ -32,21 +32,23 @@ class LiveSearchFlights implements ShouldQueue
 
     public $batchId;
 
-    protected $return_date;
+    public $adConfigId;
+
+    public $yearMonth;
 
     /**
      * Create a new job instance.
      */
-    public function __construct($date, $return_date, $origin_airport, $destination_airport, $adults, $children, $infants, $batchId)
+    public function __construct($yearMonth, $origin_airport, $destination_airport, $adults, $children, $infants, $batchId, $adConfigId)
     {
-        $this->date = $date;
-        $this->return_date = $return_date;
         $this->origin = $origin_airport;
         $this->destination = $destination_airport;
         $this->adults = $adults;
         $this->children = $children;
         $this->infants = $infants;
         $this->batchId = $batchId;
+        $this->adConfigId = $adConfigId;
+        $this->yearMonth = $yearMonth;
     }
 
     /**
@@ -56,11 +58,15 @@ class LiveSearchFlights implements ShouldQueue
     {
         $request = new RetrieveFlightsRequest;
 
+        $date = $this->yearMonth.'-'.Cache::get("$this->adConfigId:$this->batchId:cheapest_combination")['outbound']['date'];
+        $returnDate = $this->yearMonth.'-'.Cache::get("$this->adConfigId:$this->batchId:cheapest_combination")['return']['date'];
+        ray($date, $returnDate)->purple();
+
         $request->query()->merge([
             'fromEntityId' => $this->origin->rapidapi_id,
             'toEntityId' => $this->destination->rapidapi_id,
-            'departDate' => $this->date,
-            'returnDate' => $this->return_date,
+            'departDate' => $date,
+            'returnDate' => $returnDate,
             'adults' => $this->adults,
             'children' => $this->children,
             'infants' => $this->infants,
@@ -75,44 +81,27 @@ class LiveSearchFlights implements ShouldQueue
 
             $itineraries = $response->dtoOrFail();
 
-            //            ray($itineraries)->purple();
+            //            ray('STATUS:')->purple();
+            //todo: check $response->json()['data']['context']['status'] on incomplete results in normal live search
+            //            ray($response->json()['data']['context']['status'])->purple();
             if ($itineraries->isEmpty()) {
-                ray('empty itineraries 1111');
-                $this->release(1);
+                \Log::error('EMPTY ITINERARIES');
+                $this->release(5);
             }
 
-            cache()->put('flight_'.$this->date, $itineraries, now()->addMinutes(5));
-            cache()->put('flight_'.$this->return_date, $itineraries, now()->addMinutes(5));
             Cache::put("batch:{$this->batchId}:flights", $itineraries, now()->addMinutes(5));
 
-            if (! Cache::get("job_completed_{$this->batchId}")) {
-                Cache::put("job_completed_{$this->batchId}", true);
-            }
+            $csvCache = Cache::get("$this->adConfigId:economic_create_csv");
+            $csvCache[] = (string) $this->batchId;
+            Cache::put("$this->adConfigId:economic_create_csv", $csvCache, 90);
         } catch (\Exception $e) {
-            //if its the first attempt, retry
             if ($this->attempts() == 1) {
-                $this->release(1);
+                $this->release(5);
             }
 
+            \Log::info($e->getMessage());
             $this->fail($e);
         }
-
-        //check if context is set, and if it is incomplete, then we have to hit another endpoint
-
-        //        try {
-        //
-        //        } catch (\Exception $e) {
-        //            $this->fail($e);
-        //        }
-
-        //put it in cache
-        //        cache()->put('flight_'.$this->date, $itineraries, now()->addMinutes(5));
-        //        cache()->put('flight_'.$this->return_date, $itineraries, now()->addMinutes(5));
-        //        Cache::put("batch:{$this->batchId}:flights", $itineraries, now()->addMinutes(5));
-        //
-        //        if (! Cache::get("job_completed_{$this->batchId}")) {
-        //            Cache::put("job_completed_{$this->batchId}", true);
-        //        }
     }
 
     private function getIncompleteResults($session)
@@ -126,7 +115,12 @@ class LiveSearchFlights implements ShouldQueue
 
         $response = $request->send();
 
-        if (isset($response->json()['context']['status']) && $response->json()['context']['status'] == 'incomplete') {
+        //        ray($response->json())->purple();
+        //        ray(isset($response->json()['data']['context']['status']))->purple();
+        //        ray($response->json()['data']['context']['status'] == 'incomplete')->purple();
+        //        ray($response->json()['data']['context']['status'])->purple();
+
+        if (isset($response->json()['data']['context']['status']) && $response->json()['data']['context']['status'] == 'incomplete') {
             return $this->getIncompleteResults($session);
         }
 

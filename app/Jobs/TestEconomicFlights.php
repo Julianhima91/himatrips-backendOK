@@ -2,7 +2,8 @@
 
 namespace App\Jobs;
 
-use App\Events\CheckChainWeekendJobCompletedEvent;
+use App\Enums\OfferCategoryEnum;
+use App\Events\CheckEconomicJobCompletedEvent;
 use App\Models\Ad;
 use App\Models\AdConfig;
 use App\Models\Destination;
@@ -21,23 +22,37 @@ use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 
-class ProcessWeekendResponsesJob implements ShouldQueue
+class TestEconomicFlights implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     private $batchId;
 
+    private AdConfig $adConfig;
+
+    private $yearMonth;
+
+    private $originId;
+
+    private $destinationId;
+
     private $request;
 
-    private $adConfig;
+    private $airport;
+
+    private $destinationAirport;
 
     private $batchIds;
 
-    public function __construct(string $batchId, array $request, AdConfig $adConfig, array $batchIds)
+    public function __construct($batchId, $adConfig, $yearMonth, $originId, $destinationId, $airport, $destinationAirport, $batchIds)
     {
         $this->batchId = $batchId;
-        $this->request = $request;
         $this->adConfig = $adConfig;
+        $this->yearMonth = $yearMonth;
+        $this->originId = $originId;
+        $this->destinationId = $destinationId;
+        $this->airport = $airport;
+        $this->destinationAirport = $destinationAirport;
         $this->batchIds = $batchIds;
     }
 
@@ -48,33 +63,51 @@ class ProcessWeekendResponsesJob implements ShouldQueue
     {
         $flights = Cache::get("batch:{$this->batchId}:flights");
         $hotels = Cache::get("batch:{$this->batchId}:hotels");
+        $adConfigId = $this->adConfig->id;
+        $combination = Cache::get("$adConfigId:$this->batchId:cheapest_combination");
+        $date = $this->yearMonth.'-'.$combination['outbound']['date'];
+        $returnDate = $this->yearMonth.'-'.$combination['return']['date'];
 
-        //todo: move to else condition
-        if (! $flights || ! $hotels) {
-            Log::error("Missing data for batch {$this->batchId}");
-            $this->cleanupInvalidBatch();
-            event(new CheckChainWeekendJobCompletedEvent(null, $this->batchIds, $this->adConfig->id));
-
-            return;
-        }
+        $this->request = [
+            'origin_airport' => $this->airport,
+            'destination_airport' => $this->destinationAirport,
+            'date' => $date,
+            'nights' => (new \DateTime($returnDate))->diff(new \DateTime($date))->days,
+            'return_date' => $returnDate,
+            'origin_id' => $this->adConfig->origin_id,
+            'destination_id' => $this->destinationId,
+            'rooms' => [
+                [
+                    'adults' => 2,
+                    'children' => 0,
+                    'infants' => 0,
+                ],
+            ],
+            'batch_id' => $this->batchId,
+            'category' => OfferCategoryEnum::ECONOMIC->value,
+        ];
 
         if ($flights && $hotels) {
-            [$outbound_flight_hydrated, $inbound_flight_hydrated] = $this->handleFlights($flights, $this->request['date'], $this->batchId, $this->request['return_date'], $this->request['origin_id'], $this->request['destination_id']);
+            [$outbound_flight_hydrated, $inbound_flight_hydrated] = $this->handleFlights($flights, $date, $this->batchId, $returnDate, $this->originId, $this->destinationId);
             if (is_null($outbound_flight_hydrated) && is_null($inbound_flight_hydrated)) {
                 Log::warning('Both outbound and inbound flights are null. Terminating job.', [
                     'batch_id' => $this->batchId,
                 ]);
-                $this->cleanupInvalidBatch();
-                event(new CheckChainWeekendJobCompletedEvent(null, $this->batchIds, $this->adConfig->id));
 
                 return;
             }
-            $this->handleHotelsAndPackages($hotels, $outbound_flight_hydrated, $inbound_flight_hydrated, $this->batchId, $this->request['origin_id'], $this->request['destination_id'], $this->request['rooms']);
 
-            event(new CheckChainWeekendJobCompletedEvent($this->request['batch_id'], $this->batchIds, $this->adConfig->id));
-        } else {
-            Log::error("Missing data for batch {$this->batchId}");
+            $this->handleHotelsAndPackages($hotels, $outbound_flight_hydrated, $inbound_flight_hydrated, $this->batchId, $this->originId, $this->destinationId, [
+                [
+                    'adults' => 2,
+                    'children' => 0,
+                    'infants' => 0,
+                ],
+            ]);
+
+            event(new CheckEconomicJobCompletedEvent($this->request['batch_id'], $this->batchIds, $this->adConfig->id));
         }
+        //        ray(Cache::get("batch:{$this->batchId}:flights"))->purple();
     }
 
     private function handleFlights($flights, $date, $batchId, $return_date, $origin_id, $destination_id): array
@@ -128,30 +161,18 @@ class ProcessWeekendResponsesJob implements ShouldQueue
 
         $destination = Destination::find($destination_id);
 
-        $outbound_flight_morning = $flights->when(false, function (Collection $collection) use ($destination) {
+        $outbound_flight_morning = $flights->when($destination->prioritize_morning_flights, function (Collection $collection) use ($destination) {
             return $collection->filter(function ($flight) use ($destination) {
                 if ($flight == null) {
                     return false;
                 }
-                if ($destination->morning_flight_start_time && $destination->morning_flight_end_time &&
-                    $destination->evening_flight_start_time && $destination->evening_flight_end_time) {
+                if ($destination->morning_flight_start_time && $destination->morning_flight_end_time) {
                     $departure = Carbon::parse($flight->departure);
-                    $departureBack = Carbon::parse($flight->departure_flight_back);
 
-                    //                    Log::info('Destination morning flight start: ' . $destination->morning_flight_start_time);
-                    //                    Log::info('Flight Departure: ' . $departure);
-                    //                    Log::info('Destination morning flight end: ' . $destination->morning_flight_end_time);
                     $morningStart = Carbon::parse($flight->departure->format('Y-m-d').' '.$destination->morning_flight_start_time);
                     $morningEnd = Carbon::parse($flight->departure->format('Y-m-d').' '.$destination->morning_flight_end_time);
 
-                    $eveningStart = Carbon::parse($flight->departure_flight_back->format('Y-m-d').' '.$destination->evening_flight_start_time);
-                    $eveningEnd = Carbon::parse($flight->departure_flight_back->format('Y-m-d').' '.$destination->evening_flight_end_time);
-
-                    $isBetween = $departure->between($morningStart, $morningEnd);
-                    $isBetweenBack = $departureBack->between($eveningStart, $eveningEnd);
-                    //                    Log::info('Result: ' . ($isBetween ? 'true' : 'false'));
-
-                    return $isBetween && $isBetweenBack;
+                    return $departure->between($morningStart, $morningEnd);
                 }
 
                 return true;
@@ -160,7 +181,6 @@ class ProcessWeekendResponsesJob implements ShouldQueue
 
         if ($outbound_flight_morning->isNotEmpty()) {
             $flights = $outbound_flight_morning;
-            Log::info('Early morning and late evening flights were found for destination: '.$destination->name);
         }
 
         $flights = $flights->sortBy([
@@ -170,14 +190,20 @@ class ProcessWeekendResponsesJob implements ShouldQueue
 
         if ($flights->isEmpty()) {
             Log::warning("No flight for batch {$this->batchId}");
-            $this->cleanupInvalidBatch();
+
+            $adConfig = $this->adConfig;
+            if (in_array('cheapest_date', $this->adConfig->extra_options)) {
+                $batchIds = Cache::get("$adConfig->id:batch_ids");
+                unset($batchIds[array_search($this->batchId, $batchIds)]);
+                Cache::put("$adConfig->id:batch_ids", $batchIds, 90);
+            }
+
+            $batchIds = Cache::get("$adConfig->id:create_csv");
+            unset($batchIds[array_search($this->batchId, $batchIds)]);
+            Cache::put("$adConfig->id:create_csv", $batchIds, 90);
 
             return [null, null];
         } else {
-            $flights = $flights->reject(null);
-
-            Log::info($flights[0]->price);
-
             $first_outbound_flight = $flights[0];
 
             $outbound_flight_hydrated = FlightData::create([
@@ -289,22 +315,6 @@ class ProcessWeekendResponsesJob implements ShouldQueue
                 'request_data' => json_encode($this->request),
                 'offer_category' => $this->request['category'],
             ]);
-        }
-    }
-
-    private function cleanupInvalidBatch(): void
-    {
-        $adConfig = $this->adConfig;
-        $batchIds = Cache::get("$adConfig->id:weekend_create_csv", []);
-        if (($key = array_search($this->batchId, $batchIds)) !== false) {
-            unset($batchIds[$key]);
-            Cache::put("$adConfig->id:weekend_create_csv", array_values($batchIds), 90);
-        }
-
-        $batchIdsGlobal = Cache::get("$adConfig->id:batch_ids", []);
-        if (($key = array_search($this->batchId, $batchIdsGlobal)) !== false) {
-            unset($batchIdsGlobal[$key]);
-            Cache::put("$adConfig->id:batch_ids", array_values($batchIdsGlobal), 90);
         }
     }
 }
