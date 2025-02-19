@@ -47,9 +47,11 @@ class GenerateOffersForAdConfigs implements ShouldQueue
         }
         //do logic here
         $this->adConfigId = $adConfig->id;
+
+        Log::info("CONFIG ID: $this->adConfigId");
         $this->generateOffers($adConfig);
 
-        $this->dispatchNextJob();
+        //        $this->dispatchNextJob();
     }
 
     private function dispatchNextJob()

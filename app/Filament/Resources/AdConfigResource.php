@@ -34,6 +34,7 @@ class AdConfigResource extends Resource
                 Forms\Components\Select::make('origin_id')
                     ->label('Origin')
                     ->relationship('origin', 'name')
+                    ->searchable()
                     ->reactive()
                     ->required(),
 
@@ -117,13 +118,15 @@ class AdConfigResource extends Resource
             ->filters([
                 //
             ])
-            ->headerActions([
+            ->headerActions([])
+            ->actions([
+                Tables\Actions\EditAction::make(),
                 Tables\Actions\Action::make('generateOffers')
                     ->label('Generate Offers')
                     ->icon('heroicon-o-sparkles')
                     ->color('success')
-                    ->action(function () {
-                        GenerateOffersForAdConfigs::dispatch();
+                    ->action(function ($record) {
+                        GenerateOffersForAdConfigs::dispatch($record->id);
 
                         Notification::make()
                             ->title('Job Dispatched')
@@ -131,9 +134,6 @@ class AdConfigResource extends Resource
                             ->success()
                             ->send();
                     }),
-            ])
-            ->actions([
-                Tables\Actions\EditAction::make(),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([

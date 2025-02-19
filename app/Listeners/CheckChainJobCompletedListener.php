@@ -47,7 +47,7 @@ class CheckChainJobCompletedListener
             //
             [$csvPath, $adConfigId] = $this->exportAdsToCsv($ads);
 
-            AdConfigCsv::create([
+            AdConfigCsv::updateOrCreate([
                 'ad_config_id' => $adConfigId,
                 'file_path' => $csvPath,
             ]);
@@ -78,11 +78,11 @@ class CheckChainJobCompletedListener
 
     public function exportAdsToCsv($ads)
     {
-        Log::info('Exporting ...');
-        Log::info(count($ads));
-
+        $totalAds = count($ads);
         $adConfig = $ads[0]->ad_config_id;
-        $filename = 'ads_holiday_export_'.now()->format('YmdHis').'.csv';
+        Log::info("Exporting $totalAds ads for holiday... Ad config id: $adConfig");
+
+        $filename = 'ads_holiday_export_'.$adConfig.'.csv';
 
         $directory = storage_path('app/public/offers');
         if (! File::exists($directory)) {
