@@ -37,6 +37,7 @@ Route::get('/available-dates', [PackageController::class, 'getAvailableDates']);
 Route::get('/has-available-dates', [PackageController::class, 'hasAvailableDates']);
 Route::get('/has-available-return', [PackageController::class, 'hasAvailableReturn']);
 Route::get('/offers', [PackageController::class, 'offers']);
+Route::get('/ads/{id}', [PackageController::class, 'adsShow']);
 
 Route::get('/destinations', [DestinationController::class, 'index']);
 Route::get('/destinations/all', [DestinationController::class, 'indexAll']);

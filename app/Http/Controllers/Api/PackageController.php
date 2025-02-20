@@ -12,6 +12,7 @@ use App\Http\Requests\Livesearch\LivesearchRequest;
 use App\Jobs\LiveSearchFlights;
 use App\Jobs\LiveSearchFlightsApi2;
 use App\Jobs\LiveSearchHotels;
+use App\Models\Ad;
 use App\Models\Airport;
 use App\Models\Destination;
 use App\Models\DestinationOrigin;
@@ -628,5 +629,16 @@ class PackageController extends Controller
         return response()->json([
             'data' => $cheapestPackages,
         ], 200);
+    }
+
+    public function adsShow($id)
+    {
+        $ad = Ad::findOrFail($id);
+
+        $ad->load('inboundFlight', 'outboundFlight', 'hotelData.offers');
+
+        return response()->json([
+            'data' => $ad,
+        ]);
     }
 }
