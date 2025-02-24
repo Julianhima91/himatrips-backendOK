@@ -635,7 +635,7 @@ class PackageController extends Controller
     {
         $ad = Ad::findOrFail($id);
 
-        $ad->load('inboundFlight', 'outboundFlight', 'hotelData.offers');
+        $ad->load('inboundFlight', 'outboundFlight', 'hotelData.offers', 'hotelData.hotel');
 
         return response()->json([
             'data' => $ad,
