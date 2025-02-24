@@ -181,14 +181,7 @@ Te Perfshira :
 
             $originName = strtolower($origin);
             $destinationName = strtolower($destination->name);
-            $url = env('FRONT_URL')."/search-$originName-to-$destinationName/?query=".base64_encode(http_build_query([
-                'nights' => $requestData['nights'],
-                'checkin_date' => $requestData['date'],
-                'origin_id' => $requestData['origin_id'],
-                'destination_id' => $requestData['destination_id'],
-                'rooms' => $requestData['rooms'],
-                'page' => 1,
-            ]));
+            $url = env('FRONT_URL')."/admin/$ad->id";
 
             fputcsv($file, [
                 $ad->id,
