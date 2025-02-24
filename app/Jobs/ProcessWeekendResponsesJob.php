@@ -175,10 +175,7 @@ class ProcessWeekendResponsesJob implements ShouldQueue
             return [null, null];
         } else {
             $flights = $flights->reject(null);
-
-            Log::info($flights[0]->price);
-
-            $first_outbound_flight = $flights[0];
+            $first_outbound_flight = $flights[0] ?? $flights->first();
 
             $outbound_flight_hydrated = FlightData::create([
                 'price' => $first_outbound_flight->price,

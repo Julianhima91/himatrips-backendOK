@@ -170,7 +170,8 @@ class ProcessResponsesJob implements ShouldQueue
 
             return [null, null];
         } else {
-            $first_outbound_flight = $flights[0];
+            $flights = $flights->reject(null);
+            $first_outbound_flight = $flights[0] ?? $flights->first();
 
             $outbound_flight_hydrated = FlightData::create([
                 'price' => $first_outbound_flight->price,
