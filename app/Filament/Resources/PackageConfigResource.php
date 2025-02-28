@@ -6,6 +6,7 @@ use App\Actions\CheckFlightAvailability;
 use App\Filament\Resources\PackageConfigResource\Pages;
 use App\Filament\Resources\PackageConfigResource\RelationManagers\DirectFlightAvailabilityRelationManager;
 use App\Http\Requests\CheckFlightAvailabilityRequest;
+use App\Jobs\ImportPackagesJob;
 use App\Models\Airline;
 use App\Models\DirectFlightAvailability;
 use App\Models\Origin;
@@ -273,6 +274,33 @@ class PackageConfigResource extends Resource
                 //                            return;
                 //                        }
                 //                    }),
+                Tables\Actions\Action::make('importPackages')
+                    ->label('Import Packages')
+                    ->icon('heroicon-o-sparkles')
+                    ->color('success')
+                    ->form([
+                        \Filament\Forms\Components\FileUpload::make('csv_file')
+                            ->label('CSV File')
+                            ->required()
+                            ->acceptedFileTypes(['text/csv']),
+                    ])
+                    ->action(function (array $data, $record) {
+                        $file = $data['csv_file'];
+
+                        if ($file instanceof \Illuminate\Http\UploadedFile) {
+                            $path = $file->storeAs('imports', 'package_'.$record->id.'.csv', 'public');
+                        } else {
+                            $path = $file;
+                        }
+
+                        ImportPackagesJob::dispatch($record->id, $path);
+
+                        Notification::make()
+                            ->title('Job Dispatched')
+                            ->body('Packages were imported successfully.')
+                            ->success()
+                            ->send();
+                    }),
                 Tables\Actions\Action::make('insertDates')
                     ->label('Insert Dates')
                     ->form([
