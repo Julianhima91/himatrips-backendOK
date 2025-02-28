@@ -103,6 +103,11 @@ class PackageConfigResource extends Resource
                     ->default(true)
                     ->label('Is Active'),
 
+                Forms\Components\Toggle::make('is_manual')
+                    ->inline(false)
+                    ->default(true)
+                    ->label('Is Manual'),
+
                 Forms\Components\Toggle::make('is_direct_flight')
                     ->inline(false)
                     ->label('Is Direct Flight'),
