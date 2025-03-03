@@ -808,20 +808,29 @@ class PackageController extends Controller
 
     private function manualLiveSearch(LivesearchRequest $request, FlightsAction $flights, HotelsAction $hotels, PackagesAction $packagesAction, $destination, $origin, $destinationOrigin, $packageConfig)
     {
-        //        dd($request->all());
         $departureDate = $request->date;
         $nights = $request->nights;
         $returnDate = Carbon::parse($departureDate)->addDays($nights)->toDateString();
+        $rooms = $request->rooms;
+        $adults = collect($rooms)->sum('adults');
+        $children = collect($rooms)->sum('children');
+        $infants = collect($rooms)->sum('infants');
 
         $packages = Package::withTrashed()
             ->where([
                 ['package_config_id', $packageConfig->id],
             ])
-            ->whereHas('outboundFlight', function ($query) use ($departureDate) {
-                $query->whereDate('departure', $departureDate);
+            ->whereHas('outboundFlight', function ($query) use ($departureDate, $adults, $children, $infants) {
+                $query->whereDate('departure', $departureDate)
+                    ->where('adults', '>=', $adults)
+                    ->where('children', '>=', $children)
+                    ->where('infants', '>=', $infants);
             })
-            ->whereHas('inboundFlight', function ($query) use ($returnDate) {
-                $query->whereDate('departure', $returnDate);
+            ->whereHas('inboundFlight', function ($query) use ($returnDate, $adults, $children, $infants) {
+                $query->whereDate('departure', $returnDate)
+                    ->where('adults', '>=', $adults)
+                    ->where('children', '>=', $children)
+                    ->where('infants', '>=', $infants);
             })
             ->when($request->price_range, function ($query) use ($request) {
                 $query->whereBetween('total_price', [$request->price_range[0], $request->price_range[1]]);
