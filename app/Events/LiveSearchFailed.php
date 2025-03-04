@@ -34,7 +34,6 @@ class LiveSearchFailed implements ShouldBroadcast
     {
         return [
             new Channel('search'),
-
         ];
     }
 }

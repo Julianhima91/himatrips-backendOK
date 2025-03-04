@@ -36,7 +36,12 @@ class CleanupExpiredFlights extends Command
 
         $hourly = app(PackageHourly::class)->hourly;
 
-        $deleted = Package::where('created_at', '<', $now->subHours($hourly))->delete();
+        $deleted = Package::query()
+            ->whereHas('packageConfig', function ($query) {
+                return $query->where('is_manual', false);
+            })
+            ->where('created_at', '<', $now->subHours($hourly))
+            ->delete();
 
         $this->info('Expired flights from direct_flights_availability have been cleaned up.');
         $this->info($deleted.' old packages deleted successfully.');

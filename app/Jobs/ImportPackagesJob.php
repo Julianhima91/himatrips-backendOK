@@ -57,8 +57,8 @@ class ImportPackagesJob implements ShouldQueue
         $destinationAirport = $destination->airports->first();
 
         $batchId = Str::orderedUuid();
-        //        $csv = Storage::disk('public')->get('01JMW3HW7HC43F1DTFPBEYQDTZ.csv');
-        $csv = Storage::disk('public')->get($this->filePath);
+        $csv = Storage::disk('public')->get('aaaa.csv');
+        //        $csv = Storage::disk('public')->get($this->filePath);
         $rows = preg_split('/\r\n|\n|\r/', trim($csv));
 
         \DB::beginTransaction();
@@ -106,6 +106,76 @@ class ImportPackagesJob implements ShouldQueue
 
                 $currentFlightPrice = $data[5] ?? null;
 
+                if ($data[12] == 0) {
+                    $segments = json_encode([[
+                        'origin' => [
+                            'name' => $data[17],
+                            'displayCode' => $data[18],
+                        ],
+                        'destination' => [
+                            'name' => $data[19],
+                            'displayCode' => $data[20],
+                        ],
+                        'arrival' => $data[21],
+                        'departure' => $data[22],
+                    ]]);
+
+                    $segmentsBack = json_encode([[
+                        'origin' => [
+                            'name' => $data[23],
+                            'displayCode' => $data[24],
+                        ],
+                        'destination' => [
+                            'name' => $data[25],
+                            'displayCode' => $data[26],
+                        ],
+                        'arrival' => $data[27],
+                        'departure' => $data[28],
+                    ]]);
+                } else {
+                    $outboundStops = $data[12];
+                    $segmentsOut = [];
+                    $currentIndex = 17;
+
+                    for ($i = 0; $i < ($outboundStops + 1); $i++) {
+                        $segmentsOut[] = [
+                            'origin' => [
+                                'name' => $data[$currentIndex],
+                                'displayCode' => $data[$currentIndex + 1],
+                            ],
+                            'destination' => [
+                                'name' => $data[$currentIndex + 2],
+                                'displayCode' => $data[$currentIndex + 3],
+                            ],
+                            'arrival' => $data[$currentIndex + 4],
+                            'departure' => $data[$currentIndex + 5],
+                        ];
+                        $currentIndex += 6;
+                    }
+
+                    $returnStops = (int) $outboundStops; // for the future, incase we need separate stop count back.
+                    $segmentsBack = [];
+
+                    for ($i = 0; $i < ($returnStops + 1); $i++) {
+                        $segmentsBack[] = [
+                            'origin' => [
+                                'name' => $data[$currentIndex],
+                                'displayCode' => $data[$currentIndex + 1],
+                            ],
+                            'destination' => [
+                                'name' => $data[$currentIndex + 2],
+                                'displayCode' => $data[$currentIndex + 3],
+                            ],
+                            'arrival' => $data[$currentIndex + 4],
+                            'departure' => $data[$currentIndex + 5],
+                        ];
+                        $currentIndex += 6;
+                    }
+
+                    $segments = json_encode($segmentsOut);
+                    $segmentsBack = json_encode($segmentsBack);
+                }
+
                 $outbound = FlightData::create([
                     'package_config_id' => $packageConfig->id,
                     'origin' => $originAirport->sky_id ?? null,
@@ -119,7 +189,7 @@ class ImportPackagesJob implements ShouldQueue
                     'children' => $data[14] ?? null,
                     'infants' => $data[15] ?? null,
                     'extra_data' => null,
-                    'segments' => null,
+                    'segments' => $segments,
                     'all_flights' => null,
                     'return_flight' => 0,
                 ]);
@@ -137,7 +207,7 @@ class ImportPackagesJob implements ShouldQueue
                     'children' => $data[14] ?? null,
                     'infants' => $data[15] ?? null,
                     'extra_data' => null,
-                    'segments' => null,
+                    'segments' => $segmentsBack,
                     'all_flights' => null,
                     'return_flight' => 1,
                 ]);
@@ -213,6 +283,6 @@ class ImportPackagesJob implements ShouldQueue
         \DB::commit();
 
         Log::info('Successfully imported packages for package config ID: '.$this->packageConfigId);
-        Storage::disk('public')->delete($this->filePath);
+        //        Storage::disk('public')->delete($this->filePath);
     }
 }
