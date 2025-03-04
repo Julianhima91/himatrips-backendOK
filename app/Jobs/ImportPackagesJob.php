@@ -57,8 +57,8 @@ class ImportPackagesJob implements ShouldQueue
         $destinationAirport = $destination->airports->first();
 
         $batchId = Str::orderedUuid();
-        $csv = Storage::disk('public')->get('aaaa.csv');
-        //        $csv = Storage::disk('public')->get($this->filePath);
+        //        $csv = Storage::disk('public')->get('aaaa.csv');
+        $csv = Storage::disk('public')->get($this->filePath);
         $rows = preg_split('/\r\n|\n|\r/', trim($csv));
 
         \DB::beginTransaction();
@@ -283,6 +283,6 @@ class ImportPackagesJob implements ShouldQueue
         \DB::commit();
 
         Log::info('Successfully imported packages for package config ID: '.$this->packageConfigId);
-        //        Storage::disk('public')->delete($this->filePath);
+        Storage::disk('public')->delete($this->filePath);
     }
 }

@@ -284,22 +284,22 @@ class PackageConfigResource extends Resource
                     ->icon('heroicon-o-sparkles')
                     ->color('success')
                     ->form([
-                        //                        \Filament\Forms\Components\FileUpload::make('csv_file')
-                        //                            ->label('CSV File')
-                        //                            ->required()
-                        //                            ->acceptedFileTypes(['text/csv']),
+                        \Filament\Forms\Components\FileUpload::make('csv_file')
+                            ->label('CSV File')
+                            ->required()
+                            ->acceptedFileTypes(['text/csv']),
                     ])
                     ->action(function (array $data, $record) {
-                        //                        $file = $data['csv_file'];
-                        //
-                        //                        if ($file instanceof \Illuminate\Http\UploadedFile) {
-                        //                            $path = $file->storeAs('imports', 'package_'.$record->id.'.csv', 'public');
-                        //                        } else {
-                        //                            $path = $file;
-                        //                        }
+                        $file = $data['csv_file'];
 
-                        //                        ImportPackagesJob::dispatch($record->id, $path);
-                        ImportPackagesJob::dispatch($record->id, null);
+                        if ($file instanceof \Illuminate\Http\UploadedFile) {
+                            $path = $file->storeAs('imports', 'package_'.$record->id.'.csv', 'public');
+                        } else {
+                            $path = $file;
+                        }
+
+                        ImportPackagesJob::dispatch($record->id, $path);
+                        //                        ImportPackagesJob::dispatch($record->id, null);
 
                         Notification::make()
                             ->title('Job Dispatched')
