@@ -2,11 +2,13 @@
 
 namespace App\Jobs;
 
+use App\Models\DirectFlightAvailability;
 use App\Models\FlightData;
 use App\Models\HotelData;
 use App\Models\HotelOffer;
 use App\Models\Package;
 use App\Models\PackageConfig;
+use DateTime;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -211,6 +213,30 @@ class ImportPackagesJob implements ShouldQueue
                     'all_flights' => null,
                     'return_flight' => 1,
                 ]);
+
+                $date = new DateTime($data[3]);
+                $formattedDate = $date->format('Y-m-d');
+
+                $returnDate = new DateTime($data[8]);
+                $formattedReturnDate = $returnDate->format('Y-m-d');
+                Log::error("DATE: $formattedDate");
+                Log::error("RETURN DATE: $formattedReturnDate");
+
+                DirectFlightAvailability::updateOrCreate(
+                    [
+                        'date' => $formattedDate,
+                        'destination_origin_id' => $packageConfig->destination_origin_id,
+                        'is_return_flight' => 0,
+                    ],
+                );
+
+                DirectFlightAvailability::updateOrCreate(
+                    [
+                        'date' => $formattedReturnDate,
+                        'destination_origin_id' => $packageConfig->destination_origin_id,
+                        'is_return_flight' => 1,
+                    ],
+                );
 
                 $currentFlightData = $outbound;
             } elseif ($type === 'Hotel Data') {
