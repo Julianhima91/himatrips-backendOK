@@ -115,7 +115,7 @@ class FlightsAction
 
         //if collection is empty return early and broadcast failure
         if ($outbound_flight->isEmpty()) {
-            broadcast(new LiveSearchFailed('No flights found', $batchId));
+//            broadcast(new LiveSearchFailed('No flights found', $batchId));
 
             return;
         }
@@ -226,7 +226,7 @@ class FlightsAction
 
         //if collection is empty return early and broadcast failure
         if ($inbound_flight->isEmpty()) {
-            broadcast(new LiveSearchFailed('No flights found', $batchId));
+//            broadcast(new LiveSearchFailed('No flights found', $batchId));
 
             return;
         }
