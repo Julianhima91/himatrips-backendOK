@@ -5,6 +5,7 @@ namespace App\Filament\Resources;
 use App\Actions\CheckFlightAvailability;
 use App\Filament\Resources\PackageConfigResource\Pages;
 use App\Filament\Resources\PackageConfigResource\RelationManagers\DirectFlightAvailabilityRelationManager;
+use App\Filament\Resources\PackageConfigResource\RelationManagers\PackagesRelationManager;
 use App\Http\Requests\CheckFlightAvailabilityRequest;
 use App\Jobs\ImportPackagesJob;
 use App\Models\Airline;
@@ -297,7 +298,7 @@ class PackageConfigResource extends Resource
                         } else {
                             $path = $file;
                         }
-
+                        //
                         ImportPackagesJob::dispatch($record->id, $path);
                         //                        ImportPackagesJob::dispatch($record->id, null);
 
@@ -351,6 +352,7 @@ class PackageConfigResource extends Resource
     {
         return [
             DirectFlightAvailabilityRelationManager::class,
+            PackagesRelationManager::class,
         ];
     }
 

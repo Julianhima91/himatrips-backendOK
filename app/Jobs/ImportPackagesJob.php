@@ -2,7 +2,6 @@
 
 namespace App\Jobs;
 
-use App\Models\DirectFlightAvailability;
 use App\Models\FlightData;
 use App\Models\HotelData;
 use App\Models\HotelOffer;
@@ -32,8 +31,6 @@ class ImportPackagesJob implements ShouldQueue
 
     private HotelData $hotelData;
 
-    private $commission;
-
     public function __construct($packageConfigId, $filePath)
     {
         $this->packageConfigId = $packageConfigId;
@@ -52,6 +49,17 @@ class ImportPackagesJob implements ShouldQueue
             return;
         }
 
+        // Delete all old data for this package config
+        $packages = Package::query()->where('package_config_id', $this->packageConfigId)->get();
+
+        foreach ($packages as $package) {
+            $package->hotelData()->delete();
+            $package->inboundFlight()->delete();
+            $package->outboundFlight()->delete();
+        }
+
+        Package::query()->where('package_config_id', $this->packageConfigId)->forceDelete();
+
         $origin = $packageConfig->destination_origin->origin;
         $destination = $packageConfig->destination_origin->destination;
 
@@ -59,8 +67,8 @@ class ImportPackagesJob implements ShouldQueue
         $destinationAirport = $destination->airports->first();
 
         $batchId = Str::orderedUuid();
-        //        $csv = Storage::disk('public')->get('aaaa.csv');
-        $csv = Storage::disk('public')->get($this->filePath);
+        $csv = Storage::disk('public')->get('aaaa.csv');
+        //        $csv = Storage::disk('public')->get($this->filePath);
         $rows = preg_split('/\r\n|\n|\r/', trim($csv));
 
         \DB::beginTransaction();
@@ -70,6 +78,7 @@ class ImportPackagesJob implements ShouldQueue
         $currentFlightPrice = null;
         $cycleTotalPrices = [];
         $cycleOfferCommissions = [];
+        $dateCombinations = [];
 
         foreach ($rows as $row) {
             if (trim($row) === '') {
@@ -86,7 +95,7 @@ class ImportPackagesJob implements ShouldQueue
                 if ($currentFlightData && $currentHotelData && ! empty($cycleTotalPrices)) {
                     $minPrice = min($cycleTotalPrices);
                     $minIndex = array_search($minPrice, $cycleTotalPrices);
-                    $commissionForMinOffer = $cycleOfferCommissions[$minIndex] ?? null;
+                    //                    $commissionForMinOffer = $cycleOfferCommissions[$minIndex] ?? null;
 
                     Log::info('PACKAGE CREATION (cycle)');
                     Package::create([
@@ -94,7 +103,7 @@ class ImportPackagesJob implements ShouldQueue
                         'outbound_flight_id' => $currentFlightData->id,
                         'inbound_flight_id' => $currentFlightData->id + 1,
                         'hotel_data_id' => $currentHotelData->id,
-                        'commission' => $commissionForMinOffer,
+                        'commission' => 0,
                         'total_price' => $minPrice,
                         'batch_id' => $batchId,
                     ]);
@@ -219,24 +228,11 @@ class ImportPackagesJob implements ShouldQueue
 
                 $returnDate = new DateTime($data[8]);
                 $formattedReturnDate = $returnDate->format('Y-m-d');
-                Log::error("DATE: $formattedDate");
-                Log::error("RETURN DATE: $formattedReturnDate");
 
-                DirectFlightAvailability::updateOrCreate(
-                    [
-                        'date' => $formattedDate,
-                        'destination_origin_id' => $packageConfig->destination_origin_id,
-                        'is_return_flight' => 0,
-                    ],
-                );
-
-                DirectFlightAvailability::updateOrCreate(
-                    [
-                        'date' => $formattedReturnDate,
-                        'destination_origin_id' => $packageConfig->destination_origin_id,
-                        'is_return_flight' => 1,
-                    ],
-                );
+                $dateCombinations[] = [
+                    'departure_date' => $formattedDate,
+                    'return_date' => $formattedReturnDate,
+                ];
 
                 $currentFlightData = $outbound;
             } elseif ($type === 'Hotel Data') {
@@ -252,24 +248,38 @@ class ImportPackagesJob implements ShouldQueue
                     'price' => $data[8] ?? null,
                     'room_object' => null,
                 ]);
+
+                $transfers = [];
+
+                for ($i = 9; $i < count($data); $i += 3) {
+                    if (! isset($data[$i], $data[$i + 1], $data[$i + 2])) {
+                        break;
+                    }
+
+                    $transfers[] = [
+                        'description' => $data[$i],
+                        'adult_price' => $data[$i + 1],
+                        'children_price' => $data[$i + 2],
+                    ];
+                }
             } elseif ($type === 'Hotel Offer') {
                 $transferPrice = 0;
-                foreach ($currentHotelData->hotel->transfers as $transfer) {
-                    $transferPrice += $transfer->adult_price * $currentHotelData->adults;
+                foreach ($transfers as $transfer) {
+                    $transferPrice += $transfer['adult_price'] * $currentHotelData->adults;
 
                     if ($currentHotelData->children > 0) {
-                        $transferPrice += $transfer->children_price * $currentHotelData->children;
+                        $transferPrice += $transfer['children_price'] * $currentHotelData->children;
                     }
                 }
-
-                $calculatedCommissionPercentage = ($packageConfig->commission_percentage / 100) * ($currentFlightPrice + $transferPrice + $data[3]);
-                $fixedCommissionRate = $packageConfig->commission_amount;
-                $commission = max($fixedCommissionRate, $calculatedCommissionPercentage);
-
-                $totalOfferPrice = $currentFlightPrice + $data[3] + $transferPrice + $commission;
+                //
+                //                $calculatedCommissionPercentage = ($packageConfig->commission_percentage / 100) * ($currentFlightPrice + $transferPrice + $data[3]);
+                //                $fixedCommissionRate = $packageConfig->commission_amount;
+                //                $commission = max($fixedCommissionRate, $calculatedCommissionPercentage);
+                //
+                $totalOfferPrice = $currentFlightPrice + $data[3] + $transferPrice;
 
                 $cycleTotalPrices[] = $totalOfferPrice;
-                $cycleOfferCommissions[] = $commission;
+                //                $cycleOfferCommissions[] = $commission;
 
                 //                Log::info("Flight price: $currentFlightPrice");
                 //                Log::info("Offer price: $data[3]");
@@ -291,8 +301,8 @@ class ImportPackagesJob implements ShouldQueue
 
         if ($currentFlightData && $currentHotelData && ! empty($cycleTotalPrices)) {
             $minPrice = min($cycleTotalPrices);
-            $minIndex = array_search($minPrice, $cycleTotalPrices);
-            $commissionForMinOffer = $cycleOfferCommissions[$minIndex] ?? null;
+            //            $minIndex = array_search($minPrice, $cycleTotalPrices);
+            //            $commissionForMinOffer = $cycleOfferCommissions[$minIndex] ?? null;
 
             Log::info('PACKAGE CREATION (final cycle)');
             Package::create([
@@ -300,12 +310,15 @@ class ImportPackagesJob implements ShouldQueue
                 'outbound_flight_id' => $currentFlightData->id,
                 'inbound_flight_id' => $currentFlightData->id + 1,
                 'hotel_data_id' => $currentHotelData->id,
-                'commission' => $commissionForMinOffer,
+                'commission' => 0,
                 'total_price' => $minPrice,
                 'batch_id' => $batchId,
             ]);
         }
 
+        $packageConfig->update([
+            'manual_date_combination' => json_encode($dateCombinations),
+        ]);
         \DB::commit();
 
         Log::info('Successfully imported packages for package config ID: '.$this->packageConfigId);
