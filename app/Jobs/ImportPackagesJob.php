@@ -67,8 +67,8 @@ class ImportPackagesJob implements ShouldQueue
         $destinationAirport = $destination->airports->first();
 
         $batchId = Str::orderedUuid();
-        $csv = Storage::disk('public')->get('aaaa.csv');
-        //        $csv = Storage::disk('public')->get($this->filePath);
+//        $csv = Storage::disk('public')->get('aaaa.csv');
+        $csv = Storage::disk('public')->get($this->filePath);
         $rows = preg_split('/\r\n|\n|\r/', trim($csv));
 
         \DB::beginTransaction();
