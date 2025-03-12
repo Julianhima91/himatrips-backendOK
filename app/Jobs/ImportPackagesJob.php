@@ -106,6 +106,7 @@ class ImportPackagesJob implements ShouldQueue
                         'commission' => 0,
                         'total_price' => $minPrice,
                         'batch_id' => $batchId,
+                        'extra_data' => ['transfers' => $transfers],
                     ]);
 
                     $currentFlightData = null;
@@ -258,8 +259,8 @@ class ImportPackagesJob implements ShouldQueue
 
                     $transfers[] = [
                         'description' => $data[$i],
-                        'adult_price' => $data[$i + 1],
-                        'children_price' => $data[$i + 2],
+                        'adult_price' => (int) $data[$i + 1],
+                        'children_price' => (int) $data[$i + 2],
                     ];
                 }
             } elseif ($type === 'Hotel Offer') {
@@ -313,6 +314,7 @@ class ImportPackagesJob implements ShouldQueue
                 'commission' => 0,
                 'total_price' => $minPrice,
                 'batch_id' => $batchId,
+                'extra_data' => ['transfers' => $transfers],
             ]);
         }
 
