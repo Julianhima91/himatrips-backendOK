@@ -67,8 +67,8 @@ class ImportPackagesJob implements ShouldQueue
         $destinationAirport = $destination->airports->first();
 
         $batchId = Str::orderedUuid();
-//        $csv = Storage::disk('public')->get('aaaa.csv');
-        $csv = Storage::disk('public')->get($this->filePath);
+        $csv = Storage::disk('public')->get('aaaa.csv');
+        //        $csv = Storage::disk('public')->get($this->filePath);
         $rows = preg_split('/\r\n|\n|\r/', trim($csv));
 
         \DB::beginTransaction();
@@ -77,8 +77,8 @@ class ImportPackagesJob implements ShouldQueue
         $currentHotelData = null;
         $currentFlightPrice = null;
         $cycleTotalPrices = [];
-        $cycleOfferCommissions = [];
         $dateCombinations = [];
+        $roomCount = 0;
 
         foreach ($rows as $row) {
             if (trim($row) === '') {
@@ -97,7 +97,7 @@ class ImportPackagesJob implements ShouldQueue
                     $minIndex = array_search($minPrice, $cycleTotalPrices);
                     //                    $commissionForMinOffer = $cycleOfferCommissions[$minIndex] ?? null;
 
-                    Log::info('PACKAGE CREATION (cycle)');
+                    Log::error('create package');
                     Package::create([
                         'package_config_id' => $packageConfig->id,
                         'outbound_flight_id' => $currentFlightData->id,
@@ -118,88 +118,44 @@ class ImportPackagesJob implements ShouldQueue
 
                 $currentFlightPrice = $data[5] ?? null;
 
-                if ($data[12] == 0) {
-                    $segments = json_encode([[
-                        'origin' => [
-                            'name' => $data[17],
-                            'displayCode' => $data[18],
-                        ],
-                        'destination' => [
-                            'name' => $data[19],
-                            'displayCode' => $data[20],
-                        ],
-                        'arrival' => $data[21],
-                        'departure' => $data[22],
-                    ]]);
+                $segments = json_encode([[
+                    'origin' => [
+                        'name' => $data[8],
+                        'displayCode' => $data[9],
+                    ],
+                    'destination' => [
+                        'name' => $data[10],
+                        'displayCode' => $data[11],
+                    ],
+                    'arrival' => $data[2],
+                    'departure' => $data[1],
+                ]]);
 
-                    $segmentsBack = json_encode([[
-                        'origin' => [
-                            'name' => $data[23],
-                            'displayCode' => $data[24],
-                        ],
-                        'destination' => [
-                            'name' => $data[25],
-                            'displayCode' => $data[26],
-                        ],
-                        'arrival' => $data[27],
-                        'departure' => $data[28],
-                    ]]);
-                } else {
-                    $outboundStops = $data[12];
-                    $segmentsOut = [];
-                    $currentIndex = 17;
-
-                    for ($i = 0; $i < ($outboundStops + 1); $i++) {
-                        $segmentsOut[] = [
-                            'origin' => [
-                                'name' => $data[$currentIndex],
-                                'displayCode' => $data[$currentIndex + 1],
-                            ],
-                            'destination' => [
-                                'name' => $data[$currentIndex + 2],
-                                'displayCode' => $data[$currentIndex + 3],
-                            ],
-                            'arrival' => $data[$currentIndex + 4],
-                            'departure' => $data[$currentIndex + 5],
-                        ];
-                        $currentIndex += 6;
-                    }
-
-                    $returnStops = (int) $outboundStops; // for the future, incase we need separate stop count back.
-                    $segmentsBack = [];
-
-                    for ($i = 0; $i < ($returnStops + 1); $i++) {
-                        $segmentsBack[] = [
-                            'origin' => [
-                                'name' => $data[$currentIndex],
-                                'displayCode' => $data[$currentIndex + 1],
-                            ],
-                            'destination' => [
-                                'name' => $data[$currentIndex + 2],
-                                'displayCode' => $data[$currentIndex + 3],
-                            ],
-                            'arrival' => $data[$currentIndex + 4],
-                            'departure' => $data[$currentIndex + 5],
-                        ];
-                        $currentIndex += 6;
-                    }
-
-                    $segments = json_encode($segmentsOut);
-                    $segmentsBack = json_encode($segmentsBack);
-                }
+                $segmentsBack = json_encode([[
+                    'origin' => [
+                        'name' => $data[10],
+                        'displayCode' => $data[11],
+                    ],
+                    'destination' => [
+                        'name' => $data[8],
+                        'displayCode' => $data[9],
+                    ],
+                    'arrival' => $data[4],
+                    'departure' => $data[3],
+                ]]);
 
                 $outbound = FlightData::create([
                     'package_config_id' => $packageConfig->id,
                     'origin' => $originAirport->sky_id ?? null,
                     'destination' => $destinationAirport->sky_id ?? null,
-                    'departure' => $data[3] ?? null,
-                    'arrival' => $data[4] ?? null,
-                    'price' => $data[5] ?? null,
-                    'airline' => $data[6] ?? null,
-                    'stop_count' => $data[7] ?? null,
-                    'adults' => $data[13] ?? null,
-                    'children' => $data[14] ?? null,
-                    'infants' => $data[15] ?? null,
+                    'departure' => $data[1] ?? null,
+                    'arrival' => $data[2] ?? null,
+                    'price' => 0,
+                    'airline' => 'charter',
+                    'stop_count' => 0,
+                    'adults' => $data[5] ?? null,
+                    'children' => $data[6] ?? null,
+                    'infants' => $data[7] ?? null,
                     'extra_data' => null,
                     'segments' => $segments,
                     'all_flights' => null,
@@ -210,24 +166,24 @@ class ImportPackagesJob implements ShouldQueue
                     'package_config_id' => $packageConfig->id,
                     'origin' => $destinationAirport->sky_id ?? null,
                     'destination' => $originAirport->sky_id ?? null,
-                    'departure' => $data[8] ?? null,
-                    'arrival' => $data[9] ?? null,
-                    'price' => $data[10] ?? null,
-                    'airline' => $data[11] ?? null,
-                    'stop_count' => $data[12] ?? null,
-                    'adults' => $data[13] ?? null,
-                    'children' => $data[14] ?? null,
-                    'infants' => $data[15] ?? null,
+                    'departure' => $data[3] ?? null,
+                    'arrival' => $data[4] ?? null,
+                    'price' => 0,
+                    'airline' => 'charter',
+                    'stop_count' => 0,
+                    'adults' => $data[5] ?? null,
+                    'children' => $data[6] ?? null,
+                    'infants' => $data[7] ?? null,
                     'extra_data' => null,
                     'segments' => $segmentsBack,
                     'all_flights' => null,
                     'return_flight' => 1,
                 ]);
 
-                $date = new DateTime($data[3]);
+                $date = new DateTime($data[1]);
                 $formattedDate = $date->format('Y-m-d');
 
-                $returnDate = new DateTime($data[8]);
+                $returnDate = new DateTime($data[3]);
                 $formattedReturnDate = $returnDate->format('Y-m-d');
 
                 $dateCombinations[] = [
@@ -246,64 +202,45 @@ class ImportPackagesJob implements ShouldQueue
                     'adults' => $data[5] ?? null,
                     'children' => $data[6] ?? null,
                     'infants' => $data[7] ?? null,
-                    'price' => $data[8] ?? null,
+                    'price' => 0,
                     'room_object' => null,
                 ]);
 
+                $roomCount = $data[4];
                 $transfers = [];
 
-                for ($i = 9; $i < count($data); $i += 3) {
-                    if (! isset($data[$i], $data[$i + 1], $data[$i + 2])) {
-                        break;
-                    }
-
-                    $transfers[] = [
-                        'description' => $data[$i],
-                        'adult_price' => (int) $data[$i + 1],
-                        'children_price' => (int) $data[$i + 2],
-                    ];
-                }
+                $transfers[] = [
+                    'description' => $data[8],
+                ];
             } elseif ($type === 'Hotel Offer') {
-                $transferPrice = 0;
-                foreach ($transfers as $transfer) {
-                    $transferPrice += $transfer['adult_price'] * $currentHotelData->adults;
+                if ($roomCount > 1) {
+                    $roomTypes = explode('/', $data[2]);
 
-                    if ($currentHotelData->children > 0) {
-                        $transferPrice += $transfer['children_price'] * $currentHotelData->children;
-                    }
+                    $roomType = json_encode($roomTypes);
+                } else {
+                    $roomType = json_encode($data[2] ?? '');
                 }
-                //
-                //                $calculatedCommissionPercentage = ($packageConfig->commission_percentage / 100) * ($currentFlightPrice + $transferPrice + $data[3]);
-                //                $fixedCommissionRate = $packageConfig->commission_amount;
-                //                $commission = max($fixedCommissionRate, $calculatedCommissionPercentage);
-                //
-                $totalOfferPrice = $currentFlightPrice + $data[3] + $transferPrice;
-
-                $cycleTotalPrices[] = $totalOfferPrice;
-                //                $cycleOfferCommissions[] = $commission;
-
-                //                Log::info("Flight price: $currentFlightPrice");
-                //                Log::info("Offer price: $data[3]");
-                //                Log::info("Transfer price: $transferPrice");
-                //                Log::info("Commission: $commission");
 
                 $offer = HotelOffer::create([
                     'hotel_data_id' => $currentHotelData->id,
                     'room_basis' => $data[1] ?? null,
-                    'room_type' => json_encode($data[2] ?? ''),
+                    'room_type' => $roomType,
                     'price' => $data[3] ?? null,
-                    'total_price_for_this_offer' => $totalOfferPrice,
+                    'total_price_for_this_offer' => $data[3] ?? null,
                     'reservation_deadline' => $data[4] ?? null,
                 ]);
+
+                $cycleTotalPrices[] = $data[3];
             } else {
                 Log::warning("Unknown CSV data type: {$type}");
             }
         }
 
-        if ($currentFlightData && $currentHotelData && ! empty($cycleTotalPrices)) {
+        if ($currentFlightData && $currentHotelData) {
             $minPrice = min($cycleTotalPrices);
             //            $minIndex = array_search($minPrice, $cycleTotalPrices);
             //            $commissionForMinOffer = $cycleOfferCommissions[$minIndex] ?? null;
+            Log::error('create package');
 
             Log::info('PACKAGE CREATION (final cycle)');
             Package::create([
@@ -319,7 +256,7 @@ class ImportPackagesJob implements ShouldQueue
         }
 
         $packageConfig->update([
-            'manual_date_combination' => json_encode($dateCombinations),
+            'manual_date_combination' => $dateCombinations,
         ]);
         \DB::commit();
 

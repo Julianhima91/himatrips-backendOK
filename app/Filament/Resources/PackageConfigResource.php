@@ -298,9 +298,9 @@ class PackageConfigResource extends Resource
                         } else {
                             $path = $file;
                         }
-                        //
+
                         ImportPackagesJob::dispatch($record->id, $path);
-                        //                        ImportPackagesJob::dispatch($record->id, null);
+                        // ImportPackagesJob::dispatch($record->id, null);
 
                         Notification::make()
                             ->title('Job Dispatched')
