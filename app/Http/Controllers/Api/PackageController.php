@@ -83,6 +83,20 @@ class PackageController extends Controller
         $destination = Destination::where('id', $request->destination_id)->first();
         $origin = Origin::where('id', $request->origin_id)->first();
 
+        $destinationOrigin = DestinationOrigin::query()
+            ->where([
+                ['origin_id', $origin->id],
+                ['destination_id', $destination->id],
+            ])->first();
+
+        $packageConfig = PackageConfig::query()
+            ->where('destination_origin_id', $destinationOrigin->id)
+            ->first();
+
+        if ($packageConfig->is_manual) {
+            return $this->manualLiveSearch($request, $flights, $hotels, $packagesAction, $destination, $origin, $destinationOrigin, $packageConfig);
+        }
+
         try {
             $batchId = Str::orderedUuid();
 
@@ -790,5 +804,88 @@ class PackageController extends Controller
             return response()->json(['message' => 'Invalid flight index.'], 400);
         }
 
+    }
+
+    private function manualLiveSearch(LivesearchRequest $request, FlightsAction $flights, HotelsAction $hotels, PackagesAction $packagesAction, $destination, $origin, $destinationOrigin, $packageConfig)
+    {
+        $departureDate = $request->date;
+        $nights = $request->nights;
+        $returnDate = Carbon::parse($departureDate)->addDays($nights)->toDateString();
+        $rooms = $request->rooms;
+        $adults = collect($rooms)->sum('adults');
+        $children = collect($rooms)->sum('children');
+        $infants = collect($rooms)->sum('infants');
+
+        $packages = Package::withTrashed()
+            ->where([
+                ['package_config_id', $packageConfig->id],
+            ])
+            ->whereHas('outboundFlight', function ($query) use ($departureDate, $adults, $children, $infants) {
+                $query->whereDate('departure', $departureDate)
+                    ->where('adults', '>=', $adults)
+                    ->where('children', '>=', $children)
+                    ->where('infants', '>=', $infants);
+            })
+            ->whereHas('inboundFlight', function ($query) use ($returnDate, $adults, $children, $infants) {
+                $query->whereDate('departure', $returnDate)
+                    ->where('adults', '>=', $adults)
+                    ->where('children', '>=', $children)
+                    ->where('infants', '>=', $infants);
+            })
+            ->when($request->price_range, function ($query) use ($request) {
+                $query->whereBetween('total_price', [$request->price_range[0], $request->price_range[1]]);
+            })
+            ->when($request->review_scores, function ($query) use ($request) {
+                $query->whereHas('hotelData.hotel', function ($query) use ($request) {
+                    $query->where('review_score', '>=', $request->review_scores);
+                });
+            })
+            ->when($request->stars, function ($query) use ($request) {
+                $query->whereHas('hotelData.hotel', function ($query) use ($request) {
+                    $query->whereIn('stars', $request->stars);
+                });
+            })
+            ->when($request->room_basis, function ($query) use ($request) {
+                $query->whereHas('hotelData.offers', function ($query) use ($request) {
+                    $query->whereIn('room_basis', $request->room_basis);
+                });
+            })
+            ->with([
+                'hotelData',
+                'hotelData.hotel',
+                'hotelData.hotel.transfers',
+                'hotelData.hotel.hotelPhotos',
+                'outboundFlight',
+                'inboundFlight',
+                'hotelData.offers' => function ($query) use ($request) {
+                    $query->when($request->room_basis, function ($query) use ($request) {
+                        $query->whereIn('room_basis', $request->room_basis);
+                    })
+                        ->orderBy('price', 'asc');
+                },
+            ])
+            ->get()
+            ->sortBy(function (Package $package) {
+                return $package->hotelData->offers->first()->total_price_for_this_offer;
+            })
+            ->values()
+            ->all();
+
+        $packages = collect($packages);
+
+        $page = $request->page ?? 1;
+        $perPage = $request->per_page ?? 10;
+
+        $paginatedData = $packages->forPage($page, $perPage)->values();
+
+        return response()->json([
+            'data' => [
+                'content_id' => isset($packages[0]->package_config_id) ? $packages[0]->package_config_id : false,
+                'data' => $paginatedData,
+                'current_page' => $page,
+                'per_page' => $perPage,
+                'total' => $packages->count(),
+            ],
+        ]);
     }
 }

@@ -20,6 +20,7 @@ class PackageConfig extends Model
         'number_of_nights' => 'array',
         'last_processed_at' => 'datetime',
         'direct_flight' => 'boolean',
+        'manual_date_combination' => 'array',
     ];
 
     protected static function booted(): void
