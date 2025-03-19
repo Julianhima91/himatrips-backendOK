@@ -36,6 +36,7 @@ class DestinationPlainResource extends JsonResource
                 'origin_id' => $this->origins[0]->pivot->origin_id,
                 'live_search' => $this->origins[0]->pivot->live_search,
             ],
+            'date_combinations' => json_decode($this->manual_date_combination),
         ];
     }
 }
