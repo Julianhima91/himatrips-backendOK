@@ -21,6 +21,13 @@ class CheapestDateListener
         $currentBatchIds[] = (string) $event->batchId;
         Cache::put("$event->adConfigId:current_batch_ids", $currentBatchIds, 90);
 
+        $formattedHolidays = array_map(fn ($date) => $date->format('Y-m-d'), $event->holidays);
+        $holidaysMap = [$event->destinationId => array_unique($formattedHolidays)];
+        Cache::put("$event->adConfigId:current_holidays", $holidaysMap, 90);
+
+        $a = Cache::get("$event->adConfigId:current_holidays");
+        Log::info('Cached Holidays:', $a);
+
         //todo when count of both arrays is the same, then proceed to sort them
         if (isset($currentBatchIds) && isset($batchIds) && count($batchIds) === count($currentBatchIds)) {
             sort($batchIds);
@@ -30,30 +37,64 @@ class CheapestDateListener
         //        Log::error('comparison result: '.var_export($batchIds == $currentBatchIds, true));
 
         if ($batchIds === $currentBatchIds) {
-            $ads = Ad::query()
-                ->whereIn('batch_id', $batchIds)
-                ->orderBy('total_price', 'asc')
-                ->get();
+            $holidaysMap = Cache::get("$event->adConfigId:current_holidays", []);
+            $holidays = $holidaysMap[$event->destinationId] ?? [];
 
-            if ($ads->isNotEmpty()) {
-                $smallestPriceAd = $ads->first();
+            $query = Ad::select('ads.*')
+                ->leftJoin('flight_data as f', 'f.id', '=', 'ads.outbound_flight_id')
+                ->leftJoin('flight_data as f2', 'f2.id', '=', 'ads.inbound_flight_id')
+                ->where('ads.ad_config_id', 21)
+                ->where('ads.offer_category', 'holiday')
+                ->where(function ($q) use ($holidays) {
+                    foreach ($holidays as $holiday) {
+                        $q->orWhere(function ($subQuery) use ($holiday) {
+                            $subQuery->whereRaw('DATE(?) BETWEEN DATE(f.departure) AND DATE(f2.arrival)', [$holiday])
+                                ->whereRaw('ads.total_price = (
+                        SELECT MIN(ads_inner.total_price)
+                        FROM ads as ads_inner
+                        LEFT JOIN flight_data as f3 ON f3.id = ads_inner.outbound_flight_id
+                        LEFT JOIN flight_data as f4 ON f4.id = ads_inner.inbound_flight_id
+                        WHERE ads_inner.destination_id = ads.destination_id
+                          AND ads_inner.ad_config_id = 21
+                          AND ads_inner.offer_category = "holiday"
+                          AND DATE(?) BETWEEN DATE(f3.departure) AND DATE(f4.arrival)
+                    )', [$holiday]);
+                        });
+                    }
+                })
+                ->pluck('ads.id');
 
-                $adsToDelete = Ad::query()
-                    ->whereIn('batch_id', $batchIds)
-                    ->where('id', '!=', $smallestPriceAd->id)
-                    ->get();
+            Log::info('AAAAAAA Selected Ad IDs:', ['ad_ids' => $query->toArray()]);
 
-                foreach ($adsToDelete as $ad) {
-                    $ad->hotelData()->delete();
-                    $ad->outboundFlight()->delete();
-                    $ad->inboundFlight()->delete();
-                }
+            Ad::where([
+                ['ad_config_id', $event->adConfigId],
+                ['offer_category', 'holiday'],
+            ])
+                ->whereNotIn('id', $query)
+                ->delete();
 
-                Ad::query()
-                    ->whereIn('batch_id', $batchIds)
-                    ->where('id', '!=', $smallestPriceAd->id)
-                    ->delete();
-            }
+            //            $ads = Ad::query()
+            //                ->whereIn('batch_id', $batchIds)
+            //                ->orderBy('total_price', 'asc')
+            //                ->get();
+            //
+            //            if ($ads->isNotEmpty()) {
+            //                $smallestPriceAd = $ads->first();
+            //
+            //                $adsToDelete = Ad::query()
+            //                    ->whereIn('batch_id', $batchIds)
+            //                    ->where('id', '!=', $smallestPriceAd->id)
+            //                    ->get();
+            //
+            //                foreach ($adsToDelete as $ad) {
+            //                    $ad->hotelData()->delete();
+            //                }
+            //
+            //                Ad::query()
+            //                    ->whereIn('batch_id', $batchIds)
+            //                    ->where('id', '!=', $smallestPriceAd->id)
+            //                    ->delete();
+            //            }
 
             Cache::forget("$event->adConfigId:batch_ids");
             Cache::forget("$event->adConfigId:current_batch_ids");

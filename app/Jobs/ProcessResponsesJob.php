@@ -66,7 +66,7 @@ class ProcessResponsesJob implements ShouldQueue
                 }
 
                 if ($option === 'cheapest_date') {
-                    event(new CheapestDateEvent($this->request['batch_id'], $this->batchIds, $this->adConfig->id));
+                    event(new CheapestDateEvent($this->request['batch_id'], $this->batchIds, $this->adConfig->id, $this->request['holidays'], $this->request['destination_id']));
                 }
             }
 
@@ -172,6 +172,9 @@ class ProcessResponsesJob implements ShouldQueue
         } else {
             $flights = $flights->reject(null);
             $first_outbound_flight = $flights[0] ?? $flights->first();
+
+            Log::error($flights[0]);
+            Log::error($flights->first());
 
             $outbound_flight_hydrated = FlightData::create([
                 'price' => $first_outbound_flight->price,
@@ -308,7 +311,7 @@ class ProcessResponsesJob implements ShouldQueue
         }
 
         if ($cheapestOffer) {
-            //            Log::info('Cheapest Ad: '.$cheapestAd);
+            Log::info('Cheapest Ad: '.$cheapestAd);
 
             $adsToDelete = Ad::query()
                 ->where('batch_id', $this->batchId)

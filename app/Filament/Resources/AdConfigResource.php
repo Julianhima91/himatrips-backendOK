@@ -85,6 +85,10 @@ class AdConfigResource extends Resource
                     ->numeric()
                     ->required(),
 
+                Forms\Components\TextInput::make('description')
+                    ->label('Description')
+                    ->required(),
+
                 Forms\Components\Select::make('extra_options')
                     ->label('Extra Options')
                     ->multiple()
@@ -107,6 +111,9 @@ class AdConfigResource extends Resource
                     ->label('Origin')
                     ->sortable()
                     ->searchable(),
+                TextColumn::make('description')
+                    ->label('Description')
+                    ->sortable(),
                 TextColumn::make('refresh_hours')
                     ->label('Refresh Hours')
                     ->sortable(),

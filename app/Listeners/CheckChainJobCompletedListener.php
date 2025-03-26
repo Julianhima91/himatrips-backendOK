@@ -80,9 +80,10 @@ class CheckChainJobCompletedListener
     {
         $totalAds = count($ads);
         $adConfig = $ads[0]->ad_config_id;
+        $adConfigDescription = preg_replace('/\s+/', '_', $ads[0]->adConfig->description ?? 'no_description');
         Log::info("Exporting $totalAds ads for holiday... Ad config id: $adConfig");
 
-        $filename = 'ads_holiday_export_'.$adConfig.'.csv';
+        $filename = 'ads_holiday_export_'.$adConfigDescription.'.csv';
 
         $directory = storage_path('app/public/offers');
         if (! File::exists($directory)) {
@@ -116,6 +117,8 @@ class CheckChainJobCompletedListener
 
         foreach ($ads as $ad) {
             Log::warning($ad->id);
+            Log::warning($ad->outboundFlight->departure);
+            Log::warning($ad->inboundFlight->departure);
             $nights = $ad->hotelData->number_of_nights;
             $pricePerPerson = $ad->total_price / 2;
             $departureDate = $ad->outboundFlight->departure->format('d/m');

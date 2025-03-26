@@ -5,6 +5,7 @@ namespace App\Filament\Resources;
 use App\Filament\Resources\CountryResource\Pages;
 use App\Filament\Resources\CountryResource\RelationManagers\AirportsRelationManager;
 use App\Filament\Resources\CountryResource\RelationManagers\DestinationsRelationManager;
+use App\Filament\Resources\CountryResource\RelationManagers\HolidaysRelationManager;
 use App\Filament\Resources\CountryResource\RelationManagers\OriginsRelationManager;
 use App\Models\Country;
 use Filament\Forms;
@@ -63,6 +64,7 @@ class CountryResource extends Resource
             OriginsRelationManager::class,
             DestinationsRelationManager::class,
             AirportsRelationManager::class,
+            HolidaysRelationManager::class,
         ];
     }
 

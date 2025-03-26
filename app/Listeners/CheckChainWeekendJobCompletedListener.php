@@ -5,6 +5,7 @@ namespace App\Listeners;
 use App\Models\Ad;
 use App\Models\AdConfigCsv;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Log;
 
@@ -37,13 +38,40 @@ class CheckChainWeekendJobCompletedListener
             Cache::forget("$event->adConfigId:weekend_create_csv");
             Cache::forget("$event->adConfigId:current_weekend_csv_batch_ids");
 
-            foreach ($batchIds as $batchId) {
-                $cheapestAd = Ad::where('batch_id', $batchId)
-                    ->orderBy('total_price', 'asc')
-                    ->first();
+            //in case we go back to weekends
+            //            foreach ($batchIds as $batchId) {
+            //                $cheapestAd = Ad::where('batch_id', $batchId)
+            //                    ->orderBy('total_price', 'asc')
+            //                    ->first();
+            //
+            //                Ad::where('batch_id', $batchId)
+            //                    ->where('id', '!=', optional($cheapestAd)->id)
+            //                    ->delete();
+            //            }
 
-                Ad::where('batch_id', $batchId)
-                    ->where('id', '!=', optional($cheapestAd)->id)
+            // Only 1 weekend/destination
+            $cheapestAds = Ad::select('destination_id', DB::raw('MIN(total_price) as min_price'))
+                ->where([
+                    ['ad_config_id', $event->adConfigId],
+                    ['offer_category', 'weekend'],
+                ])
+                ->groupBy('destination_id')
+                ->get();
+
+            foreach ($cheapestAds as $cheapestAd) {
+                $ad = Ad::where([
+                    ['ad_config_id', $event->adConfigId],
+                    ['offer_category', 'weekend'],
+                    ['destination_id', $cheapestAd->destination_id],
+                    ['total_price', $cheapestAd->min_price],
+                ])->first();
+
+                Ad::where([
+                    ['ad_config_id', $event->adConfigId],
+                    ['offer_category', 'weekend'],
+                    ['destination_id', $cheapestAd->destination_id],
+                ])
+                    ->where('id', '!=', optional($ad)->id)
                     ->delete();
             }
 
@@ -65,9 +93,10 @@ class CheckChainWeekendJobCompletedListener
     {
         $totalAds = count($ads);
         $adConfig = $ads[0]->ad_config_id;
+        $adConfigDescription = preg_replace('/\s+/', '_', $ads[0]->adConfig->description ?? 'no_description');
         Log::info("Exporting $totalAds ads for weekend... Ad config id: $adConfig");
 
-        $filename = 'ads_weekend_export_'.$adConfig.'.csv';
+        $filename = 'ads_weekend_export_'.$adConfigDescription.'.csv';
 
         $directory = storage_path('app/public/offers');
         if (! File::exists($directory)) {

@@ -87,8 +87,8 @@ class GenerateOffersForAdConfigs implements ShouldQueue
                 foreach ($destination->offer_category as $offerCategory) {
                     match ($offerCategory) {
                         OfferCategoryEnum::HOLIDAY->value => $this->createHolidayOffer($adConfig, $airport, $destination, $destinationAirport),
-                        OfferCategoryEnum::ECONOMIC->value => $this->createEconomicOffer($adConfig, $airport, $destination, $destinationAirport),
-                        OfferCategoryEnum::WEEKEND->value => $this->createWeekendOffer($adConfig, $airport, $destination, $destinationAirport),
+                        //                        OfferCategoryEnum::ECONOMIC->value => $this->createEconomicOffer($adConfig, $airport, $destination, $destinationAirport),
+                        //                        OfferCategoryEnum::WEEKEND->value => $this->createWeekendOffer($adConfig, $airport, $destination, $destinationAirport),
                         default => Log::warning("Unknown offer category: {$offerCategory}"),
                     };
                 }
@@ -106,29 +106,37 @@ class GenerateOffersForAdConfigs implements ShouldQueue
             ->getRelationValue('country')
             ->holidays()
             ->get()
-            ->filter(function ($holiday) use ($today, $threeMonthsFromNow) {
+            ->filter(function ($holiday) use ($today, $threeMonthsFromNow, $destination) {
                 [$day, $month] = explode('-', $holiday->day);
 
+                Log::warning("HOLIDAY: $holiday->name");
+                Log::warning("DESTINATION: $destination->name");
                 $holidayDate = now()->startOfYear()->setMonth($month)->setDay($day);
 
                 return $holidayDate->between($today, $threeMonthsFromNow);
             })
             ->pluck('day')
+            ->map(function ($holiday) {
+                [$holidayDay, $holidayMonth] = explode('-', $holiday);
+
+                return now()->startOfYear()->setMonth($holidayMonth)->setDay($holidayDay);
+            })
             ->toArray();
+        $destinationHolidays = $holidays;
 
         $requests[] = [];
 
         foreach ($holidays as $holiday) {
-            [$holidayDay, $holidayMonth] = explode('-', $holiday);
-
-            $holidayDate = now()->startOfYear()->setMonth($holidayMonth)->setDay($holidayDay);
+            //            [$holidayDay, $holidayMonth] = explode('-', $holiday);
+            //
+            //            $holidayDate = now()->startOfYear()->setMonth($holidayMonth)->setDay($holidayDay);
 
             $minNights = $destination->ad_min_nights;
             $maxNights = $destination->ad_max_nights;
 
             for ($nights = $minNights; $nights <= $maxNights; $nights++) {
                 for ($startOffset = 1; $startOffset < $nights - 1; $startOffset++) {
-                    $startDate = $holidayDate->copy()->subDays($startOffset);
+                    $startDate = $holiday->copy()->subDays($startOffset);
                     $endDate = $startDate->copy()->addDays($nights - 1);
 
                     if ($startDate->between($today, $threeMonthsFromNow) && $endDate->between($today, $threeMonthsFromNow)) {
@@ -153,6 +161,7 @@ class GenerateOffersForAdConfigs implements ShouldQueue
                             ],
                             'batch_id' => $batchId,
                             'category' => OfferCategoryEnum::HOLIDAY->value,
+                            'holidays' => $destinationHolidays,
                         ];
                     }
                 }
