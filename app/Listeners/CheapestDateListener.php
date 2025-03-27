@@ -64,7 +64,7 @@ class CheapestDateListener
                 })
                 ->pluck('ads.id');
 
-            Log::info('AAAAAAA Selected Ad IDs:', ['ad_ids' => $query->toArray()]);
+            Log::info('CCCCCCC Selected Ad IDs:', ['ad_ids' => $query->toArray()]);
 
             Ad::where([
                 ['ad_config_id', $event->adConfigId],

@@ -86,9 +86,9 @@ class GenerateOffersForAdConfigs implements ShouldQueue
 
                 foreach ($destination->offer_category as $offerCategory) {
                     match ($offerCategory) {
-                        OfferCategoryEnum::HOLIDAY->value => $this->createHolidayOffer($adConfig, $airport, $destination, $destinationAirport),
-                        //                        OfferCategoryEnum::ECONOMIC->value => $this->createEconomicOffer($adConfig, $airport, $destination, $destinationAirport),
-                        //                        OfferCategoryEnum::WEEKEND->value => $this->createWeekendOffer($adConfig, $airport, $destination, $destinationAirport),
+                        //                        OfferCategoryEnum::HOLIDAY->value => $this->createHolidayOffer($adConfig, $airport, $destination, $destinationAirport),
+                        //                                                OfferCategoryEnum::ECONOMIC->value => $this->createEconomicOffer($adConfig, $airport, $destination, $destinationAirport),
+                        OfferCategoryEnum::WEEKEND->value => $this->createWeekendOffer($adConfig, $airport, $destination, $destinationAirport),
                         default => Log::warning("Unknown offer category: {$offerCategory}"),
                     };
                 }

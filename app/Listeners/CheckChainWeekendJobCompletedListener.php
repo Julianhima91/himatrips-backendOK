@@ -66,12 +66,14 @@ class CheckChainWeekendJobCompletedListener
                     ['total_price', $cheapestAd->min_price],
                 ])->first();
 
+                Log::warning("Ad ID: $ad->id");
+
                 Ad::where([
                     ['ad_config_id', $event->adConfigId],
                     ['offer_category', 'weekend'],
                     ['destination_id', $cheapestAd->destination_id],
                 ])
-                    ->where('id', '!=', optional($ad)->id)
+                    ->where('id', '!=', $ad->id)
                     ->delete();
             }
 
@@ -107,113 +109,317 @@ class CheckChainWeekendJobCompletedListener
 
         $file = fopen($filepath, 'w');
 
-        fputcsv($file, [
-            'ID',
-            'Destination ID',
-            'Batch ID',
-            'Total Price',
-            'Title',
-            'Description',
-            'Photos',
-            'Videos',
-            'Destination Tags',
-            'Address',
-            'City',
-            'Country',
-            'Latitude',
-            'Longitude',
-            'Neighborhood',
-            'Product Tag',
-            'Price Change',
-            'URL',
-        ]);
+        $maxImages = 0;
+        $maxTagsPerImage = [];
+
+        $maxVideos = 0;
+        $maxTagsPerVideo = [];
 
         foreach ($ads as $ad) {
-            Log::warning($ad->id);
-            $nights = $ad->hotelData->number_of_nights;
-            $pricePerPerson = $ad->total_price / 2;
-            $departureDate = $ad->outboundFlight->departure->format('d/m');
-            $arrivalDate = $ad->inboundFlight->departure->format('d/m');
-            $origin = $ad->adConfig->origin->name;
-            $destination = $ad->destination;
+            $photos = $ad->destination->destinationPhotos
+                ->filter(fn ($file) => ! str_ends_with($file->file_path, '.mp4'))
+                ->values();
 
-            $description = "❣️ Fundjave ne $origin Nga $destination->name ❣️";
+            $videos = $ad->destination->destinationPhotos
+                ->filter(fn ($file) => str_ends_with($file->file_path, '.mp4'))
+                ->values();
 
-            $body = "
-✈️ $departureDate - $arrivalDate ➥ $pricePerPerson €/P $nights Nete
-Te Perfshira :
-✅ Bilete Vajtje - Ardhje nga $origin
-✅ Cante 10 Kg
-✅ Taksa Aeroportuale
-✅ Akomodim ne Hotel
-✅ Me Mengjes
-------- ⭐ Whatsaap ose Instagram Per Info ⭐-------
-📫 Zyrat Tona
-📍 Tiranë , Tek kryqëzimi i Rrugës Muhamet Gjollesha me Myslym Shyrin.
-📞 +355694767427
-📍 Durres : Rruga Aleksander Goga , Perballe shkolles Eftali Koci
-📞 +355699868907";
+            $destinationTags = $ad->destination->tags;
 
-            $photos = $destination->destinationPhotos->filter(function ($file) {
-                return ! str_ends_with($file->file_path, '.mp4');
-            })->map(function ($photo) {
-                return [
-                    'url' => url('/storage/'.$photo->file_path),
-                    'tags' => implode(', ', $photo->tags->pluck('name')->toArray()),
-                ];
-            });
+            $maxImages = max($maxImages, $photos->count());
+            $maxVideos = max($maxVideos, $videos->count());
 
-            $photoData = $photos->map(function ($photo) {
-                return $photo['url'].' '.$photo['tags'];
-            })->implode(', ');
+            foreach ($photos as $index => $photo) {
+                $tagsCount = count($photo->tags);
+                $maxTagsPerImage[$index] = max($maxTagsPerImage[$index] ?? 0, $tagsCount);
+            }
 
-            $videos = $destination->destinationPhotos->filter(function ($file) {
-                return str_ends_with($file->file_path, '.mp4'); // Only videos
-            })->map(function ($video) {
-                return [
-                    'url' => url('/storage/'.$video->file_path),
-                    'tags' => implode(', ', $video->tags->pluck('name')->toArray()),
-                ];
-            });
-
-            $videoData = $videos->map(function ($video) {
-                return $video['url'].' '.$video['tags'];
-            })->implode(', ');
-
-            $destinationTags = implode(', ', $destination->tags->pluck('name')->toArray());
-
-            $mostExpensiveOffer = $ad->hotelData->mostExpensiveOffer;
-            $cheapestOffer = $ad->hotelData->cheapestOffer;
-
-            $priceDiff = $cheapestOffer[0]->price - $mostExpensiveOffer[0]->price;
-
-            $requestData = json_decode($ad->request_data, true);
-
-            $originName = strtolower($origin);
-            $destinationName = strtolower($destination->name);
-            $url = env('FRONT_URL')."/admin/$ad->id";
-
-            fputcsv($file, [
-                $ad->id,
-                $destination->id,
-                $ad->batch_id,
-                $ad->total_price,
-                $description,
-                $body,
-                $photoData,
-                $videoData,
-                $destinationTags,
-                $destination->address,
-                $destination->city,
-                $destination->country,
-                $destination->latitude,
-                $destination->longitude,
-                $destination->neighborhood,
-                $ad->offer_category,
-                $priceDiff,
-                $url,
-            ]);
+            foreach ($videos as $index => $video) {
+                $tagsCount = count($video->tags);
+                $maxTagsPerVideo[$index] = max($maxTagsPerVideo[$index] ?? 0, $tagsCount);
+            }
         }
+
+        // 1st part
+        $headers = [
+            'destination_id',
+            'price',
+            'name',
+            'description',
+        ];
+
+        // dynamic fields
+        for ($i = 0; $i < $maxImages; $i++) {
+            $headers[] = "image[$i].url";
+
+            for ($j = 0; $j < ($maxTagsPerImage[$i] ?? 0); $j++) {
+                $headers[] = "image[$i].tag[$j]";
+            }
+        }
+
+        for ($i = 0; $i < $maxVideos; $i++) {
+            $headers[] = "video[$i].url";
+
+            for ($j = 0; $j < ($maxTagsPerVideo[$i] ?? 0); $j++) {
+                $headers[] = "video[$i].tag[$j]";
+            }
+        }
+
+        foreach ($destinationTags as $index => $tag) {
+            Log::error("AAAAAAA $index");
+            Log::error("AAAAAAA $tag");
+            $headers[] = "type[$index]";
+        }
+
+        // end part
+        $headers = array_merge($headers, [
+            'address.addr1',
+            'address.city',
+            'address.region',
+            'address.country',
+            'latitude',
+            'longitude',
+            'neighborhood[0]',
+            'product_tags[0]',
+            'price_change',
+            'url',
+        ]);
+
+        fputcsv($file, $headers);
+
+        foreach ($ads as $ad) {
+            $row = [
+                $ad->destination->id,
+                $ad->total_price,
+                '❣️ Fundjave ne '.$ad->adConfig->origin->name.' Nga '.$ad->destination->name.' ❣️',
+                '✈️ '.$ad->outboundFlight->departure->format('d/m').' - '.$ad->inboundFlight->departure->format('d/m').' ➥ '.($ad->total_price / 2).' €/P '.$ad->hotelData->number_of_nights.' Nete
+        ✅ Bilete Vajtje - Ardhje nga '.$ad->adConfig->origin->name.'
+        ✅ Cante 10 Kg
+        ✅ Taksa Aeroportuale
+        ✅ Akomodim ne Hotel
+        ✅ Me Mengjes
+        📍 Tiranë: Tek kryqëzimi i Rrugës Muhamet Gjollesha me Myslym Shyrin.
+        📞 +355694767427',
+            ];
+
+            $photos = $ad->destination->destinationPhotos->filter(fn ($file) => ! str_ends_with($file->file_path, '.mp4'))->values();
+            $videos = $ad->destination->destinationPhotos->filter(fn ($file) => str_ends_with($file->file_path, '.mp4'))->values();
+
+            for ($i = 0; $i < $maxImages; $i++) {
+                if (isset($photos[$i])) {
+                    $row[] = url('/storage/'.$photos[$i]->file_path);
+
+                    $tags = $photos[$i]->tags->pluck('name')->toArray();
+                    for ($j = 0; $j < ($maxTagsPerImage[$i] ?? 0); $j++) {
+                        $row[] = $tags[$j] ?? '';
+                    }
+                } else {
+                    $row[] = '';
+                    for ($j = 0; $j < ($maxTagsPerImage[$i] ?? 0); $j++) {
+                        $row[] = '';
+                    }
+                }
+            }
+
+            for ($i = 0; $i < $maxVideos; $i++) {
+                if (isset($videos[$i])) {
+                    $row[] = url('/storage/'.$videos[$i]->file_path);
+
+                    $tags = $videos[$i]->tags->pluck('name')->toArray();
+                    for ($j = 0; $j < ($maxTagsPerVideo[$i] ?? 0); $j++) {
+                        $row[] = $tags[$j] ?? '';
+                    }
+                } else {
+                    $row[] = '';
+                    for ($j = 0; $j < ($maxTagsPerVideo[$i] ?? 0); $j++) {
+                        $row[] = '';
+                    }
+                }
+            }
+
+            foreach ($destinationTags as $tag) {
+                $row[] = $tag->name;
+                Log::error("BBBBBBBBBB $tag");
+            }
+
+            $row = array_merge($row, [
+                $ad->destination->address,
+                $ad->destination->city,
+                $ad->destination->region,
+                $ad->destination->country,
+                $ad->destination->latitude,
+                $ad->destination->longitude,
+                $ad->destination->neighborhood,
+                $ad->offer_category,
+                ($ad->hotelData->cheapestOffer[0]->price ?? 0) - ($ad->hotelData->mostExpensiveOffer[0]->price ?? 0),
+                env('FRONT_URL')."/admin/$ad->id",
+            ]);
+
+            fputcsv($file, $row);
+        }
+
+        //in case we go back again
+
+        //        fputcsv($file, [
+        ////            'ID',
+        //            'destination_id',
+        ////            'Batch ID',
+        //            'price',
+        //            'name',
+        //            'description',
+        //            'Photos',
+        //            'Videos',
+        //            'Destination Tags',
+        //            'address.addr1',
+        //            'address.city',
+        //            'address.country',
+        //            'latitude',
+        //            'longitude',
+        //            'neighborhood[0]',
+        //            'Product Tag',
+        //            'price_change',
+        //            'url',
+        //        ]);
+
+        //        foreach ($ads as $ad) {
+        //            Log::warning($ad->id);
+        //            $nights = $ad->hotelData->number_of_nights;
+        //            $pricePerPerson = $ad->total_price / 2;
+        //            $departureDate = $ad->outboundFlight->departure->format('d/m');
+        //            $arrivalDate = $ad->inboundFlight->departure->format('d/m');
+        //            $origin = $ad->adConfig->origin->name;
+        //            $destination = $ad->destination;
+        //
+        //            $description = "❣️ Fundjave ne $origin Nga $destination->name ❣️";
+        //
+        //            $body = "
+        //✈️ $departureDate - $arrivalDate ➥ $pricePerPerson €/P $nights Nete
+        //Te Perfshira :
+        //✅ Bilete Vajtje - Ardhje nga $origin
+        //✅ Cante 10 Kg
+        //✅ Taksa Aeroportuale
+        //✅ Akomodim ne Hotel
+        //✅ Me Mengjes
+        //------- ⭐ Whatsaap ose Instagram Per Info ⭐-------
+        //📫 Zyrat Tona
+        //📍 Tiranë , Tek kryqëzimi i Rrugës Muhamet Gjollesha me Myslym Shyrin.
+        //📞 +355694767427
+        //📍 Durres : Rruga Aleksander Goga , Perballe shkolles Eftali Koci
+        //📞 +355699868907";
+        //
+        ////            $photos = $destination->destinationPhotos->filter(function ($file) {
+        ////                return ! str_ends_with($file->file_path, '.mp4');
+        ////            })->map(function ($photo) {
+        ////                return [
+        ////                    'url' => url('/storage/'.$photo->file_path),
+        ////                    'tags' => implode(', ', $photo->tags->pluck('name')->toArray()),
+        ////                ];
+        ////            });
+        ////
+        ////            $photoData = $photos->map(function ($photo) {
+        ////                return $photo['url'].' '.$photo['tags'];
+        ////            })->implode(', ');
+        //
+        ////            $videos = $destination->destinationPhotos->filter(function ($file) {
+        ////                return str_ends_with($file->file_path, '.mp4'); // Only videos
+        ////            })->map(function ($video) {
+        ////                return [
+        ////                    'url' => url('/storage/'.$video->file_path),
+        ////                    'tags' => implode(', ', $video->tags->pluck('name')->toArray()),
+        ////                ];
+        ////            });
+        ////
+        ////            $videoData = $videos->map(function ($video) {
+        ////                return $video['url'].' '.$video['tags'];
+        ////            })->implode(', ');
+        //
+        //            $photos = $destination->destinationPhotos->filter(fn($file) => ! str_ends_with($file->file_path, '.mp4'))
+        //                ->map(fn($photo) => [
+        //                    'url' => url('/storage/'.$photo->file_path),
+        //                    'tags' => $photo->tags->pluck('name')->toArray(),
+        //                ])
+        //                ->toArray();
+        //
+        //            $photoData = [];
+        //            foreach ($photos as $index => $photo) {
+        //                $photoData[] = "image[$index].url: ".$photo['url'];
+        //                foreach ($photo['tags'] as $tagIndex => $tag) {
+        //                    $photoData[] = "image[$index].tag[$tagIndex]: ".$tag;
+        //                }
+        //            }
+        //
+        //            $videos = $destination->destinationPhotos->filter(fn($file) => str_ends_with($file->file_path, '.mp4'))
+        //                ->map(fn($video) => [
+        //                    'url' => url('/storage/'.$video->file_path),
+        //                    'tags' => $video->tags->pluck('name')->toArray(),
+        //                ])
+        //                ->toArray();
+        //
+        //            $videoData = [];
+        //            foreach ($videos as $index => $video) {
+        //                $videoData[] = "video[$index].url: ".$video['url'];
+        //                foreach ($video['tags'] as $tagIndex => $tag) {
+        //                    $videoData[] = "video[$index].tag[$tagIndex]: ".$tag;
+        //                }
+        //            }
+        //
+        //            $destinationTags = implode(', ', $destination->tags->pluck('name')->toArray());
+        //
+        ////            $mostExpensiveOffer = $ad->hotelData->mostExpensiveOffer;
+        ////            $cheapestOffer = $ad->hotelData->cheapestOffer;
+        ////            $priceDiff = $cheapestOffer[0]->price - $mostExpensiveOffer[0]->price;
+        //
+        //            $mostExpensiveOffer = $ad->hotelData->mostExpensiveOffer ?? [];
+        //            $cheapestOffer = $ad->hotelData->cheapestOffer ?? [];
+        //
+        //            $mostExpensivePrice = !empty($mostExpensiveOffer) ? $mostExpensiveOffer[0]->price : 0;
+        //            $cheapestPrice = !empty($cheapestOffer) ? $cheapestOffer[0]->price : 0;
+        //            $priceDiff = $cheapestPrice - $mostExpensivePrice;
+        //
+        //            $requestData = json_decode($ad->request_data, true);
+        //
+        //            $originName = strtolower($origin);
+        //            $destinationName = strtolower($destination->name);
+        //            $url = env('FRONT_URL')."/admin/$ad->id";
+        //
+        //            fputcsv($file, array_merge([
+        //                $destination->id,
+        //                $ad->total_price,
+        //                $description,
+        //                $body,
+        //                $destinationTags,
+        //                $destination->address,
+        //                $destination->city,
+        //                $destination->country,
+        //                $destination->latitude,
+        //                $destination->longitude,
+        //                $destination->neighborhood,
+        //                $ad->offer_category,
+        //                $priceDiff,
+        //                $url,
+        //            ], $photoData, $videoData));
+        //
+        ////            fputcsv($file, [
+        //////                $ad->id,
+        ////                $destination->id,
+        //////                $ad->batch_id,
+        ////                $ad->total_price,
+        ////                $description,
+        ////                $body,
+        //////                $photoData,
+        //////                $videoData,
+        ////                $destinationTags,
+        ////                $destination->address,
+        ////                $destination->city,
+        ////                $destination->country,
+        ////                $destination->latitude,
+        ////                $destination->longitude,
+        ////                $destination->neighborhood,
+        ////                $ad->offer_category,
+        ////                $priceDiff,
+        ////                $url,
+        ////            ], $photoData, $videoData);
+        //        }
 
         fclose($file);
 

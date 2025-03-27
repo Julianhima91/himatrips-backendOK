@@ -66,6 +66,7 @@ class ProcessResponsesJob implements ShouldQueue
                 }
 
                 if ($option === 'cheapest_date') {
+                    Log::info('CCCCCCCCCCCCCCCC');
                     event(new CheapestDateEvent($this->request['batch_id'], $this->batchIds, $this->adConfig->id, $this->request['holidays'], $this->request['destination_id']));
                 }
             }
