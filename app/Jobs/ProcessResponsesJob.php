@@ -48,6 +48,8 @@ class ProcessResponsesJob implements ShouldQueue
         $hotels = Cache::get("batch:{$this->batchId}:hotels");
 
         if ($flights && $hotels) {
+            $extraOptions = $this->adConfig->extra_options;
+
             //            Log::info("Aggregated Response for batch {$this->batchId}");
             [$outbound_flight_hydrated, $inbound_flight_hydrated] = $this->handleFlights($flights, $this->request['date'], $this->batchId, $this->request['return_date'], $this->request['origin_id'], $this->request['destination_id']);
             if (is_null($outbound_flight_hydrated) && is_null($inbound_flight_hydrated)) {
@@ -55,10 +57,21 @@ class ProcessResponsesJob implements ShouldQueue
                     'batch_id' => $this->batchId,
                 ]);
 
+                foreach ($extraOptions as $option) {
+                    if ($option === 'cheapest_hotel') {
+                        $this->getCheapestHotel();
+                    }
+
+                    if ($option === 'cheapest_date') {
+                        event(new CheapestDateEvent(null, $this->batchIds, $this->adConfig->id, $this->request['holidays'], $this->request['destination_id']));
+                    }
+                }
+
+                event(new CheckChainJobCompletedEvent(null, $this->batchIds, $this->adConfig->id));
+
                 return;
             }
             $this->handleHotelsAndPackages($hotels, $outbound_flight_hydrated, $inbound_flight_hydrated, $this->batchId, $this->request['origin_id'], $this->request['destination_id'], $this->request['rooms']);
-            $extraOptions = $this->adConfig->extra_options;
 
             foreach ($extraOptions as $option) {
                 if ($option === 'cheapest_hotel') {
@@ -66,7 +79,6 @@ class ProcessResponsesJob implements ShouldQueue
                 }
 
                 if ($option === 'cheapest_date') {
-                    Log::info('CCCCCCCCCCCCCCCC');
                     event(new CheapestDateEvent($this->request['batch_id'], $this->batchIds, $this->adConfig->id, $this->request['holidays'], $this->request['destination_id']));
                 }
             }
@@ -162,12 +174,14 @@ class ProcessResponsesJob implements ShouldQueue
             if (in_array('cheapest_date', $this->adConfig->extra_options)) {
                 $batchIds = Cache::get("$adConfig->id:batch_ids");
                 unset($batchIds[array_search($this->batchId, $batchIds)]);
-                Cache::put("$adConfig->id:batch_ids", $batchIds, 90);
+                Cache::put("$adConfig->id:batch_ids", $batchIds);
             }
 
             $batchIds = Cache::get("$adConfig->id:create_csv");
             unset($batchIds[array_search($this->batchId, $batchIds)]);
-            Cache::put("$adConfig->id:create_csv", $batchIds, 90);
+            Cache::put("$adConfig->id:create_csv", $batchIds);
+
+            Log::error("REMOVING FROM CACHE $this->batchId");
 
             return [null, null];
         } else {

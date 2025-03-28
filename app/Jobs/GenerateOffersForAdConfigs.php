@@ -22,9 +22,12 @@ class GenerateOffersForAdConfigs implements ShouldQueue
 
     protected $adConfigId;
 
-    public function __construct($adConfigId = null)
+    public $type;
+
+    public function __construct($type, $adConfigId = null)
     {
         $this->adConfigId = $adConfigId;
+        $this->type = $type;
     }
 
     public function handle(): void
@@ -49,6 +52,7 @@ class GenerateOffersForAdConfigs implements ShouldQueue
         $this->adConfigId = $adConfig->id;
 
         Log::info("CONFIG ID: $this->adConfigId");
+        Log::info("TYPE ID: $this->type");
         $this->generateOffers($adConfig);
 
         //        $this->dispatchNextJob();
@@ -84,14 +88,21 @@ class GenerateOffersForAdConfigs implements ShouldQueue
                     continue;
                 }
 
-                foreach ($destination->offer_category as $offerCategory) {
-                    match ($offerCategory) {
-                        //                        OfferCategoryEnum::HOLIDAY->value => $this->createHolidayOffer($adConfig, $airport, $destination, $destinationAirport),
-                        //                                                OfferCategoryEnum::ECONOMIC->value => $this->createEconomicOffer($adConfig, $airport, $destination, $destinationAirport),
-                        OfferCategoryEnum::WEEKEND->value => $this->createWeekendOffer($adConfig, $airport, $destination, $destinationAirport),
-                        default => Log::warning("Unknown offer category: {$offerCategory}"),
-                    };
-                }
+                match ($this->type) {
+                    OfferCategoryEnum::HOLIDAY->value => $this->createHolidayOffer($adConfig, $airport, $destination, $destinationAirport),
+                    OfferCategoryEnum::ECONOMIC->value => $this->createEconomicOffer($adConfig, $airport, $destination, $destinationAirport),
+                    OfferCategoryEnum::WEEKEND->value => $this->createWeekendOffer($adConfig, $airport, $destination, $destinationAirport),
+                    default => Log::warning("Unknown offer type: {$this->type}"),
+                };
+
+                //                foreach ($destination->offer_category as $offerCategory) {
+                //                    match ($offerCategory) {
+                //                        //                        OfferCategoryEnum::HOLIDAY->value => $this->createHolidayOffer($adConfig, $airport, $destination, $destinationAirport),
+                //                        //                                                OfferCategoryEnum::ECONOMIC->value => $this->createEconomicOffer($adConfig, $airport, $destination, $destinationAirport),
+                ////                        OfferCategoryEnum::WEEKEND->value => $this->createWeekendOffer($adConfig, $airport, $destination, $destinationAirport),
+                //                        default => Log::warning("Unknown offer category: {$offerCategory}"),
+                //                    };
+                //                }
             }
         }
     }
@@ -106,11 +117,11 @@ class GenerateOffersForAdConfigs implements ShouldQueue
             ->getRelationValue('country')
             ->holidays()
             ->get()
-            ->filter(function ($holiday) use ($today, $threeMonthsFromNow, $destination) {
+            ->filter(function ($holiday) use ($today, $threeMonthsFromNow) {
                 [$day, $month] = explode('-', $holiday->day);
 
-                Log::warning("HOLIDAY: $holiday->name");
-                Log::warning("DESTINATION: $destination->name");
+                //                Log::warning("HOLIDAY: $holiday->name");
+                //                Log::warning("DESTINATION: $destination->name");
                 $holidayDate = now()->startOfYear()->setMonth($month)->setDay($day);
 
                 return $holidayDate->between($today, $threeMonthsFromNow);
@@ -251,25 +262,33 @@ class GenerateOffersForAdConfigs implements ShouldQueue
         $requests[] = [];
 
         while ($today->lessThanOrEqualTo($threeMonthsFromNow)) {
-            if ($today->isWeekend()) {
-                $weekends[] = $today->toDateString();
+            if ($today->isFriday()) {
+                $weekendStart = $today->toDateString();
+                $weekendEnd = $today->copy()->addDays(2)->toDateString(); // Sunday
+
+                if ($today->copy()->addDays(2)->lessThanOrEqualTo($threeMonthsFromNow)) {
+                    $groupedWeekends[] = [
+                        'date' => $weekendStart, // Friday
+                        'return_date' => $weekendEnd, // Sunday
+                    ];
+                }
             }
 
             $today->addDay();
         }
 
-        for ($i = 0; $i < count($weekends); $i += 2) {
-            if (isset($weekends[$i + 1])) {
-                //todo: maybe change it to friday-sunday?
-                $groupedWeekends[] = [
-                    'date' => $weekends[$i], // Saturday
-                    'return_date' => $weekends[$i + 1], // Sunday
-                ];
-            }
-        }
+        //        for ($i = 0; $i < count($weekends); $i += 2) {
+        //            if (isset($weekends[$i + 1])) {
+        //                //todo: maybe change it to friday-sunday?
+        //                $groupedWeekends[] = [
+        //                    'date' => $weekends[$i], // Saturday
+        //                    'return_date' => $weekends[$i + 1], // Sunday
+        //                ];
+        //            }
+        //        }
 
-        //        Log::info('Grouped Weekends: ');
-        //        Log::info(print_r($groupedWeekends, true));
+        //                Log::info('Grouped Weekends: ');
+        //                Log::info(print_r($groupedWeekends, true));
 
         foreach ($groupedWeekends as $groupedWeekend) {
             $batchId = Str::orderedUuid();
@@ -278,7 +297,7 @@ class GenerateOffersForAdConfigs implements ShouldQueue
                 'origin_airport' => $airport,
                 'destination_airport' => $destinationAirport,
                 'date' => $groupedWeekend['date'],
-                'nights' => 1,
+                'nights' => 2,
                 'return_date' => $groupedWeekend['return_date'],
                 'origin_id' => $adConfig->origin_id,
                 'destination_id' => $destination->id,

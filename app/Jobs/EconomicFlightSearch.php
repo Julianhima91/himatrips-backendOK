@@ -11,6 +11,7 @@ use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
 
 class EconomicFlightSearch implements ShouldQueue
 {
@@ -20,15 +21,15 @@ class EconomicFlightSearch implements ShouldQueue
 
     protected $destination;
 
-    public int $tries = 3;
-
-    public int $backoff = 3;
-
     protected $adults;
 
     protected $children;
 
     protected $infants;
+
+    public int $tries = 3;
+
+    public int $backoff = 3;
 
     public $batchId;
 
@@ -58,9 +59,10 @@ class EconomicFlightSearch implements ShouldQueue
     {
         $request = new RetrieveFlightsRequest;
 
-        $date = $this->yearMonth.'-'.Cache::get("$this->adConfigId:$this->batchId:cheapest_combination")['outbound']['date'];
-        $returnDate = $this->yearMonth.'-'.Cache::get("$this->adConfigId:$this->batchId:cheapest_combination")['return']['date'];
-        ray($date, $returnDate)->purple();
+        $cheapest = Cache::get("$this->adConfigId:$this->batchId:cheapest_combination");
+        $date = $this->yearMonth.'-'.$cheapest['outbound']['date'];
+        $returnDate = $this->yearMonth.'-'.$cheapest['return']['date'];
+        Log::warning("Processing batch: $this->batchId");
 
         $request->query()->merge([
             'fromEntityId' => $this->origin->rapidapi_id,
@@ -75,39 +77,39 @@ class EconomicFlightSearch implements ShouldQueue
         try {
             $response = $request->send();
 
-            if (isset($response->json()['data']['context']['status']) && $response->json()['data']['context']['status'] == 'incomplete') {
+            if (isset($response->json()['data']['context']['status']) &&
+                $response->json()['data']['context']['status'] === 'incomplete') {
                 $response = $this->getIncompleteResults($response->json()['data']['context']['sessionId']);
             }
 
             $itineraries = $response->dtoOrFail();
 
-            //            ray('STATUS:')->purple();
-            //todo: check $response->json()['data']['context']['status'] on incomplete results in normal live search
-            //            ray($response->json()['data']['context']['status'])->purple();
             if ($itineraries->isEmpty()) {
-                \Log::error('EMPTY ITINERARIES');
+                Log::error('EMPTY ITINERARIES');
                 $this->release(5);
+
+                return;
             }
 
             Cache::put("batch:{$this->batchId}:flights", $itineraries, now()->addMinutes(5));
 
-            $csvCache = Cache::get("$this->adConfigId:economic_create_csv");
+            $csvCache = Cache::get("$this->adConfigId:economic_create_csv", []);
             $csvCache[] = (string) $this->batchId;
-            Cache::put("$this->adConfigId:economic_create_csv", $csvCache, 90);
+            Cache::put("$this->adConfigId:economic_create_csv", $csvCache);
         } catch (\Exception $e) {
-            if ($this->attempts() == 1) {
+            Log::info($e->getMessage());
+            if ($this->attempts() < $this->tries) {
                 $this->release(5);
+            } else {
+                $this->fail($e);
             }
-
-            \Log::info($e->getMessage());
-            $this->fail($e);
         }
     }
 
     private function getIncompleteResults($session)
     {
-
         $request = new RetrieveIncompleteFlights($this->adults, $this->children, $this->infants);
+        Log::warning("Retrieving incomplete results for batch: $this->batchId");
 
         $request->query()->merge([
             'sessionId' => $session,
@@ -115,14 +117,12 @@ class EconomicFlightSearch implements ShouldQueue
 
         $response = $request->send();
 
-        //        ray($response->json())->purple();
-        //        ray(isset($response->json()['data']['context']['status']))->purple();
-        //        ray($response->json()['data']['context']['status'] == 'incomplete')->purple();
-        //        ray($response->json()['data']['context']['status'])->purple();
-
-        if (isset($response->json()['data']['context']['status']) && $response->json()['data']['context']['status'] == 'incomplete') {
+        if (isset($response->json()['data']['context']['status']) &&
+            $response->json()['data']['context']['status'] === 'incomplete') {
             return $this->getIncompleteResults($session);
         }
+
+        Log::warning("DONE================================: $this->batchId");
 
         return $response;
     }

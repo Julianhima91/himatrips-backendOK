@@ -20,7 +20,7 @@ class CheckChainWeekendJobCompletedListener
         $currentCsvBatchIds = Cache::get("$event->adConfigId:current_weekend_csv_batch_ids");
         if ($event->batchId) {
             $currentCsvBatchIds[] = (string) $event->batchId;
-            Cache::put("$event->adConfigId:current_weekend_csv_batch_ids", $currentCsvBatchIds, 90);
+            Cache::put("$event->adConfigId:current_weekend_csv_batch_ids", $currentCsvBatchIds);
         }
 
         //todo when count of both arrays is the same, then proceed to sort them
@@ -64,7 +64,9 @@ class CheckChainWeekendJobCompletedListener
                     ['offer_category', 'weekend'],
                     ['destination_id', $cheapestAd->destination_id],
                     ['total_price', $cheapestAd->min_price],
-                ])->first();
+                ])
+                    ->whereIn('batch_id', $batchIds)
+                    ->first();
 
                 Log::warning("Ad ID: $ad->id");
 
@@ -73,6 +75,7 @@ class CheckChainWeekendJobCompletedListener
                     ['offer_category', 'weekend'],
                     ['destination_id', $cheapestAd->destination_id],
                 ])
+                    ->whereIn('batch_id', $batchIds)
                     ->where('id', '!=', $ad->id)
                     ->delete();
             }
@@ -142,6 +145,8 @@ class CheckChainWeekendJobCompletedListener
 
         // 1st part
         $headers = [
+            //we can remove id, only for debugging
+            //            'id',
             'destination_id',
             'price',
             'name',
@@ -166,8 +171,6 @@ class CheckChainWeekendJobCompletedListener
         }
 
         foreach ($destinationTags as $index => $tag) {
-            Log::error("AAAAAAA $index");
-            Log::error("AAAAAAA $tag");
             $headers[] = "type[$index]";
         }
 
@@ -189,7 +192,9 @@ class CheckChainWeekendJobCompletedListener
 
         foreach ($ads as $ad) {
             $row = [
-                $ad->destination->id,
+                //we can remove id, only for debugging
+                //                $ad->id,
+                $ad->id,
                 $ad->total_price,
                 '❣️ Fundjave ne '.$ad->adConfig->origin->name.' Nga '.$ad->destination->name.' ❣️',
                 '✈️ '.$ad->outboundFlight->departure->format('d/m').' - '.$ad->inboundFlight->departure->format('d/m').' ➥ '.($ad->total_price / 2).' €/P '.$ad->hotelData->number_of_nights.' Nete
@@ -239,7 +244,6 @@ class CheckChainWeekendJobCompletedListener
 
             foreach ($destinationTags as $tag) {
                 $row[] = $tag->name;
-                Log::error("BBBBBBBBBB $tag");
             }
 
             $row = array_merge($row, [

@@ -295,13 +295,13 @@ class ProcessWeekendResponsesJob implements ShouldQueue
         $batchIds = Cache::get("$adConfig->id:weekend_create_csv", []);
         if (($key = array_search($this->batchId, $batchIds)) !== false) {
             unset($batchIds[$key]);
-            Cache::put("$adConfig->id:weekend_create_csv", array_values($batchIds), 90);
+            Cache::put("$adConfig->id:weekend_create_csv", array_values($batchIds));
         }
 
         $batchIdsGlobal = Cache::get("$adConfig->id:batch_ids", []);
         if (($key = array_search($this->batchId, $batchIdsGlobal)) !== false) {
             unset($batchIdsGlobal[$key]);
-            Cache::put("$adConfig->id:batch_ids", array_values($batchIdsGlobal), 90);
+            Cache::put("$adConfig->id:batch_ids", array_values($batchIdsGlobal));
         }
     }
 }

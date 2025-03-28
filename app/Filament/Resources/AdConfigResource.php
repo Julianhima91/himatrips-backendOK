@@ -128,19 +128,46 @@ class AdConfigResource extends Resource
             ->headerActions([])
             ->actions([
                 Tables\Actions\EditAction::make(),
-                Tables\Actions\Action::make('generateOffers')
-                    ->label('Generate Offers')
+                Tables\Actions\Action::make('generateWeekendOffers')
+                    ->label('Weekend')
                     ->icon('heroicon-o-sparkles')
                     ->color('success')
                     ->action(function ($record) {
-                        GenerateOffersForAdConfigs::dispatch($record->id);
+                        GenerateOffersForAdConfigs::dispatch(type: 'weekend', adConfigId: $record->id);
 
                         Notification::make()
                             ->title('Job Dispatched')
-                            ->body('The GenerateOffersForAdConfigs job has been dispatched successfully.')
+                            ->body('The weekend job has been dispatched successfully.')
                             ->success()
                             ->send();
                     }),
+                Tables\Actions\Action::make('generateHolidayOffers')
+                    ->label('Holiday')
+                    ->icon('heroicon-o-sparkles')
+                    ->color('success')
+                    ->action(function ($record) {
+                        GenerateOffersForAdConfigs::dispatch(type: 'holiday', adConfigId: $record->id);
+
+                        Notification::make()
+                            ->title('Job Dispatched')
+                            ->body('The holiday job has been dispatched successfully.')
+                            ->success()
+                            ->send();
+                    }),
+                //todo: add later
+                //                Tables\Actions\Action::make('generateEconomicOffers')
+                //                    ->label('Economic')
+                //                    ->icon('heroicon-o-sparkles')
+                //                    ->color('success')
+                //                    ->action(function ($record) {
+                //                        GenerateOffersForAdConfigs::dispatch(type: 'economic', adConfigId: $record->id);
+                //
+                //                        Notification::make()
+                //                            ->title('Job Dispatched')
+                //                            ->body('The economic job has been dispatched successfully.')
+                //                            ->success()
+                //                            ->send();
+                //                    }),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([

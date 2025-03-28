@@ -94,6 +94,8 @@ class TestEconomicFlights implements ShouldQueue
                     'batch_id' => $this->batchId,
                 ]);
 
+                //todo: REMOVE FROM CACHE BATCH HERE?
+
                 return;
             }
 
@@ -195,12 +197,12 @@ class TestEconomicFlights implements ShouldQueue
             if (in_array('cheapest_date', $this->adConfig->extra_options)) {
                 $batchIds = Cache::get("$adConfig->id:batch_ids");
                 unset($batchIds[array_search($this->batchId, $batchIds)]);
-                Cache::put("$adConfig->id:batch_ids", $batchIds, 90);
+                Cache::put("$adConfig->id:batch_ids", $batchIds);
             }
 
             $batchIds = Cache::get("$adConfig->id:create_csv");
             unset($batchIds[array_search($this->batchId, $batchIds)]);
-            Cache::put("$adConfig->id:create_csv", $batchIds, 90);
+            Cache::put("$adConfig->id:create_csv", $batchIds);
 
             return [null, null];
         } else {

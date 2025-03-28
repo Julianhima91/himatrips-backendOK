@@ -18,12 +18,14 @@ class CheapestDateListener
     {
         $batchIds = Cache::get("$event->adConfigId:batch_ids");
         $currentBatchIds = Cache::get("$event->adConfigId:current_batch_ids");
-        $currentBatchIds[] = (string) $event->batchId;
-        Cache::put("$event->adConfigId:current_batch_ids", $currentBatchIds, 90);
+        if ($event->batchId) {
+            $currentBatchIds[] = (string) $event->batchId;
+            Cache::put("$event->adConfigId:current_batch_ids", $currentBatchIds);
+        }
 
         $formattedHolidays = array_map(fn ($date) => $date->format('Y-m-d'), $event->holidays);
         $holidaysMap = [$event->destinationId => array_unique($formattedHolidays)];
-        Cache::put("$event->adConfigId:current_holidays", $holidaysMap, 90);
+        Cache::put("$event->adConfigId:current_holidays", $holidaysMap);
 
         $a = Cache::get("$event->adConfigId:current_holidays");
         Log::info('Cached Holidays:', $a);
@@ -34,20 +36,23 @@ class CheapestDateListener
             sort($currentBatchIds);
         }
 
-        //        Log::error('comparison result: '.var_export($batchIds == $currentBatchIds, true));
+        Log::error('comparison result: '.var_export($batchIds == $currentBatchIds, true));
 
         if ($batchIds === $currentBatchIds) {
+
+            Log::warning('INSIDE CHEAPEST DATE DELETION');
             $holidaysMap = Cache::get("$event->adConfigId:current_holidays", []);
             $holidays = $holidaysMap[$event->destinationId] ?? [];
 
+            $adConfigId = $event->adConfigId;
             $query = Ad::select('ads.*')
                 ->leftJoin('flight_data as f', 'f.id', '=', 'ads.outbound_flight_id')
                 ->leftJoin('flight_data as f2', 'f2.id', '=', 'ads.inbound_flight_id')
-                ->where('ads.ad_config_id', 21)
+                ->where('ads.ad_config_id', $adConfigId)
                 ->where('ads.offer_category', 'holiday')
-                ->where(function ($q) use ($holidays) {
+                ->where(function ($q) use ($holidays, $adConfigId) {
                     foreach ($holidays as $holiday) {
-                        $q->orWhere(function ($subQuery) use ($holiday) {
+                        $q->orWhere(function ($subQuery) use ($holiday, $adConfigId) {
                             $subQuery->whereRaw('DATE(?) BETWEEN DATE(f.departure) AND DATE(f2.arrival)', [$holiday])
                                 ->whereRaw('ads.total_price = (
                         SELECT MIN(ads_inner.total_price)
@@ -55,10 +60,10 @@ class CheapestDateListener
                         LEFT JOIN flight_data as f3 ON f3.id = ads_inner.outbound_flight_id
                         LEFT JOIN flight_data as f4 ON f4.id = ads_inner.inbound_flight_id
                         WHERE ads_inner.destination_id = ads.destination_id
-                          AND ads_inner.ad_config_id = 21
+                          AND ads_inner.ad_config_id = ?
                           AND ads_inner.offer_category = "holiday"
                           AND DATE(?) BETWEEN DATE(f3.departure) AND DATE(f4.arrival)
-                    )', [$holiday]);
+                        )', [$adConfigId, $holiday]);
                         });
                     }
                 })

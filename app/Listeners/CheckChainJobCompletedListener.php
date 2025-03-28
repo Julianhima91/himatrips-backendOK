@@ -22,8 +22,10 @@ class CheckChainJobCompletedListener
         Log::error('INSIDE HOLIDAY LISTENER');
         $batchIds = Cache::get("$event->adConfigId:create_csv");
         $currentCsvBatchIds = Cache::get("$event->adConfigId:current_csv_batch_ids");
-        $currentCsvBatchIds[] = (string) $event->batchId;
-        Cache::put("$event->adConfigId:current_csv_batch_ids", $currentCsvBatchIds, 90);
+        if ($event->batchId) {
+            $currentCsvBatchIds[] = (string) $event->batchId;
+            Cache::put("$event->adConfigId:current_csv_batch_ids", $currentCsvBatchIds);
+        }
         //
         //        //todo when count of both arrays is the same, then proceed to sort them
         if (isset($currentCsvBatchIds) && isset($batchIds) && count($batchIds) === count($currentCsvBatchIds)) {
@@ -94,137 +96,287 @@ class CheckChainJobCompletedListener
 
         $file = fopen($filepath, 'w');
 
-        fputcsv($file, [
-            'ID',
-            'Destination ID',
-            'Batch ID',
-            'Total Price',
-            'Title',
-            'Description',
-            'Photos',
-            'Videos',
-            'Destination Tags',
-            'Address',
-            'City',
-            'Country',
-            'Latitude',
-            'Longitude',
-            'Neighborhood',
-            'Product Tag',
-            'Price Change',
-            'URL',
-        ]);
+        $maxImages = 0;
+        $maxTagsPerImage = [];
+
+        $maxVideos = 0;
+        $maxTagsPerVideo = [];
 
         foreach ($ads as $ad) {
-            Log::warning($ad->id);
-            Log::warning($ad->outboundFlight->departure);
-            Log::warning($ad->inboundFlight->departure);
-            $nights = $ad->hotelData->number_of_nights;
-            $pricePerPerson = $ad->total_price / 2;
-            $departureDate = $ad->outboundFlight->departure->format('d/m');
-            $arrivalDate = $ad->inboundFlight->departure->format('d/m');
-            $origin = $ad->adConfig->origin->name;
-            $destination = $ad->destination;
-            $boardOptions = $ad->hotelData->cheapestOffer->first()->room_basis;
+            $photos = $ad->destination->destinationPhotos
+                ->filter(fn ($file) => ! str_ends_with($file->file_path, '.mp4'))
+                ->values();
 
-            $departureFormatted = str_replace('/', '-', $departureDate);
-            $arrivalFormatted = str_replace('/', '-', $arrivalDate);
+            $videos = $ad->destination->destinationPhotos
+                ->filter(fn ($file) => str_ends_with($file->file_path, '.mp4'))
+                ->values();
 
-            $holiday = Holiday::query()
-                ->where(function ($query) use ($departureFormatted, $arrivalFormatted) {
-                    $query->whereRaw('STRCMP(?, day) <= 0', [$departureFormatted])
-                        ->orWhereRaw('STRCMP(?, day) >= 0', [$arrivalFormatted]);
-                })
-                ->where(function ($query) use ($departureFormatted, $arrivalFormatted) {
-                    $query->whereRaw('RIGHT(day, 2) = ?', [substr($departureFormatted, -2)])
-                        ->orWhereRaw('RIGHT(day, 2) = ?', [substr($arrivalFormatted, -2)]);
-                })
-                ->first();
+            $destinationTags = $ad->destination->tags;
 
-            $description = "
-❣️ $holiday->name";
+            $maxImages = max($maxImages, $photos->count());
+            $maxVideos = max($maxVideos, $videos->count());
 
-            if ($boardOptions == 'AI') {
-                $description .= ' All Inclusive';
+            foreach ($photos as $index => $photo) {
+                $tagsCount = count($photo->tags);
+                $maxTagsPerImage[$index] = max($maxTagsPerImage[$index] ?? 0, $tagsCount);
             }
 
-            $description .= " ne $origin Nga $destination->name ❣️";
-
-            $body = "
-✈️ $departureDate - $arrivalDate ➥ $pricePerPerson €/P $nights Nete
-Te Perfshira :
-✅ Bilete Vajtje - Ardhje nga $origin
-✅ Cante 10 Kg
-✅ Taksa Aeroportuale
-✅ Akomodim ne Hotel
-✅ Me Mengjes
-------- ⭐ Whatsaap ose Instagram Per Info ⭐-------
-📫 Zyrat Tona
-📍 Tiranë , Tek kryqëzimi i Rrugës Muhamet Gjollesha me Myslym Shyrin.
-📞 +355694767427
-📍 Durres : Rruga Aleksander Goga , Perballe shkolles Eftali Koci
-📞 +355699868907";
-
-            $photos = $destination->destinationPhotos->filter(function ($file) {
-                return ! str_ends_with($file->file_path, '.mp4');
-            })->map(function ($photo) {
-                return [
-                    'url' => url('/storage/'.$photo->file_path),
-                    'tags' => implode(', ', $photo->tags->pluck('name')->toArray()),
-                ];
-            });
-
-            $photoData = $photos->map(function ($photo) {
-                return $photo['url'].' '.$photo['tags'];
-            })->implode(', ');
-
-            $videos = $destination->destinationPhotos->filter(function ($file) {
-                return str_ends_with($file->file_path, '.mp4'); // Only videos
-            })->map(function ($video) {
-                return [
-                    'url' => url('/storage/'.$video->file_path),
-                    'tags' => implode(', ', $video->tags->pluck('name')->toArray()),
-                ];
-            });
-
-            $videoData = $videos->map(function ($video) {
-                return $video['url'].' '.$video['tags'];
-            })->implode(', ');
-
-            $destinationTags = implode(', ', $destination->tags->pluck('name')->toArray());
-
-            $mostExpensiveOffer = $ad->hotelData->mostExpensiveOffer;
-            $cheapestOffer = $ad->hotelData->cheapestOffer;
-
-            $priceDiff = $cheapestOffer[0]->price - $mostExpensiveOffer[0]->price;
-
-            $requestData = json_decode($ad->request_data, true);
-
-            $originName = strtolower($origin);
-            $destinationName = strtolower($destination->name);
-            $url = env('FRONT_URL')."/admin/$ad->id";
-
-            fputcsv($file, [
-                $ad->id,
-                $destination->id,
-                $ad->batch_id,
-                $ad->total_price,
-                $description,
-                $body,
-                $photoData,
-                $videoData,
-                $destinationTags,
-                $destination->address,
-                $destination->city,
-                $destination->country,
-                $destination->latitude,
-                $destination->longitude,
-                $destination->neighborhood,
-                $ad->offer_category,
-                $priceDiff,
-                $url,
-            ]);
+            foreach ($videos as $index => $video) {
+                $tagsCount = count($video->tags);
+                $maxTagsPerVideo[$index] = max($maxTagsPerVideo[$index] ?? 0, $tagsCount);
+            }
         }
+
+        // 1st part
+        $headers = [
+            //we can remove id, only for debugging
+            //            'id',
+            'destination_id',
+            'price',
+            'name',
+            'description',
+        ];
+
+        // dynamic fields
+        for ($i = 0; $i < $maxImages; $i++) {
+            $headers[] = "image[$i].url";
+
+            for ($j = 0; $j < ($maxTagsPerImage[$i] ?? 0); $j++) {
+                $headers[] = "image[$i].tag[$j]";
+            }
+        }
+
+        for ($i = 0; $i < $maxVideos; $i++) {
+            $headers[] = "video[$i].url";
+
+            for ($j = 0; $j < ($maxTagsPerVideo[$i] ?? 0); $j++) {
+                $headers[] = "video[$i].tag[$j]";
+            }
+        }
+
+        foreach ($destinationTags as $index => $tag) {
+            $headers[] = "type[$index]";
+        }
+
+        // end part
+        $headers = array_merge($headers, [
+            'address.addr1',
+            'address.city',
+            'address.region',
+            'address.country',
+            'latitude',
+            'longitude',
+            'neighborhood[0]',
+            'product_tags[0]',
+            'price_change',
+            'url',
+        ]);
+
+        fputcsv($file, $headers);
+
+        foreach ($ads as $ad) {
+            $row = [
+                //we can remove id, only for debugging
+                //                $ad->id,
+                $ad->id,
+                $ad->total_price,
+                '❣️ Fundjave ne '.$ad->adConfig->origin->name.' Nga '.$ad->destination->name.' ❣️',
+                '✈️ '.$ad->outboundFlight->departure->format('d/m').' - '.$ad->inboundFlight->departure->format('d/m').' ➥ '.($ad->total_price / 2).' €/P '.$ad->hotelData->number_of_nights.' Nete
+        ✅ Bilete Vajtje - Ardhje nga '.$ad->adConfig->origin->name.'
+        ✅ Cante 10 Kg
+        ✅ Taksa Aeroportuale
+        ✅ Akomodim ne Hotel
+        ✅ Me Mengjes
+        📍 Tiranë: Tek kryqëzimi i Rrugës Muhamet Gjollesha me Myslym Shyrin.
+        📞 +355694767427',
+            ];
+
+            $photos = $ad->destination->destinationPhotos->filter(fn ($file) => ! str_ends_with($file->file_path, '.mp4'))->values();
+            $videos = $ad->destination->destinationPhotos->filter(fn ($file) => str_ends_with($file->file_path, '.mp4'))->values();
+
+            for ($i = 0; $i < $maxImages; $i++) {
+                if (isset($photos[$i])) {
+                    $row[] = url('/storage/'.$photos[$i]->file_path);
+
+                    $tags = $photos[$i]->tags->pluck('name')->toArray();
+                    for ($j = 0; $j < ($maxTagsPerImage[$i] ?? 0); $j++) {
+                        $row[] = $tags[$j] ?? '';
+                    }
+                } else {
+                    $row[] = '';
+                    for ($j = 0; $j < ($maxTagsPerImage[$i] ?? 0); $j++) {
+                        $row[] = '';
+                    }
+                }
+            }
+
+            for ($i = 0; $i < $maxVideos; $i++) {
+                if (isset($videos[$i])) {
+                    $row[] = url('/storage/'.$videos[$i]->file_path);
+
+                    $tags = $videos[$i]->tags->pluck('name')->toArray();
+                    for ($j = 0; $j < ($maxTagsPerVideo[$i] ?? 0); $j++) {
+                        $row[] = $tags[$j] ?? '';
+                    }
+                } else {
+                    $row[] = '';
+                    for ($j = 0; $j < ($maxTagsPerVideo[$i] ?? 0); $j++) {
+                        $row[] = '';
+                    }
+                }
+            }
+
+            foreach ($destinationTags as $tag) {
+                $row[] = $tag->name;
+            }
+
+            $row = array_merge($row, [
+                $ad->destination->address,
+                $ad->destination->city,
+                $ad->destination->region,
+                $ad->destination->country,
+                $ad->destination->latitude,
+                $ad->destination->longitude,
+                $ad->destination->neighborhood,
+                $ad->offer_category,
+                ($ad->hotelData->cheapestOffer[0]->price ?? 0) - ($ad->hotelData->mostExpensiveOffer[0]->price ?? 0),
+                env('FRONT_URL')."/admin/$ad->id",
+            ]);
+
+            fputcsv($file, $row);
+        }
+
+        //        fputcsv($file, [
+        //            'ID',
+        //            'Destination ID',
+        //            'Batch ID',
+        //            'Total Price',
+        //            'Title',
+        //            'Description',
+        //            'Photos',
+        //            'Videos',
+        //            'Destination Tags',
+        //            'Address',
+        //            'City',
+        //            'Country',
+        //            'Latitude',
+        //            'Longitude',
+        //            'Neighborhood',
+        //            'Product Tag',
+        //            'Price Change',
+        //            'URL',
+        //        ]);
+
+        //        foreach ($ads as $ad) {
+        //            Log::warning($ad->id);
+        //            Log::warning($ad->outboundFlight->departure);
+        //            Log::warning($ad->inboundFlight->departure);
+        //            $nights = $ad->hotelData->number_of_nights;
+        //            $pricePerPerson = $ad->total_price / 2;
+        //            $departureDate = $ad->outboundFlight->departure->format('d/m');
+        //            $arrivalDate = $ad->inboundFlight->departure->format('d/m');
+        //            $origin = $ad->adConfig->origin->name;
+        //            $destination = $ad->destination;
+        //            $boardOptions = $ad->hotelData->cheapestOffer->first()->room_basis;
+        //
+        //            $departureFormatted = str_replace('/', '-', $departureDate);
+        //            $arrivalFormatted = str_replace('/', '-', $arrivalDate);
+        //
+        //            $holiday = Holiday::query()
+        //                ->where(function ($query) use ($departureFormatted, $arrivalFormatted) {
+        //                    $query->whereRaw('STRCMP(?, day) <= 0', [$departureFormatted])
+        //                        ->orWhereRaw('STRCMP(?, day) >= 0', [$arrivalFormatted]);
+        //                })
+        //                ->where(function ($query) use ($departureFormatted, $arrivalFormatted) {
+        //                    $query->whereRaw('RIGHT(day, 2) = ?', [substr($departureFormatted, -2)])
+        //                        ->orWhereRaw('RIGHT(day, 2) = ?', [substr($arrivalFormatted, -2)]);
+        //                })
+        //                ->first();
+        //
+        //            $description = "
+        //❣️ $holiday->name";
+        //
+        //            if ($boardOptions == 'AI') {
+        //                $description .= ' All Inclusive';
+        //            }
+        //
+        //            $description .= " ne $origin Nga $destination->name ❣️";
+        //
+        //            $body = "
+        //✈️ $departureDate - $arrivalDate ➥ $pricePerPerson €/P $nights Nete
+        //Te Perfshira :
+        //✅ Bilete Vajtje - Ardhje nga $origin
+        //✅ Cante 10 Kg
+        //✅ Taksa Aeroportuale
+        //✅ Akomodim ne Hotel
+        //✅ Me Mengjes
+        //------- ⭐ Whatsaap ose Instagram Per Info ⭐-------
+        //📫 Zyrat Tona
+        //📍 Tiranë , Tek kryqëzimi i Rrugës Muhamet Gjollesha me Myslym Shyrin.
+        //📞 +355694767427
+        //📍 Durres : Rruga Aleksander Goga , Perballe shkolles Eftali Koci
+        //📞 +355699868907";
+        //
+        //            $photos = $destination->destinationPhotos->filter(function ($file) {
+        //                return ! str_ends_with($file->file_path, '.mp4');
+        //            })->map(function ($photo) {
+        //                return [
+        //                    'url' => url('/storage/'.$photo->file_path),
+        //                    'tags' => implode(', ', $photo->tags->pluck('name')->toArray()),
+        //                ];
+        //            });
+        //
+        //            $photoData = $photos->map(function ($photo) {
+        //                return $photo['url'].' '.$photo['tags'];
+        //            })->implode(', ');
+        //
+        //            $videos = $destination->destinationPhotos->filter(function ($file) {
+        //                return str_ends_with($file->file_path, '.mp4'); // Only videos
+        //            })->map(function ($video) {
+        //                return [
+        //                    'url' => url('/storage/'.$video->file_path),
+        //                    'tags' => implode(', ', $video->tags->pluck('name')->toArray()),
+        //                ];
+        //            });
+        //
+        //            $videoData = $videos->map(function ($video) {
+        //                return $video['url'].' '.$video['tags'];
+        //            })->implode(', ');
+        //
+        //            $destinationTags = implode(', ', $destination->tags->pluck('name')->toArray());
+        //
+        //            $mostExpensiveOffer = $ad->hotelData->mostExpensiveOffer;
+        //            $cheapestOffer = $ad->hotelData->cheapestOffer;
+        //
+        //            $priceDiff = $cheapestOffer[0]->price - $mostExpensiveOffer[0]->price;
+        //
+        //            $requestData = json_decode($ad->request_data, true);
+        //
+        //            $originName = strtolower($origin);
+        //            $destinationName = strtolower($destination->name);
+        //            $url = env('FRONT_URL')."/admin/$ad->id";
+        //
+        //            fputcsv($file, [
+        //                $ad->id,
+        //                $destination->id,
+        //                $ad->batch_id,
+        //                $ad->total_price,
+        //                $description,
+        //                $body,
+        //                $photoData,
+        //                $videoData,
+        //                $destinationTags,
+        //                $destination->address,
+        //                $destination->city,
+        //                $destination->country,
+        //                $destination->latitude,
+        //                $destination->longitude,
+        //                $destination->neighborhood,
+        //                $ad->offer_category,
+        //                $priceDiff,
+        //                $url,
+        //            ]);
+        //        }
 
         fclose($file);
 
