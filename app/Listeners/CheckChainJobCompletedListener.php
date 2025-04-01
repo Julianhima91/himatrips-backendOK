@@ -174,13 +174,44 @@ class CheckChainJobCompletedListener
 
         fputcsv($file, $headers);
 
+        $nights = $ad->hotelData->number_of_nights;
+        $pricePerPerson = $ad->total_price / 2;
+        $departureDate = $ad->outboundFlight->departure->format('d/m');
+        $arrivalDate = $ad->inboundFlight->departure->format('d/m');
+        $origin = $ad->adConfig->origin->name;
+        $destination = $ad->destination;
+        $boardOptions = $ad->hotelData->cheapestOffer->first()->room_basis;
+
+        $departureFormatted = str_replace('/', '-', $departureDate);
+        $arrivalFormatted = str_replace('/', '-', $arrivalDate);
+
+        $holiday = Holiday::query()
+            ->where(function ($query) use ($departureFormatted, $arrivalFormatted) {
+                $query->whereRaw('STRCMP(?, day) <= 0', [$departureFormatted])
+                    ->orWhereRaw('STRCMP(?, day) >= 0', [$arrivalFormatted]);
+            })
+            ->where(function ($query) use ($departureFormatted, $arrivalFormatted) {
+                $query->whereRaw('RIGHT(day, 2) = ?', [substr($departureFormatted, -2)])
+                    ->orWhereRaw('RIGHT(day, 2) = ?', [substr($arrivalFormatted, -2)]);
+            })
+            ->first();
+
+        $description = "❣️ $holiday->name";
+
+        if ($boardOptions == 'AI') {
+            $description .= ' All Inclusive';
+        }
+
+        $description .= " ne $origin Nga $destination->name ❣️";
+
         foreach ($ads as $ad) {
             $row = [
                 //we can remove id, only for debugging
                 //                $ad->id,
                 $ad->id,
                 $ad->total_price,
-                '❣️ Fundjave ne '.$ad->adConfig->origin->name.' Nga '.$ad->destination->name.' ❣️',
+                $description,
+                $description.
                 '✈️ '.$ad->outboundFlight->departure->format('d/m').' - '.$ad->inboundFlight->departure->format('d/m').' ➥ '.($ad->total_price / 2).' €/P '.$ad->hotelData->number_of_nights.' Nete
         ✅ Bilete Vajtje - Ardhje nga '.$ad->adConfig->origin->name.'
         ✅ Cante 10 Kg

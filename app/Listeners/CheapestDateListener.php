@@ -50,6 +50,7 @@ class CheapestDateListener
                 ->leftJoin('flight_data as f2', 'f2.id', '=', 'ads.inbound_flight_id')
                 ->where('ads.ad_config_id', $adConfigId)
                 ->where('ads.offer_category', 'holiday')
+                ->whereIn('batch_id', $batchIds)
                 ->where(function ($q) use ($holidays, $adConfigId) {
                     foreach ($holidays as $holiday) {
                         $q->orWhere(function ($subQuery) use ($holiday, $adConfigId) {

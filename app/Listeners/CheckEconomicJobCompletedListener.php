@@ -130,6 +130,7 @@ class CheckEconomicJobCompletedListener
             $description = "❣️ Oferta Ekonomike ne $origin Nga $destination->name ❣️";
 
             $body = "
+❣️ Oferta Ekonomike ne $origin Nga $destination->name ❣️
 ✈️ $departureDate - $arrivalDate ➥ $pricePerPerson €/P $nights Nete
 Te Perfshira :
 ✅ Bilete Vajtje - Ardhje nga $origin

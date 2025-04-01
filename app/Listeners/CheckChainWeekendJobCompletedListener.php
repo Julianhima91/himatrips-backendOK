@@ -55,6 +55,7 @@ class CheckChainWeekendJobCompletedListener
                     ['ad_config_id', $event->adConfigId],
                     ['offer_category', 'weekend'],
                 ])
+                ->whereIn('batch_id', $batchIds)
                 ->groupBy('destination_id')
                 ->get();
 
@@ -197,6 +198,7 @@ class CheckChainWeekendJobCompletedListener
                 $ad->id,
                 $ad->total_price,
                 '❣️ Fundjave ne '.$ad->adConfig->origin->name.' Nga '.$ad->destination->name.' ❣️',
+                '❣️ Fundjave ne '.$ad->adConfig->origin->name.' Nga '.$ad->destination->name.' ❣️'.
                 '✈️ '.$ad->outboundFlight->departure->format('d/m').' - '.$ad->inboundFlight->departure->format('d/m').' ➥ '.($ad->total_price / 2).' €/P '.$ad->hotelData->number_of_nights.' Nete
         ✅ Bilete Vajtje - Ardhje nga '.$ad->adConfig->origin->name.'
         ✅ Cante 10 Kg
