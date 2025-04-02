@@ -30,7 +30,7 @@ class CSVRelationManager extends RelationManager
             ->columns([
                 Tables\Columns\TextColumn::make('file_path')
                     ->label('CSV File')
-                    ->url(fn ($record) => Storage::url($record->file_path)),
+                    ->url(fn ($record) => Storage::url('/offers/'.$record->file_path)),
             ])
             ->filters([
                 //

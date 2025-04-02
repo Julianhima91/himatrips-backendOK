@@ -197,8 +197,8 @@ class CheckChainWeekendJobCompletedListener
                 //                $ad->id,
                 $ad->id,
                 $ad->total_price,
-                '❣️ Fundjave ne '.$ad->adConfig->origin->name.' Nga '.$ad->destination->name.' ❣️',
-                '❣️ Fundjave ne '.$ad->adConfig->origin->name.' Nga '.$ad->destination->name.' ❣️'.
+                '❣️ Fundjave ne '.$ad->destination->name.' Nga '.$ad->adConfig->origin->name.' ❣️',
+                '❣️ Fundjave ne '.$ad->destination->name.' Nga '.$ad->adConfig->origin->name.' ❣️'.
                 '✈️ '.$ad->outboundFlight->departure->format('d/m').' - '.$ad->inboundFlight->departure->format('d/m').' ➥ '.($ad->total_price / 2).' €/P '.$ad->hotelData->number_of_nights.' Nete
         ✅ Bilete Vajtje - Ardhje nga '.$ad->adConfig->origin->name.'
         ✅ Cante 10 Kg

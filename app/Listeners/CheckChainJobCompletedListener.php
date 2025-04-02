@@ -202,7 +202,7 @@ class CheckChainJobCompletedListener
             $description .= ' All Inclusive';
         }
 
-        $description .= " ne $origin Nga $destination->name ❣️";
+        $description .= " ne $destination->name Nga $origin ❣️";
 
         foreach ($ads as $ad) {
             $row = [

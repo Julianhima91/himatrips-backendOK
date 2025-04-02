@@ -155,19 +155,19 @@ class AdConfigResource extends Resource
                             ->send();
                     }),
                 //todo: add later
-                //                Tables\Actions\Action::make('generateEconomicOffers')
-                //                    ->label('Economic')
-                //                    ->icon('heroicon-o-sparkles')
-                //                    ->color('success')
-                //                    ->action(function ($record) {
-                //                        GenerateOffersForAdConfigs::dispatch(type: 'economic', adConfigId: $record->id);
-                //
-                //                        Notification::make()
-                //                            ->title('Job Dispatched')
-                //                            ->body('The economic job has been dispatched successfully.')
-                //                            ->success()
-                //                            ->send();
-                //                    }),
+                Tables\Actions\Action::make('generateEconomicOffers')
+                    ->label('Economic')
+                    ->icon('heroicon-o-sparkles')
+                    ->color('success')
+                    ->action(function ($record) {
+                        GenerateOffersForAdConfigs::dispatch(type: 'economic', adConfigId: $record->id);
+
+                        Notification::make()
+                            ->title('Job Dispatched')
+                            ->body('The economic job has been dispatched successfully.')
+                            ->success()
+                            ->send();
+                    }),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
