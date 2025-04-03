@@ -201,8 +201,8 @@ class GenerateOffersForAdConfigs implements ShouldQueue
             ], JSON_PRETTY_PRINT));
 
             Bus::chain([
-                new ProcessFlightsJob($request, $this->adConfigId, 'holiday'),
-                new LiveSearchHotels(
+                (new ProcessFlightsJob($request, $this->adConfigId, 'holiday'))->onQueue('holidays'),
+                (new LiveSearchHotels(
                     $request['date'],
                     $request['nights'],
                     $request['destination_id'],
@@ -211,10 +211,10 @@ class GenerateOffersForAdConfigs implements ShouldQueue
                     0, // Infants
                     $request['rooms'],
                     $request['batch_id']
-                ),
-                new ProcessResponsesJob($request['batch_id'], $request, $adConfig, $batchIds),
-            ])->dispatch()
-                ->onQueue('holidays');
+                ))->onQueue('holidays'),
+                (new ProcessResponsesJob($request['batch_id'], $request, $adConfig, $batchIds))->onQueue('holidays'),
+            ])->dispatch();
+
         }
         //
         //        Bus::chain([
@@ -241,11 +241,11 @@ class GenerateOffersForAdConfigs implements ShouldQueue
 
         foreach ($months as $batchId => $month) {
             Bus::chain([
-                new CheckEconomicFlightJob($airport, $destinationAirport, $month, $this->adConfigId, $batchId, false),
-                new CheckEconomicFlightJob($airport, $destinationAirport, $month, $this->adConfigId, $batchId, true),
-                new ProcessEconomicResponsesJob($batchId, $this->adConfigId, $destination->ad_min_nights),
-                new EconomicFlightSearch($month, $airport, $destinationAirport, 2, 0, 0, $batchId, $this->adConfigId),
-                new EconomicHotelJob(
+                (new CheckEconomicFlightJob($airport, $destinationAirport, $month, $this->adConfigId, $batchId, false))->onQueue('economic'),
+                (new CheckEconomicFlightJob($airport, $destinationAirport, $month, $this->adConfigId, $batchId, true))->onQueue('economic'),
+                (new ProcessEconomicResponsesJob($batchId, $this->adConfigId, $destination->ad_min_nights))->onQueue('economic'),
+                (new EconomicFlightSearch($month, $airport, $destinationAirport, 2, 0, 0, $batchId, $this->adConfigId))->onQueue('economic'),
+                (new EconomicHotelJob(
                     $destination->ad_min_nights,
                     $destination->id,
                     [
@@ -258,10 +258,9 @@ class GenerateOffersForAdConfigs implements ShouldQueue
                     $batchId,
                     $month,
                     $this->adConfigId,
-                ),
-                new TestEconomicFlights($batchId, $adConfig, $month, $adConfig->origin_id, $destination->id, $airport, $destinationAirport, $batchIds),
-            ])->dispatch()
-                ->onQueue('economic');
+                ))->onQueue('economic'),
+                (new TestEconomicFlights($batchId, $adConfig, $month, $adConfig->origin_id, $destination->id, $airport, $destinationAirport, $batchIds))->onQueue('economic'),
+            ])->dispatch();
         }
 
     }
@@ -355,8 +354,8 @@ class GenerateOffersForAdConfigs implements ShouldQueue
             $logger->info('====================================================');
 
             Bus::chain([
-                new ProcessFlightsJob($request, $this->adConfigId, 'weekend'),
-                new LiveSearchHotels(
+                (new ProcessFlightsJob($request, $this->adConfigId, 'weekend'))->onQueue('weekend'),
+                (new LiveSearchHotels(
                     $request['date'],
                     $request['nights'],
                     $request['destination_id'],
@@ -365,10 +364,9 @@ class GenerateOffersForAdConfigs implements ShouldQueue
                     0, // Infants
                     $request['rooms'],
                     $request['batch_id']
-                ),
-                new ProcessWeekendResponsesJob($request['batch_id'], $request, $adConfig, $batchIds),
-            ])->dispatch()
-                ->onQueue('weekend');
+                ))->onQueue('holiday'),
+                (new ProcessWeekendResponsesJob($request['batch_id'], $request, $adConfig, $batchIds))->onQueue('economic'), // Assuming 'economic' queue here
+            ])->dispatch();
         }
     }
 }
