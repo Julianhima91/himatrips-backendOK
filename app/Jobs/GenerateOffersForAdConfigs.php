@@ -364,8 +364,8 @@ class GenerateOffersForAdConfigs implements ShouldQueue
                     0, // Infants
                     $request['rooms'],
                     $request['batch_id']
-                ))->onQueue('holiday'),
-                (new ProcessWeekendResponsesJob($request['batch_id'], $request, $adConfig, $batchIds))->onQueue('economic'), // Assuming 'economic' queue here
+                ))->onQueue('weekend'),
+                (new ProcessWeekendResponsesJob($request['batch_id'], $request, $adConfig, $batchIds))->onQueue('weekend'),
             ])->dispatch();
         }
     }

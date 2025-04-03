@@ -2,7 +2,7 @@
 
 namespace App\Jobs;
 
-use App\Http\Integrations\GoFlightIntegration\Requests\RetrieveFlightsRequest;
+use App\Http\Integrations\GoFlightIntegration\Requests\RetrieveFlightsApi2Request;
 use App\Http\Integrations\GoFlightIntegration\Requests\RetrieveIncompleteFlights;
 use Illuminate\Bus\Batchable;
 use Illuminate\Bus\Queueable;
@@ -59,7 +59,7 @@ class EconomicFlightSearch implements ShouldQueue
     {
         $logger = Log::channel('economic');
 
-        $request = new RetrieveFlightsRequest;
+        $request = new RetrieveFlightsApi2Request;
 
         $cheapest = Cache::get("$this->adConfigId:$this->batchId:cheapest_combination");
         $date = $this->yearMonth.'-'.$cheapest['outbound']['date'];
@@ -79,10 +79,10 @@ class EconomicFlightSearch implements ShouldQueue
         try {
             $response = $request->send();
 
-            if (isset($response->json()['data']['context']['status']) &&
-                $response->json()['data']['context']['status'] === 'incomplete') {
-                $response = $this->getIncompleteResults($response->json()['data']['context']['sessionId']);
-            }
+            //            if (isset($response->json()['data']['context']['status']) &&
+            //                $response->json()['data']['context']['status'] === 'incomplete') {
+            //                $response = $this->getIncompleteResults($response->json()['data']['context']['sessionId']);
+            //            }
 
             $itineraries = $response->dtoOrFail();
 

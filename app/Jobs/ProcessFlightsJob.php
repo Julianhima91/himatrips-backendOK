@@ -41,8 +41,20 @@ class ProcessFlightsJob implements ShouldQueue
 
         $batchId = $this->request['batch_id'];
 
-        dispatch_sync(new LiveSearchFlightsApi2($this->request['origin_airport'], $this->request['destination_airport'], $this->request['date'], $this->request['return_date'], $this->request['origin_airport'], $this->request['destination_airport'], $this->request['rooms'][0]['adults'], $this->request['rooms'][0]['children'], $this->request['rooms'][0]['infants'], $batchId));
-        dispatch_sync(new LiveSearchFlights($this->request['date'], $this->request['return_date'], $this->request['origin_airport'], $this->request['destination_airport'], $this->request['rooms'][0]['adults'], $this->request['rooms'][0]['children'], $this->request['rooms'][0]['infants'], $batchId));
+        dispatch_sync(new LiveSearchFlightsApi2(
+            $this->request['origin_airport'],
+            $this->request['destination_airport'],
+            $this->request['date'],
+            $this->request['return_date'],
+            $this->request['origin_airport'],
+            $this->request['destination_airport'],
+            $this->request['rooms'][0]['adults'] ?? 2,
+            $this->request['rooms'][0]['children'] ?? 0,
+            $this->request['rooms'][0]['infants'] ?? 0,
+            $batchId
+        ));
+
+        //        dispatch_sync(new LiveSearchFlights($this->request['date'], $this->request['return_date'], $this->request['origin_airport'], $this->request['destination_airport'], $this->request['rooms'][0]['adults'], $this->request['rooms'][0]['children'], $this->request['rooms'][0]['infants'], $batchId));
 
         $flights = Cache::get("batch:{$batchId}:flights");
 
