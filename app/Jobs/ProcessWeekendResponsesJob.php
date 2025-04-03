@@ -46,12 +46,23 @@ class ProcessWeekendResponsesJob implements ShouldQueue
      */
     public function handle(): void
     {
+        $logger = Log::channel('weekend');
+
         $flights = Cache::get("batch:{$this->batchId}:flights");
         $hotels = Cache::get("batch:{$this->batchId}:hotels");
 
         //todo: move to else condition
         if (! $flights || ! $hotels) {
-            Log::error("Missing data for batch {$this->batchId}");
+            $missing = [];
+
+            if (! $flights) {
+                $missing[] = 'flights';
+            }
+            if (! $hotels) {
+                $missing[] = 'hotels';
+            }
+
+            $logger->error("Missing data for batch {$this->batchId}: ".implode(', ', $missing));
             $this->cleanupInvalidBatch();
             event(new CheckChainWeekendJobCompletedEvent(null, $this->batchIds, $this->adConfig->id));
 
@@ -61,7 +72,7 @@ class ProcessWeekendResponsesJob implements ShouldQueue
         if ($flights && $hotels) {
             [$outbound_flight_hydrated, $inbound_flight_hydrated] = $this->handleFlights($flights, $this->request['date'], $this->batchId, $this->request['return_date'], $this->request['origin_id'], $this->request['destination_id']);
             if (is_null($outbound_flight_hydrated) && is_null($inbound_flight_hydrated)) {
-                Log::warning('Both outbound and inbound flights are null. Terminating job.', [
+                $logger->warning('Both outbound and inbound flights are null. Terminating job.', [
                     'batch_id' => $this->batchId,
                 ]);
                 $this->cleanupInvalidBatch();
@@ -73,12 +84,14 @@ class ProcessWeekendResponsesJob implements ShouldQueue
 
             event(new CheckChainWeekendJobCompletedEvent($this->request['batch_id'], $this->batchIds, $this->adConfig->id));
         } else {
-            Log::error("Missing data for batch {$this->batchId}");
+            $logger->error("Missing data for batch {$this->batchId}");
         }
     }
 
     private function handleFlights($flights, $date, $batchId, $return_date, $origin_id, $destination_id): array
     {
+        $logger = Log::channel('weekend');
+
         $outbound_flight_direct = $flights->filter(function ($flight) {
             if ($flight == null) {
                 return false;
@@ -138,9 +151,9 @@ class ProcessWeekendResponsesJob implements ShouldQueue
                     $departure = Carbon::parse($flight->departure);
                     $departureBack = Carbon::parse($flight->departure_flight_back);
 
-                    //                    Log::info('Destination morning flight start: ' . $destination->morning_flight_start_time);
-                    //                    Log::info('Flight Departure: ' . $departure);
-                    //                    Log::info('Destination morning flight end: ' . $destination->morning_flight_end_time);
+                    //                    $logger->info('Destination morning flight start: ' . $destination->morning_flight_start_time);
+                    //                    $logger->info('Flight Departure: ' . $departure);
+                    //                    $logger->info('Destination morning flight end: ' . $destination->morning_flight_end_time);
                     $morningStart = Carbon::parse($flight->departure->format('Y-m-d').' '.$destination->morning_flight_start_time);
                     $morningEnd = Carbon::parse($flight->departure->format('Y-m-d').' '.$destination->morning_flight_end_time);
 
@@ -149,7 +162,7 @@ class ProcessWeekendResponsesJob implements ShouldQueue
 
                     $isBetween = $departure->between($morningStart, $morningEnd);
                     $isBetweenBack = $departureBack->between($eveningStart, $eveningEnd);
-                    //                    Log::info('Result: ' . ($isBetween ? 'true' : 'false'));
+                    //                    $logger->info('Result: ' . ($isBetween ? 'true' : 'false'));
 
                     return $isBetween && $isBetweenBack;
                 }
@@ -160,7 +173,7 @@ class ProcessWeekendResponsesJob implements ShouldQueue
 
         if ($outbound_flight_morning->isNotEmpty()) {
             $flights = $outbound_flight_morning;
-            Log::info('Early morning and late evening flights were found for destination: '.$destination->name);
+            $logger->info('Early morning and late evening flights were found for destination: '.$destination->name);
         }
 
         $flights = $flights->sortBy([
@@ -169,7 +182,7 @@ class ProcessWeekendResponsesJob implements ShouldQueue
         ]);
 
         if ($flights->isEmpty()) {
-            Log::warning("No flight for batch {$this->batchId}");
+            $logger->warning("No flight for batch {$this->batchId}");
             $this->cleanupInvalidBatch();
 
             return [null, null];
@@ -219,6 +232,8 @@ class ProcessWeekendResponsesJob implements ShouldQueue
 
     private function handleHotelsAndPackages($hotels, mixed $outbound_flight_hydrated, mixed $inbound_flight_hydrated, $batchId, $origin_id, $destination_id, $roomObject): void
     {
+        $logger = Log::channel('weekend');
+
         $packageConfig = PackageConfig::query()
             ->whereHas('destination_origin', function ($query) use ($origin_id, $destination_id) {
                 $query->where([

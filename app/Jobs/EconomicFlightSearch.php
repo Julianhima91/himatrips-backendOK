@@ -57,12 +57,14 @@ class EconomicFlightSearch implements ShouldQueue
      */
     public function handle(): void
     {
+        $logger = Log::channel('economic');
+
         $request = new RetrieveFlightsRequest;
 
         $cheapest = Cache::get("$this->adConfigId:$this->batchId:cheapest_combination");
         $date = $this->yearMonth.'-'.$cheapest['outbound']['date'];
         $returnDate = $this->yearMonth.'-'.$cheapest['return']['date'];
-        Log::warning("Processing batch: $this->batchId");
+        $logger->warning("Processing batch: $this->batchId");
 
         $request->query()->merge([
             'fromEntityId' => $this->origin->rapidapi_id,
@@ -85,12 +87,12 @@ class EconomicFlightSearch implements ShouldQueue
             $itineraries = $response->dtoOrFail();
 
             if ($itineraries->isEmpty()) {
-                Log::error('EMPTY ITINERARIES | Attempt: '.$this->attempts());
+                $logger->error('EMPTY ITINERARIES | Attempt: '.$this->attempts());
 
-                if ($this->attempts() < 2) {
+                if ($this->attempts() < 3) {
                     $this->release(5);
                 } else {
-                    $this->fail('Itineraries are empty after 2 attempts');
+                    $this->fail('Itineraries are empty after 3 attempts');
                 }
 
                 return;
@@ -102,7 +104,7 @@ class EconomicFlightSearch implements ShouldQueue
             $csvCache[] = (string) $this->batchId;
             Cache::put("$this->adConfigId:economic_create_csv", $csvCache);
         } catch (\Exception $e) {
-            Log::info($e->getMessage());
+            $logger->info($e->getMessage());
             if ($this->attempts() < $this->tries) {
                 $this->release(5);
             } else {
@@ -113,8 +115,10 @@ class EconomicFlightSearch implements ShouldQueue
 
     private function getIncompleteResults($session)
     {
+        $logger = Log::channel('economic');
+
         $request = new RetrieveIncompleteFlights($this->adults, $this->children, $this->infants);
-        Log::warning("Retrieving incomplete results for batch: $this->batchId");
+        $logger->warning("Retrieving incomplete results for batch: $this->batchId");
 
         $request->query()->merge([
             'sessionId' => $session,
@@ -127,7 +131,7 @@ class EconomicFlightSearch implements ShouldQueue
             return $this->getIncompleteResults($session);
         }
 
-        Log::warning("DONE================================: $this->batchId");
+        $logger->warning("DONE================================: $this->batchId");
 
         return $response;
     }

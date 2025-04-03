@@ -15,7 +15,9 @@ class CheckChainWeekendJobCompletedListener
 
     public function handle(object $event): void
     {
-        Log::error('INSIDE WEEKEND LISTENER');
+        $logger = Log::channel('weekend');
+
+        $logger->info('==================WEEKEND LISTENER==================');
         $batchIds = Cache::get("$event->adConfigId:weekend_create_csv");
         $currentCsvBatchIds = Cache::get("$event->adConfigId:current_weekend_csv_batch_ids");
         if ($event->batchId) {
@@ -29,11 +31,11 @@ class CheckChainWeekendJobCompletedListener
             sort($currentCsvBatchIds);
         }
 
-        Log::info('WEEKEND');
-        Log::info($batchIds);
-        Log::info($currentCsvBatchIds);
+        //        $logger->info('WEEKEND');
+        //        $logger->info($batchIds);
+        //        $logger->info($currentCsvBatchIds);
         if ($batchIds === $currentCsvBatchIds) {
-            Log::info('WE ARE INSIDE (WEEKEND) !!!!!!!!!!!!!WOOHOOOOOO');
+            $logger->info('SUCCESS (WEEKEND)');
 
             Cache::forget("$event->adConfigId:weekend_create_csv");
             Cache::forget("$event->adConfigId:current_weekend_csv_batch_ids");
@@ -69,7 +71,7 @@ class CheckChainWeekendJobCompletedListener
                     ->whereIn('batch_id', $batchIds)
                     ->first();
 
-                Log::warning("Ad ID: $ad->id");
+                $logger->warning("Ad ID: $ad->id");
 
                 Ad::where([
                     ['ad_config_id', $event->adConfigId],
@@ -97,10 +99,12 @@ class CheckChainWeekendJobCompletedListener
 
     public function exportAdsToCsv($ads)
     {
+        $logger = Log::channel('weekend');
+
         $totalAds = count($ads);
         $adConfig = $ads[0]->ad_config_id;
         $adConfigDescription = preg_replace('/\s+/', '_', $ads[0]->adConfig->description ?? 'no_description');
-        Log::info("Exporting $totalAds ads for weekend... Ad config id: $adConfig");
+        $logger->info("Exporting $totalAds ads for weekend... Ad config id: $adConfig");
 
         $filename = 'ads_weekend_export_'.$adConfigDescription.'.csv';
 
@@ -198,8 +202,9 @@ class CheckChainWeekendJobCompletedListener
                 $ad->id,
                 $ad->total_price,
                 '❣️ Fundjave ne '.$ad->destination->name.' Nga '.$ad->adConfig->origin->name.' ❣️',
-                '❣️ Fundjave ne '.$ad->destination->name.' Nga '.$ad->adConfig->origin->name.' ❣️'.
-                '✈️ '.$ad->outboundFlight->departure->format('d/m').' - '.$ad->inboundFlight->departure->format('d/m').' ➥ '.($ad->total_price / 2).' €/P '.$ad->hotelData->number_of_nights.' Nete
+                '❣️ Fundjave ne '.$ad->destination->name.' Nga '.$ad->adConfig->origin->name.' ❣️
+                '.
+        '✈️ '.$ad->outboundFlight->departure->format('d/m').' - '.$ad->inboundFlight->departure->format('d/m').' ➥ '.($ad->total_price / 2).' €/P '.$ad->hotelData->number_of_nights.' Nete
         ✅ Bilete Vajtje - Ardhje nga '.$ad->adConfig->origin->name.'
         ✅ Cante 10 Kg
         ✅ Taksa Aeroportuale
@@ -288,7 +293,7 @@ class CheckChainWeekendJobCompletedListener
         //        ]);
 
         //        foreach ($ads as $ad) {
-        //            Log::warning($ad->id);
+        //            $logger->warning($ad->id);
         //            $nights = $ad->hotelData->number_of_nights;
         //            $pricePerPerson = $ad->total_price / 2;
         //            $departureDate = $ad->outboundFlight->departure->format('d/m');

@@ -109,7 +109,9 @@ class GenerateOffersForAdConfigs implements ShouldQueue
 
     private function createHolidayOffer(AdConfig $adConfig, Airport $airport, Destination $destination, Airport $destinationAirport)
     {
-        Log::info('HOLIDAYS===================');
+        $logger = Log::channel('holiday');
+
+        $logger->info('Holiday Job Started', ['job' => self::class]);
         $today = now();
         $threeMonthsFromNow = now()->addMonths(3);
 
@@ -117,11 +119,10 @@ class GenerateOffersForAdConfigs implements ShouldQueue
             ->getRelationValue('country')
             ->holidays()
             ->get()
-            ->filter(function ($holiday) use ($today, $threeMonthsFromNow) {
+            ->filter(function ($holiday) use ($today, $threeMonthsFromNow, $logger, $destination) {
                 [$day, $month] = explode('-', $holiday->day);
 
-                //                Log::warning("HOLIDAY: $holiday->name");
-                //                Log::warning("DESTINATION: $destination->name");
+                $logger->warning("HOLIDAY: $holiday->name - $holiday->day |||| DESTINATION: $destination->name");
                 $holidayDate = now()->startOfYear()->setMonth($month)->setDay($day);
 
                 return $holidayDate->between($today, $threeMonthsFromNow);
@@ -130,12 +131,15 @@ class GenerateOffersForAdConfigs implements ShouldQueue
             ->map(function ($holiday) {
                 [$holidayDay, $holidayMonth] = explode('-', $holiday);
 
-                return now()->startOfYear()->setMonth($holidayMonth)->setDay($holidayDay);
+                return now()->startOfYear()
+                    ->setMonth($holidayMonth)
+                    ->setDay($holidayDay)
+                    ->timezone('Europe/Amsterdam');
             })
             ->toArray();
         $destinationHolidays = $holidays;
 
-        $requests[] = [];
+        $requests = [];
 
         foreach ($holidays as $holiday) {
             //            [$holidayDay, $holidayMonth] = explode('-', $holiday);
@@ -146,9 +150,9 @@ class GenerateOffersForAdConfigs implements ShouldQueue
             $maxNights = $destination->ad_max_nights;
 
             for ($nights = $minNights; $nights <= $maxNights; $nights++) {
-                for ($startOffset = 1; $startOffset < $nights - 1; $startOffset++) {
+                for ($startOffset = 1; $startOffset <= max(1, $nights - 1); $startOffset++) {
                     $startDate = $holiday->copy()->subDays($startOffset);
-                    $endDate = $startDate->copy()->addDays($nights - 1);
+                    $endDate = $startDate->copy()->addDays($nights);
 
                     if ($startDate->between($today, $threeMonthsFromNow) && $endDate->between($today, $threeMonthsFromNow)) {
                         $batchId = Str::orderedUuid();
@@ -180,25 +184,37 @@ class GenerateOffersForAdConfigs implements ShouldQueue
         }
 
         $batchIds = array_map('strval', array_column($requests, 'batch_id'));
-        //        Log::warning(count($requests) . ' requests created.');
+        //        $logger->warning(count($requests) . ' requests created.');
 
-        foreach ($requests as $request) {
-            if (! empty($request)) {
-                Bus::chain([
-                    new ProcessFlightsJob($request, $this->adConfigId, 'holiday'),
-                    new LiveSearchHotels(
-                        $request['date'],
-                        $request['nights'],
-                        $request['destination_id'],
-                        2, // Adults
-                        0, // Children
-                        0, // Infants
-                        $request['rooms'],
-                        $request['batch_id']
-                    ),
-                    new ProcessResponsesJob($request['batch_id'], $request, $adConfig, $batchIds),
-                ])->dispatch();
-            }
+        foreach ($requests as $index => $request) {
+            $logger->info("Generated Request nr. $index:\n".json_encode([
+                'origin_airport' => $airport['codeIataAirport'] ?? $airport->codeIataAirport,
+                'destination_airport' => $destinationAirport['codeIataAirport'] ?? $destinationAirport->codeIataAirport,
+                'date' => $request['date'],
+                'nights' => $request['nights'],
+                'return_date' => $request['return_date'],
+                'origin_id' => $adConfig->origin_id,
+                'destination_id' => $destination->id,
+                'batch_id' => $batchId,
+                'category' => OfferCategoryEnum::HOLIDAY->value,
+                'holidays' => $destinationHolidays,
+            ], JSON_PRETTY_PRINT));
+
+            Bus::chain([
+                new ProcessFlightsJob($request, $this->adConfigId, 'holiday'),
+                new LiveSearchHotels(
+                    $request['date'],
+                    $request['nights'],
+                    $request['destination_id'],
+                    2, // Adults
+                    0, // Children
+                    0, // Infants
+                    $request['rooms'],
+                    $request['batch_id']
+                ),
+                new ProcessResponsesJob($request['batch_id'], $request, $adConfig, $batchIds),
+            ])->dispatch()
+                ->onQueue('holidays');
         }
         //
         //        Bus::chain([
@@ -208,20 +224,20 @@ class GenerateOffersForAdConfigs implements ShouldQueue
 
     private function createEconomicOffer(AdConfig $adConfig, Airport $airport, Destination $destination, Airport $destinationAirport)
     {
-        Log::info('ECONOMIC===================');
+        $logger = Log::channel('economic');
+
+        $logger->info('Economic Job Started', ['job' => self::class]);
 
         $months = collect($destination->active_months)
-            ->map(fn ($month) => now()->format('Y').'-'.$month) // Add current year
-            ->filter(fn ($month) => Carbon::parse($month)->greaterThanOrEqualTo(now()->startOfMonth())) // Remove past months
-            ->mapWithKeys(fn ($month) => [(string) Str::orderedUuid() => $month]) // Generate random ordered batch ID
+            ->map(fn ($month) => now()->format('Y').'-'.$month)
+            ->filter(fn ($month) => Carbon::parse($month)->greaterThanOrEqualTo(now()->startOfMonth()))
+            ->mapWithKeys(fn ($month) => [(string) Str::orderedUuid() => $month])
             ->toArray();
 
         $batchIds = collect($months)->keys()->toArray();
 
-        Log::info($adConfig->origin->name);
-        Log::info($destination->name);
-        Log::info($airport->id);
-        Log::info($months);
+        $logger->info($adConfig->origin->name.'-'.$destination->name);
+        $logger->info($months);
 
         foreach ($months as $batchId => $month) {
             Bus::chain([
@@ -244,14 +260,17 @@ class GenerateOffersForAdConfigs implements ShouldQueue
                     $this->adConfigId,
                 ),
                 new TestEconomicFlights($batchId, $adConfig, $month, $adConfig->origin_id, $destination->id, $airport, $destinationAirport, $batchIds),
-            ])->dispatch();
+            ])->dispatch()
+                ->onQueue('economic');
         }
 
     }
 
     private function createWeekendOffer(AdConfig $adConfig, Airport $airport, Destination $destination, Airport $destinationAirport)
     {
-        Log::info('WEEKENDS===================');
+        $logger = Log::channel('weekend');
+
+        $logger->info('Weekend Job Started', ['job' => self::class]);
 
         $today = now();
         //todo: change this to 3 months
@@ -259,7 +278,7 @@ class GenerateOffersForAdConfigs implements ShouldQueue
 
         $weekends = [];
         $groupedWeekends = [];
-        $requests[] = [];
+        $requests = [];
 
         while ($today->lessThanOrEqualTo($threeMonthsFromNow)) {
             if ($today->isFriday()) {
@@ -271,6 +290,8 @@ class GenerateOffersForAdConfigs implements ShouldQueue
                         'date' => $weekendStart, // Friday
                         'return_date' => $weekendEnd, // Sunday
                     ];
+
+                    $logger->info("Weekend dates: $weekendStart - $weekendEnd");
                 }
             }
 
@@ -287,8 +308,8 @@ class GenerateOffersForAdConfigs implements ShouldQueue
         //            }
         //        }
 
-        //                Log::info('Grouped Weekends: ');
-        //                Log::info(print_r($groupedWeekends, true));
+        //                $logger->info('Grouped Weekends: ');
+        //                $logger->info(print_r($groupedWeekends, true));
 
         foreach ($groupedWeekends as $groupedWeekend) {
             $batchId = Str::orderedUuid();
@@ -316,26 +337,38 @@ class GenerateOffersForAdConfigs implements ShouldQueue
         $batchIds = array_map('strval', array_column($requests, 'batch_id'));
 
         //todo: remove $count after testing
-        $count = 0;
-        Log::info('Requests for weekend: '.count($requests));
-        foreach ($requests as $request) {
-            if (! empty($request) && $count <= 1) {
-                $count++;
-                Bus::chain([
-                    new ProcessFlightsJob($request, $this->adConfigId, 'weekend'),
-                    new LiveSearchHotels(
-                        $request['date'],
-                        $request['nights'],
-                        $request['destination_id'],
-                        2, // Adults
-                        0, // Children
-                        0, // Infants
-                        $request['rooms'],
-                        $request['batch_id']
-                    ),
-                    new ProcessWeekendResponsesJob($request['batch_id'], $request, $adConfig, $batchIds),
-                ])->dispatch();
-            }
+        //        $count = 0;
+        //        $logger->warning(json_encode($requests, JSON_PRETTY_PRINT));
+        foreach ($requests as $index => $request) {
+
+            $logger->info("Generated Request nr. $index:\n".json_encode([
+                'origin_airport' => $airport['codeIataAirport'] ?? $airport->codeIataAirport,
+                'destination_airport' => $destinationAirport['codeIataAirport'] ?? $destinationAirport->codeIataAirport,
+                'date' => $request['date'],
+                'nights' => 2,
+                'return_date' => $request['return_date'],
+                'origin_id' => $adConfig->origin_id,
+                'destination_id' => $destination->id,
+                'batch_id' => $batchId,
+                'category' => OfferCategoryEnum::WEEKEND->value,
+            ], JSON_PRETTY_PRINT));
+            $logger->info('====================================================');
+
+            Bus::chain([
+                new ProcessFlightsJob($request, $this->adConfigId, 'weekend'),
+                new LiveSearchHotels(
+                    $request['date'],
+                    $request['nights'],
+                    $request['destination_id'],
+                    2, // Adults
+                    0, // Children
+                    0, // Infants
+                    $request['rooms'],
+                    $request['batch_id']
+                ),
+                new ProcessWeekendResponsesJob($request['batch_id'], $request, $adConfig, $batchIds),
+            ])->dispatch()
+                ->onQueue('weekend');
         }
     }
 }

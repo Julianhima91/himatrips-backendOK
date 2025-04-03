@@ -61,6 +61,8 @@ class TestEconomicFlights implements ShouldQueue
      */
     public function handle(): void
     {
+        $logger = Log::channel('economic');
+
         $flights = Cache::get("batch:{$this->batchId}:flights");
         $hotels = Cache::get("batch:{$this->batchId}:hotels");
         $adConfigId = $this->adConfig->id;
@@ -90,7 +92,7 @@ class TestEconomicFlights implements ShouldQueue
         if ($flights && $hotels) {
             [$outbound_flight_hydrated, $inbound_flight_hydrated] = $this->handleFlights($flights, $date, $this->batchId, $returnDate, $this->originId, $this->destinationId);
             if (is_null($outbound_flight_hydrated) && is_null($inbound_flight_hydrated)) {
-                Log::warning('Both outbound and inbound flights are null. Terminating job.', [
+                $logger->warning('Both outbound and inbound flights are null. Terminating job.', [
                     'batch_id' => $this->batchId,
                 ]);
 
@@ -114,6 +116,8 @@ class TestEconomicFlights implements ShouldQueue
 
     private function handleFlights($flights, $date, $batchId, $return_date, $origin_id, $destination_id): array
     {
+        $logger = Log::channel('economic');
+
         $outbound_flight_direct = $flights->filter(function ($flight) {
             if ($flight == null) {
                 return false;
@@ -191,7 +195,7 @@ class TestEconomicFlights implements ShouldQueue
         ]);
 
         if ($flights->isEmpty()) {
-            Log::warning("No flight for batch {$this->batchId}");
+            $logger->warning("No flight for batch {$this->batchId}");
 
             $adConfig = $this->adConfig;
             if (in_array('cheapest_date', $this->adConfig->extra_options)) {
@@ -209,6 +213,7 @@ class TestEconomicFlights implements ShouldQueue
             $flights = $flights->reject(null);
             $first_outbound_flight = $flights[0] ?? $flights->first();
 
+            $logger->error("FLIGHT PRICE:::::::::::::::::::: $first_outbound_flight->price");
             $outbound_flight_hydrated = FlightData::create([
                 'price' => $first_outbound_flight->price,
                 'departure' => $first_outbound_flight->departure,
@@ -251,6 +256,8 @@ class TestEconomicFlights implements ShouldQueue
 
     private function handleHotelsAndPackages($hotels, mixed $outbound_flight_hydrated, mixed $inbound_flight_hydrated, $batchId, $origin_id, $destination_id, $roomObject): void
     {
+        $logger = Log::channel('economic');
+
         $packageConfig = PackageConfig::query()
             ->whereHas('destination_origin', function ($query) use ($origin_id, $destination_id) {
                 $query->where([
@@ -305,6 +312,8 @@ class TestEconomicFlights implements ShouldQueue
             $cheapestOffer = collect($hotel_data->offers)->sortBy('TotalPrice')->first();
 
             $hotel_data->update(['price' => $cheapestOffer->total_price_for_this_offer + $transferPrice]);
+            $logger->error("PACKAGE PRICE:::::::::::::::::::: $first_offer->total_price_for_this_offer");
+
             Ad::create([
                 'hotel_data_id' => $hotel_data->id,
                 'outbound_flight_id' => $outbound_flight_hydrated->id,

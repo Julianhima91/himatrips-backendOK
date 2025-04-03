@@ -79,7 +79,7 @@ class EconomicHotelJob implements ShouldQueue
         }
 
         if (! isset(json_decode($response->MakeRequestResult)->Hotels)) {
-            Log::info('No hotels found');
+            //            Log::info('No hotels found');
             if ($this->attempts() == 1) {
                 addBreadcrumb('message', 'Hotel Attempts', ['attempts' => $this->attempts()]);
                 $this->release(1);

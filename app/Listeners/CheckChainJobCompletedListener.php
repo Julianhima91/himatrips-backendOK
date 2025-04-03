@@ -19,7 +19,9 @@ class CheckChainJobCompletedListener
      */
     public function handle(CheckChainJobCompletedEvent $event): void
     {
-        Log::error('INSIDE HOLIDAY LISTENER');
+        $logger = Log::channel('holiday');
+
+        $logger->info('==================HOLIDAY LISTENER==================');
         $batchIds = Cache::get("$event->adConfigId:create_csv");
         $currentCsvBatchIds = Cache::get("$event->adConfigId:current_csv_batch_ids");
         if ($event->batchId) {
@@ -33,19 +35,22 @@ class CheckChainJobCompletedListener
             sort($currentCsvBatchIds);
         }
 
-        Log::info('HOLIDAY');
-        Log::info($batchIds);
-        Log::info($currentCsvBatchIds);
-        //        Log::error($batchIds, $currentCsvBatchIds);
-        //                Log::error('comparison result: '.var_export($batchIds == $currentCsvBatchIds, true));
+        $logger->info('HOLIDAY');
+        $logger->info($batchIds);
+        $logger->info($currentCsvBatchIds);
+        //        $logger->error($batchIds, $currentCsvBatchIds);
+        //                $logger->error('comparison result: '.var_export($batchIds == $currentCsvBatchIds, true));
         //
         if ($batchIds === $currentCsvBatchIds) {
-            Log::info('WE ARE INSIDE (HOLIDAY) !!!!!!!!!!!!!WOOHOOOOOO');
+            $logger->info('SUCCESS (HOLIDAY)');
 
             $ads = Ad::query()
                 ->whereIn('batch_id', $batchIds)
                 ->orderBy('total_price', 'asc')
                 ->get();
+
+            $logger->info('Ads count: '.count($ads));
+
             //
             [$csvPath, $adConfigId] = $this->exportAdsToCsv($ads);
 
@@ -75,15 +80,19 @@ class CheckChainJobCompletedListener
             //
             Cache::forget("$event->adConfigId:batch_ids");
             Cache::forget("$event->adConfigId:current_batch_ids");
+            Cache::forget("$event->adConfigId:current_csv_batch_ids");
+            Cache::forget("$event->adConfigId:create_csv");
         }
     }
 
     public function exportAdsToCsv($ads)
     {
+        $logger = Log::channel('holiday');
+
         $totalAds = count($ads);
         $adConfig = $ads[0]->ad_config_id;
         $adConfigDescription = preg_replace('/\s+/', '_', $ads[0]->adConfig->description ?? 'no_description');
-        Log::info("Exporting $totalAds ads for holiday... Ad config id: $adConfig");
+        $logger->info("Exporting $totalAds ads for holiday... Ad config id: $adConfig");
 
         $filename = 'ads_holiday_export_'.$adConfigDescription.'.csv';
 
@@ -211,8 +220,9 @@ class CheckChainJobCompletedListener
                 $ad->id,
                 $ad->total_price,
                 $description,
-                $description.
-                '✈️ '.$ad->outboundFlight->departure->format('d/m').' - '.$ad->inboundFlight->departure->format('d/m').' ➥ '.($ad->total_price / 2).' €/P '.$ad->hotelData->number_of_nights.' Nete
+                $description.'
+                '.
+        '✈️ '.$ad->outboundFlight->departure->format('d/m').' - '.$ad->inboundFlight->departure->format('d/m').' ➥ '.($ad->total_price / 2).' €/P '.$ad->hotelData->number_of_nights.' Nete
         ✅ Bilete Vajtje - Ardhje nga '.$ad->adConfig->origin->name.'
         ✅ Cante 10 Kg
         ✅ Taksa Aeroportuale
@@ -299,9 +309,9 @@ class CheckChainJobCompletedListener
         //        ]);
 
         //        foreach ($ads as $ad) {
-        //            Log::warning($ad->id);
-        //            Log::warning($ad->outboundFlight->departure);
-        //            Log::warning($ad->inboundFlight->departure);
+        //            $logger->warning($ad->id);
+        //            $logger->warning($ad->outboundFlight->departure);
+        //            $logger->warning($ad->inboundFlight->departure);
         //            $nights = $ad->hotelData->number_of_nights;
         //            $pricePerPerson = $ad->total_price / 2;
         //            $departureDate = $ad->outboundFlight->departure->format('d/m');

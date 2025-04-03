@@ -133,7 +133,8 @@ class AdConfigResource extends Resource
                     ->icon('heroicon-o-sparkles')
                     ->color('success')
                     ->action(function ($record) {
-                        GenerateOffersForAdConfigs::dispatch(type: 'weekend', adConfigId: $record->id);
+                        GenerateOffersForAdConfigs::dispatch(type: 'weekend', adConfigId: $record->id)
+                            ->onQueue('weekend');
 
                         Notification::make()
                             ->title('Job Dispatched')
@@ -146,7 +147,8 @@ class AdConfigResource extends Resource
                     ->icon('heroicon-o-sparkles')
                     ->color('success')
                     ->action(function ($record) {
-                        GenerateOffersForAdConfigs::dispatch(type: 'holiday', adConfigId: $record->id);
+                        GenerateOffersForAdConfigs::dispatch(type: 'holiday', adConfigId: $record->id)
+                            ->onQueue('holiday');
 
                         Notification::make()
                             ->title('Job Dispatched')
@@ -160,7 +162,8 @@ class AdConfigResource extends Resource
                     ->icon('heroicon-o-sparkles')
                     ->color('success')
                     ->action(function ($record) {
-                        GenerateOffersForAdConfigs::dispatch(type: 'economic', adConfigId: $record->id);
+                        GenerateOffersForAdConfigs::dispatch(type: 'economic', adConfigId: $record->id)
+                            ->onQueue('economic');
 
                         Notification::make()
                             ->title('Job Dispatched')

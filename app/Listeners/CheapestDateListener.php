@@ -16,6 +16,8 @@ class CheapestDateListener
      */
     public function handle(CheapestDateEvent $event): void
     {
+        $logger = Log::channel('holiday');
+
         $batchIds = Cache::get("$event->adConfigId:batch_ids");
         $currentBatchIds = Cache::get("$event->adConfigId:current_batch_ids");
         if ($event->batchId) {
@@ -28,7 +30,7 @@ class CheapestDateListener
         Cache::put("$event->adConfigId:current_holidays", $holidaysMap);
 
         $a = Cache::get("$event->adConfigId:current_holidays");
-        Log::info('Cached Holidays:', $a);
+        $logger->info('Cached Holidays:', $a);
 
         //todo when count of both arrays is the same, then proceed to sort them
         if (isset($currentBatchIds) && isset($batchIds) && count($batchIds) === count($currentBatchIds)) {
@@ -36,11 +38,11 @@ class CheapestDateListener
             sort($currentBatchIds);
         }
 
-        Log::error('comparison result: '.var_export($batchIds == $currentBatchIds, true));
+        $logger->error('comparison result: '.var_export($batchIds == $currentBatchIds, true));
 
         if ($batchIds === $currentBatchIds) {
 
-            Log::warning('INSIDE CHEAPEST DATE DELETION');
+            $logger->info('==================CHEAPEST DATE HOLIDAY LISTENER==================');
             $holidaysMap = Cache::get("$event->adConfigId:current_holidays", []);
             $holidays = $holidaysMap[$event->destinationId] ?? [];
 
@@ -70,14 +72,17 @@ class CheapestDateListener
                 })
                 ->pluck('ads.id');
 
-            Log::info('CCCCCCC Selected Ad IDs:', ['ad_ids' => $query->toArray()]);
+            //We get the cheapest ad for each holiday
+            $logger->info('Selected Ad IDs:', ['ad_ids' => $query->toArray()]);
 
-            Ad::where([
-                ['ad_config_id', $event->adConfigId],
-                ['offer_category', 'holiday'],
-            ])
-                ->whereNotIn('id', $query)
-                ->delete();
+            if ($query->isNotEmpty()) {
+                Ad::where([
+                    ['ad_config_id', $event->adConfigId],
+                    ['offer_category', 'holiday'],
+                ])
+                    ->whereNotIn('id', $query)
+                    ->delete();
+            }
 
             //            $ads = Ad::query()
             //                ->whereIn('batch_id', $batchIds)

@@ -15,7 +15,9 @@ class CheckEconomicJobCompletedListener
 
     public function handle(object $event): void
     {
-        Log::error('INSIDE ECONOMIC LISTENER');
+        $logger = Log::channel('economic');
+
+        $logger->info('==================ECONOMIC LISTENER==================');
 
         $batchIds = Cache::get("$event->adConfigId:economic_create_csv");
         $currentCsvBatchIds = Cache::get("$event->adConfigId:current_economic_csv_batch_ids");
@@ -46,14 +48,14 @@ class CheckEconomicJobCompletedListener
             }
         }
 
-        Log::info($batchIds);
-        Log::info($currentCsvBatchIds);
-        Log::info($batchIds === $currentCsvBatchIds);
-        Log::info("TOTAL: $total");
+        //        $logger->info($batchIds);
+        //        $logger->info($currentCsvBatchIds);
+        //        $logger->info($batchIds === $currentCsvBatchIds);
+        //        $logger->info("TOTAL: $total");
 
         if ($batchIds === $currentCsvBatchIds) {
             //            && count($batchIds) === $total && count($currentCsvBatchIds) === $total)
-            Log::info('WE ARE INSIDE (ECONOMIC) !!!!!!!!!!!!!WOOHOOOOOO');
+            $logger->info('SUCCESS (ECONOMIC)');
 
             Cache::forget("$event->adConfigId:economic_create_csv");
             Cache::forget("$event->adConfigId:current_economic_csv_batch_ids");
@@ -84,10 +86,12 @@ class CheckEconomicJobCompletedListener
 
     public function exportAdsToCsv($ads)
     {
+        $logger = Log::channel('economic');
+
         $totalAds = count($ads);
         $adConfig = $ads[0]->ad_config_id;
         $adConfigDescription = preg_replace('/\s+/', '_', $ads[0]->adConfig->description ?? 'no_description');
-        Log::info("Exporting $totalAds ads for economic... Ad config id: $adConfig");
+        $logger->info("Exporting $totalAds ads for economic... Ad config id: $adConfig");
 
         $filename = 'ads_economic_export_'.$adConfigDescription.'.csv';
 
@@ -190,7 +194,7 @@ class CheckEconomicJobCompletedListener
                 "❣️ Oferta Ekonomike ne $destination->name Nga $origin ❣️",
                 "❣️ Oferta Ekonomike ne $destination->name Nga $origin ❣️
                 ".
-                '✈️ '.$ad->outboundFlight->departure->format('d/m').' - '.$ad->inboundFlight->departure->format('d/m').' ➥ '.($ad->total_price / 2).' €/P '.$ad->hotelData->number_of_nights.' Nete
+        '✈️ '.$ad->outboundFlight->departure->format('d/m').' - '.$ad->inboundFlight->departure->format('d/m').' ➥ '.($ad->total_price / 2).' €/P '.$ad->hotelData->number_of_nights.' Nete
         ✅ Bilete Vajtje - Ardhje nga '.$ad->adConfig->origin->name.'
         ✅ Cante 10 Kg
         ✅ Taksa Aeroportuale
@@ -280,7 +284,7 @@ class CheckEconomicJobCompletedListener
         //        ]);
         //
         //        foreach ($ads as $ad) {
-        //            Log::warning($ad->id);
+        //            $logger->warning($ad->id);
         //            $nights = $ad->hotelData->number_of_nights;
         //            $pricePerPerson = $ad->total_price / 2;
         //            $departureDate = $ad->outboundFlight->departure->format('d/m');

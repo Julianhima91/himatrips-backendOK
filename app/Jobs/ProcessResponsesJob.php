@@ -44,16 +44,17 @@ class ProcessResponsesJob implements ShouldQueue
 
     public function handle()
     {
+        $logger = Log::channel('holiday');
+
         $flights = Cache::get("batch:{$this->batchId}:flights");
         $hotels = Cache::get("batch:{$this->batchId}:hotels");
 
         if ($flights && $hotels) {
             $extraOptions = $this->adConfig->extra_options;
 
-            //            Log::info("Aggregated Response for batch {$this->batchId}");
             [$outbound_flight_hydrated, $inbound_flight_hydrated] = $this->handleFlights($flights, $this->request['date'], $this->batchId, $this->request['return_date'], $this->request['origin_id'], $this->request['destination_id']);
             if (is_null($outbound_flight_hydrated) && is_null($inbound_flight_hydrated)) {
-                Log::warning('Both outbound and inbound flights are null. Terminating job.', [
+                $logger->warning('Both outbound and inbound flights are null. Terminating job.', [
                     'batch_id' => $this->batchId,
                 ]);
 
@@ -85,12 +86,14 @@ class ProcessResponsesJob implements ShouldQueue
 
             event(new CheckChainJobCompletedEvent($this->request['batch_id'], $this->batchIds, $this->adConfig->id));
         } else {
-            Log::error("Missing data for batch {$this->batchId}");
+            $logger->error("Missing data for batch {$this->batchId}");
         }
     }
 
     private function handleFlights($flights, $date, $batchId, $return_date, $origin_id, $destination_id): array
     {
+        $logger = Log::channel('holiday');
+
         $outbound_flight_direct = $flights->filter(function ($flight) {
             if ($flight == null) {
                 return false;
@@ -168,7 +171,7 @@ class ProcessResponsesJob implements ShouldQueue
         ]);
 
         if ($flights->isEmpty()) {
-            Log::warning("No flight for batch {$this->batchId}");
+            $logger->warning("No flight for batch {$this->batchId}");
 
             $adConfig = $this->adConfig;
             if (in_array('cheapest_date', $this->adConfig->extra_options)) {
@@ -181,15 +184,16 @@ class ProcessResponsesJob implements ShouldQueue
             unset($batchIds[array_search($this->batchId, $batchIds)]);
             Cache::put("$adConfig->id:create_csv", $batchIds);
 
-            Log::error("REMOVING FROM CACHE $this->batchId");
+            //            $logger->error("REMOVING FROM CACHE $this->batchId");
 
             return [null, null];
         } else {
             $flights = $flights->reject(null);
             $first_outbound_flight = $flights[0] ?? $flights->first();
 
-            Log::error($flights[0]);
-            Log::error($flights->first());
+            //            $logger->error(json_encode($flights, JSON_PRETTY_PRINT));
+            $logger->error($flights[0]);
+            $logger->error($flights->first());
 
             $outbound_flight_hydrated = FlightData::create([
                 'price' => $first_outbound_flight->price,
@@ -305,6 +309,8 @@ class ProcessResponsesJob implements ShouldQueue
 
     private function getCheapestHotel(): void
     {
+        $logger = Log::channel('holiday');
+
         $ads = Ad::query()->where('batch_id', $this->batchId)->get();
 
         $cheapestOffer = null;
@@ -326,7 +332,7 @@ class ProcessResponsesJob implements ShouldQueue
         }
 
         if ($cheapestOffer) {
-            Log::info('Cheapest Ad: '.$cheapestAd);
+            $logger->info('Cheapest Ad: '.$cheapestAd);
 
             $adsToDelete = Ad::query()
                 ->where('batch_id', $this->batchId)
@@ -344,7 +350,7 @@ class ProcessResponsesJob implements ShouldQueue
                 ->where('id', '!=', $cheapestAd->id)
                 ->delete();
         } else {
-            Log::warning('No offers found for batch', [
+            $logger->warning('No offers found for batch', [
                 'batch_id' => $this->batchId,
             ]);
         }

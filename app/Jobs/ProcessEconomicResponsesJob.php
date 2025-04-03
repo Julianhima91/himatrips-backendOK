@@ -32,6 +32,8 @@ class ProcessEconomicResponsesJob implements ShouldQueue
      */
     public function handle(): void
     {
+        $logger = Log::channel('economic');
+
         $flights = Cache::get("$this->adConfigId:$this->batchId:cheap_flights");
         $flightsReturn = Cache::get("$this->adConfigId:$this->batchId:cheap_flights_return");
 
@@ -48,14 +50,14 @@ class ProcessEconomicResponsesJob implements ShouldQueue
                 $return = collect($flightsReturn)->firstWhere('date', $returnDate);
 
                 if (! $return) {
-                    //                    Log::info("Skipping outbound date $outboundDate, no return flight found for date $returnDate.");
+                    //                    $logger->info("Skipping outbound date $outboundDate, no return flight found for date $returnDate.");
                     continue;
                 }
 
                 $returnPrice = $return['price'];
                 $totalPrice = $outboundPrice + $returnPrice;
 
-                //                Log::info("Checking combination: Outbound ($outboundDate) - {$outboundPrice}, Return ($returnDate) - {$returnPrice}, Total: {$totalPrice}");
+                //                $logger->info("Checking combination: Outbound ($outboundDate) - {$outboundPrice}, Return ($returnDate) - {$returnPrice}, Total: {$totalPrice}");
 
                 if ($totalPrice < $cheapestPrice) {
                     $cheapestPrice = $totalPrice;
@@ -65,21 +67,21 @@ class ProcessEconomicResponsesJob implements ShouldQueue
                         'total_price' => $totalPrice,
                     ];
 
-                    //                    Log::info("New cheapest combination found: " . json_encode($cheapestCombination));
+                    //                    $logger->info("New cheapest combination found: " . json_encode($cheapestCombination));
                 }
             }
 
             if ($cheapestCombination) {
-                Log::info('Final cheapest combination: '.json_encode($cheapestCombination));
+                $logger->info('Final cheapest combination: '.json_encode($cheapestCombination));
             } else {
-                Log::info('No valid flight combination found.');
+                $logger->info('No valid flight combination found.');
             }
 
             Cache::forget("$this->adConfigId:$this->batchId:cheap_flights");
             Cache::forget("$this->adConfigId:$this->batchId:cheap_flights_return");
             Cache::put("$this->adConfigId:$this->batchId:cheapest_combination", $cheapestCombination);
 
-            Log::error('2025-02-'.Cache::get("$this->adConfigId:$this->batchId:cheapest_combination")['outbound']['date']);
+            $logger->error('2025-02-'.Cache::get("$this->adConfigId:$this->batchId:cheapest_combination")['outbound']['date']);
         }
     }
 }

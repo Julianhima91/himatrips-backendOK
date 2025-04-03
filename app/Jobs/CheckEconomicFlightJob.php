@@ -101,8 +101,10 @@ class CheckEconomicFlightJob implements ShouldQueue
             }
 
         } catch (\Exception $e) {
-            Log::error('!!!ERROR!!!');
-            Log::error($e->getMessage());
+            $logger = Log::channel('economic');
+
+            $logger->error('!!!ERROR!!!');
+            $logger->error($e->getMessage());
         }
     }
 }

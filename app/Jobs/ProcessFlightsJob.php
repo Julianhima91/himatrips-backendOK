@@ -30,6 +30,15 @@ class ProcessFlightsJob implements ShouldQueue
 
     public function handle(): void
     {
+        $channel = match ($this->tempCache) {
+            'weekend' => 'weekend',
+            'economic' => 'economic',
+            'holiday' => 'holiday',
+            default => 'default',
+        };
+
+        $logger = Log::channel($channel);
+
         $batchId = $this->request['batch_id'];
 
         dispatch_sync(new LiveSearchFlightsApi2($this->request['origin_airport'], $this->request['destination_airport'], $this->request['date'], $this->request['return_date'], $this->request['origin_airport'], $this->request['destination_airport'], $this->request['rooms'][0]['adults'], $this->request['rooms'][0]['children'], $this->request['rooms'][0]['infants'], $batchId));
@@ -56,7 +65,7 @@ class ProcessFlightsJob implements ShouldQueue
                 Cache::put("$adConfig->id:create_csv", $csvCache);
             }
         } else {
-            Log::warning("Flights data not found in cache for batch: {$batchId}");
+            $logger->warning("Flights data not found in cache for batch: {$batchId}");
         }
     }
 }
