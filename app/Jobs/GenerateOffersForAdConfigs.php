@@ -273,7 +273,7 @@ class GenerateOffersForAdConfigs implements ShouldQueue
 
         $today = now();
         //todo: change this to 3 months
-        $threeMonthsFromNow = now()->addMonths(1);
+        $threeMonthsFromNow = now()->addMonths(3);
 
         $weekends = [];
         $groupedWeekends = [];
