@@ -3,6 +3,7 @@
 namespace App\Filament\Pages;
 
 use App\Settings\MaxTransitTime;
+use App\Settings\MonthlyWeekendAds;
 use App\Settings\PackageHourly;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Form;
@@ -18,6 +19,7 @@ class Settings extends SettingsPage
     {
         $packageHourlySettings = app(PackageHourly::class);
         $maxTransitTimeSettings = app(MaxTransitTime::class);
+        $monthlyWeekendAds = app(MonthlyWeekendAds::class);
 
         return $form
             ->schema([
@@ -25,6 +27,12 @@ class Settings extends SettingsPage
                     ->minValue(1)
                     ->numeric()
                     ->label('Package hourly deletion')
+                    ->required(),
+                TextInput::make('monthly')
+                    ->minValue(1)
+                    ->numeric()
+                    ->label('Monthly weekend Ads')
+                    ->formatStateUsing(fn ($state) => $state ?? app(MonthlyWeekendAds::class)->monthly)
                     ->required(),
                 TextInput::make('minutes')
                     ->minValue(1)
@@ -38,6 +46,10 @@ class Settings extends SettingsPage
     public function save(): void
     {
         parent::save();
+
+        $monthlyWeekendAds = app(MonthlyWeekendAds::class);
+        $monthlyWeekendAds->monthly = $this->form->getState()['monthly'];
+        $monthlyWeekendAds->save();
 
         $maxTransitTimeSettings = app(MaxTransitTime::class);
         $maxTransitTimeSettings->minutes = $this->form->getState()['minutes'];

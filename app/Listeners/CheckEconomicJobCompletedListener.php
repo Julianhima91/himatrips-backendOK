@@ -189,7 +189,7 @@ class CheckEconomicJobCompletedListener
             $row = [
                 //we can remove id, only for debugging
                 //                $ad->id,
-                $ad->id,
+                $ad->package_config_id,
                 $ad->total_price,
                 "❣️ Oferta Ekonomike ne $destination->name Nga $origin ❣️",
                 "❣️ Oferta Ekonomike ne $destination->name Nga $origin ❣️
@@ -243,6 +243,21 @@ class CheckEconomicJobCompletedListener
                 $row[] = $tag->name;
             }
 
+            $cheapestPrice = $ad->hotelData->cheapestOffer[0]->price ?? 0;
+            $mostExpensivePrice = $ad->hotelData->mostExpensiveOffer[0]->price ?? 0;
+
+            if ($mostExpensivePrice != 0) {
+                $discountPercentage = round((($mostExpensivePrice - $cheapestPrice) / $mostExpensivePrice) * 100);
+
+                $logger->info('Cheapest Price: '.$cheapestPrice);
+                $logger->info('Most Expensive Price: '.$mostExpensivePrice);
+                $logger->info('Discount Percentage: '.$discountPercentage.'%');
+            } else {
+                $discountPercentage = 0;
+
+                $logger->warning('No valid price found for most expensive offer.');
+            }
+
             $row = array_merge($row, [
                 $ad->destination->address,
                 $ad->destination->city,
@@ -252,7 +267,7 @@ class CheckEconomicJobCompletedListener
                 $ad->destination->longitude,
                 $ad->destination->neighborhood,
                 $ad->offer_category,
-                ($ad->hotelData->cheapestOffer[0]->price ?? 0) - ($ad->hotelData->mostExpensiveOffer[0]->price ?? 0),
+                '-'.$discountPercentage,
                 env('FRONT_URL')."/admin/$ad->id",
             ]);
 

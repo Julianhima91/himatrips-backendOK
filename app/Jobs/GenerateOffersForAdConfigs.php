@@ -6,6 +6,7 @@ use App\Enums\OfferCategoryEnum;
 use App\Models\AdConfig;
 use App\Models\Airport;
 use App\Models\Destination;
+use App\Settings\MonthlyWeekendAds;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -273,8 +274,10 @@ class GenerateOffersForAdConfigs implements ShouldQueue
 
         $today = now();
         //todo: change this to 3 months
-        $threeMonthsFromNow = now()->addMonths(3);
+        $months = app(MonthlyWeekendAds::class)->monthly;
+        $threeMonthsFromNow = now()->addMonths($months);
 
+        $logger->info("MONTHS TO SEARCH: $months");
         $weekends = [];
         $groupedWeekends = [];
         $requests = [];
