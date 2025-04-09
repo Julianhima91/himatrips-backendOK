@@ -11,6 +11,7 @@ use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
 
 class LiveSearchFlights implements ShouldQueue
 {
@@ -82,9 +83,13 @@ class LiveSearchFlights implements ShouldQueue
             $response = $this->getIncompleteResults($response->json()['data']['context']['sessionId']);
         }
 
+        $logger = Log::channel('livesearch');
+
         try {
             $itineraries = $response->dtoOrFail();
 
+            $logger->info("$this->batchId API 1 ITINERARIES COUNT:");
+            $logger->info(count($itineraries));
             if ($itineraries->isEmpty()) {
                 ray('empty itineraries 1111');
                 $this->release(1);
