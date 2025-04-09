@@ -65,6 +65,7 @@ class PackageController extends Controller
 
     public function liveSearch(LivesearchRequest $request, FlightsAction $flights, HotelsAction $hotels, PackagesAction $packagesAction)
     {
+        $logger = Log::channel('livesearch');
         $totalAdults = collect($request->input('rooms'))->pluck('adults')->sum();
         $totalChildren = collect($request->input('rooms'))->pluck('children')->sum();
         $totalInfants = collect($request->input('rooms'))->pluck('infants')->sum();
@@ -142,8 +143,18 @@ class PackageController extends Controller
 
                     if (is_null($outbound_flight_hydrated) || is_null($inbound_flight_hydrated)) {
                         broadcast(new LiveSearchFailed('No flights found', $batchId));
+                        $logger->warning('======================================');
+                        $logger->warning("$batchId Broadcasting failed sent. FLIGHTS NULL");
+                        $logger->warning('======================================');
 
-                        break;
+                        $logger->warning('REQUEST:');
+                        $logger->warning(json_encode($request->all(), JSON_PRETTY_PRINT));
+
+                        return response()->json([
+                            'success' => false,
+                            'message' => 'No flights found.',
+                            'batch_id' => $batchId,
+                        ], 204);
                     }
 
                     $package_ids = $hotels->handle($destination, $outbound_flight_hydrated, $inbound_flight_hydrated, $batchId, $request->origin_id, $request->destination_id, $request->input('rooms'));
@@ -155,6 +166,10 @@ class PackageController extends Controller
 
                     //fire off event
                     broadcast(new LiveSearchCompleted($packages, $batchId, $minTotalPrice, $maxTotalPrice, $packageConfigId));
+                    $logger->info('======================================');
+                    $logger->info('Broadcasting sent. SUCCESS');
+                    $logger->info('======================================');
+
                     //                    $queriesFinished = microtime(true);
                     //                    $queriesElapsed = $queriesFinished - $jobsFinished;
                     //                    Log::info("Queries finished time: {$queriesElapsed} seconds");
@@ -167,8 +182,12 @@ class PackageController extends Controller
             //            $totalElapsed = $endTime - $startTime;
             //            Log::info("Total elapsed time: {$totalElapsed} seconds");
         } catch (\Throwable $e) {
+            $logger->error($e->getMessage());
+
             return response()->json(['message' => $e->getMessage()], 500);
         }
+
+        $logger->info('Response sent');
 
         return response()->json(['message' => 'Live search started', 'data' => [
             'batch_id' => $batchId,
