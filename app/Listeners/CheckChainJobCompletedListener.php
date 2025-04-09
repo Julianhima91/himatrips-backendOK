@@ -213,7 +213,16 @@ class CheckChainJobCompletedListener
 
         $description .= " ne $destination->name Nga $origin ❣️";
 
+        $months = [
+            'January' => 'Janar', 'February' => 'Shkurt', 'March' => 'Mars',
+            'April' => 'Prill', 'May' => 'Maj', 'June' => 'Qershor',
+            'July' => 'Korrik', 'August' => 'Gusht', 'September' => 'Shtator',
+            'October' => 'Tetor', 'November' => 'Nëntor', 'December' => 'Dhjetor',
+        ];
+
         foreach ($ads as $ad) {
+            $formatDate = fn ($date) => $date->format('d').' '.$months[$date->format('F')];
+
             $row = [
                 //we can remove id, only for debugging
                 //                $ad->id,
@@ -222,7 +231,7 @@ class CheckChainJobCompletedListener
                 $description,
                 $description.'
                 '.
-        '✈️ '.$ad->outboundFlight->departure->format('d/m').' - '.$ad->inboundFlight->departure->format('d/m').' ➥ '.($ad->total_price / 2).' €/P '.$ad->hotelData->number_of_nights.' Nete
+        '✈️ '.$formatDate($ad->outboundFlight->departure).' - '.$formatDate($ad->inboundFlight->departure).' ➥ '.($ad->total_price / 2).' €/P '.$ad->hotelData->number_of_nights.' Nete
         ✅ Bilete Vajtje - Ardhje nga '.$ad->adConfig->origin->name.'
         ✅ Cante 10 Kg
         ✅ Taksa Aeroportuale
