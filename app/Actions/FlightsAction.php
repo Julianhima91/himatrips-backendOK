@@ -55,16 +55,11 @@ class FlightsAction
             $logger->warning('Count: '.count($outbound_flight));
 
             $outboundStops = [];
-            $outbound_flight_max_stops = $outbound_flight->filter(function ($flight) use ($packageConfig, &$outboundStops, $logger) {
-                Log::debug('Filter is running for flight');
-
+            $outbound_flight_max_stops = $outbound_flight->filter(function ($flight) use ($packageConfig, &$outboundStops) {
                 if ($flight == null) {
-                    $logger->error('NULL FLIGHT');
-
                     return false;
                 }
 
-                $logger->error('stopCount: '.$flight->stopCount);
                 $outboundStops[] = $flight->stopCount;
 
                 return $flight->stopCount <= $packageConfig->max_stop_count && $flight->stopCount_back <= $packageConfig->max_stop_count;
@@ -204,24 +199,20 @@ class FlightsAction
             $logger->warning('No Direct Flight Found');
             $logger->warning('Count: '.count($inbound_flight));
 
-            $inbound_flight_max_stops = $inbound_flight->filter(function ($flight) use ($packageConfig, $logger) {
+            $inboundStops = [];
+
+            $inbound_flight_max_stops = $inbound_flight->filter(function ($flight) use ($packageConfig, &$inboundStops) {
                 if ($flight == null) {
                     return false;
                 }
 
-                $logger->error($flight->stopCount);
+                $inboundStops[] = $flight->stopCount;
 
                 return $flight->stopCount <= $packageConfig->max_stop_count && $flight->stopCount_back <= $packageConfig->max_stop_count;
             });
 
-            //            if ($inbound_flight_max_stops->isEmpty()) {
-            //                $minStops = $inbound_flight_max_stops->min(function ($flight) {
-            //                    return min($flight->stopCount, $flight->stopCount_back);
-            //                });
-            //
-            //                $logger->info("Minimum stops for inbound flights: {$minStops}");
-            //            }
-
+            $minInboundStops = ! empty($inboundStops) ? min($inboundStops) : null;
+            $logger->info('Minimum inbound stopCount: '.($minInboundStops ?? 'N/A'));
             $logger->info("Flights after filtering based on ($packageConfig->max_stop_count) max stops");
             $logger->info('Count: '.count($inbound_flight_max_stops));
 
