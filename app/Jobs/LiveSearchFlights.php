@@ -93,17 +93,17 @@ class LiveSearchFlights implements ShouldQueue
             if ($itineraries->isEmpty()) {
                 ray('empty itineraries 1111');
                 $this->release(1);
+            } else {
+                cache()->put('flight_'.$this->date, $itineraries, now()->addMinutes(5));
+                cache()->put('flight_'.$this->return_date, $itineraries, now()->addMinutes(5));
+                if (! Cache::get("job_completed_{$this->batchId}")) {
+                    Cache::put("job_completed_{$this->batchId}", true);
+                }
             }
         } catch (\Exception $e) {
             $this->fail($e);
         }
 
-        //put it in cache
-        cache()->put('flight_'.$this->date, $itineraries, now()->addMinutes(5));
-        cache()->put('flight_'.$this->return_date, $itineraries, now()->addMinutes(5));
-        if (! Cache::get("job_completed_{$this->batchId}")) {
-            Cache::put("job_completed_{$this->batchId}", true);
-        }
     }
 
     private function getIncompleteResults($session)
