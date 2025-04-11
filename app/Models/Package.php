@@ -14,6 +14,10 @@ class Package extends Model
 
     protected $guarded = [];
 
+    protected $casts = [
+        'extra_data' => 'array',
+    ];
+
     public function transfers(): MorphToMany
     {
         return $this->morphedByMany(Transfer::class, 'packageable');

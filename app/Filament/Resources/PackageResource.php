@@ -4,6 +4,7 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\PackageResource\Pages;
 use App\Models\FlightData;
+use App\Models\Hotel;
 use App\Models\Package;
 use Filament\Forms;
 use Filament\Forms\Form;
@@ -184,11 +185,9 @@ class PackageResource extends Resource
                     ->sortable(),
                 Tables\Columns\TextColumn::make('hotelData.hotel.name')
                     ->label('Hotel')
-                    ->searchable()
                     ->sortable(),
                 Tables\Columns\TextColumn::make('hotelData.check_in_date')
                     ->label('Check In')
-                    ->searchable()
                     ->sortable(),
                 Tables\Columns\TextColumn::make('hotelData.number_of_nights')
                     ->label('Number of Nights'),
@@ -225,7 +224,27 @@ class PackageResource extends Resource
                 Tables\Filters\SelectFilter::make('destination')
                     ->label('Destination')
                     ->relationship('packageConfig.destination_origin.destination', 'name'),
-
+                Tables\Filters\Filter::make('hotel')
+                    ->label('Hotel')
+                    ->form([
+                        Forms\Components\Select::make('hotel_id')
+                            ->label('Hotel')
+                            ->searchable()
+                            ->getSearchResultsUsing(function (string $search) {
+                                return Hotel::query()
+                                    ->where('name', 'like', '%'.$search.'%')
+                                    ->limit(10)
+                                    ->pluck('name', 'id');
+                            })
+                            ->getOptionLabelUsing(fn ($value) => Hotel::find($value)?->name),
+                    ])
+                    ->query(function ($query, array $data) {
+                        if (! empty($data['hotel_id'])) {
+                            $query->whereHas('hotelData.hotel', function ($q) use ($data) {
+                                $q->where('id', $data['hotel_id']);
+                            });
+                        }
+                    }),
             ])
             ->actions([
                 Tables\Actions\ViewAction::make(),

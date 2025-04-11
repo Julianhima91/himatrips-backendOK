@@ -83,6 +83,12 @@ return [
             'level' => 'debug',
         ],
 
+        'livesearch' => [
+            'driver' => 'single',
+            'path' => storage_path('logs/livesearch.log'),
+            'level' => 'debug',
+        ],
+
         'daily' => [
             'driver' => 'daily',
             'path' => storage_path('logs/laravel.log'),

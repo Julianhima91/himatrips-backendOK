@@ -9,11 +9,13 @@ use App\Settings\MaxTransitTime;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
 
 class FlightsAction
 {
     public function handle($date, $destination, $batchId, $return_date, $origin_id, $destination_id)
     {
+        $logger = Log::channel('livesearch');
         $outbound_flight = Cache::get('flight_'.$date);
 
         //filter the flights as per the destination configuration
@@ -22,6 +24,9 @@ class FlightsAction
         //if we can find such flights we need to return them, but if we don't we still need to return the flights
         //if max_stop_count is not 0, we need to return only flights with stop count less than or equal to max_stop_count
         // and with max_wait_time less than or equal to max_wait_time
+
+        $logger->info('TOTAL FLIGHTS START ===========================>');
+        $logger->info('Count: '.count($outbound_flight));
 
         //filter for direct flights
         $outbound_flight_direct = $outbound_flight->filter(function ($flight) {
@@ -42,15 +47,28 @@ class FlightsAction
 
         //if we have direct flights, keep only direct flights
         if ($outbound_flight_direct->isNotEmpty()) {
+            $logger->info('Direct Flight Found');
+            $logger->info('Count: '.count($outbound_flight_direct));
             $outbound_flight = $outbound_flight_direct;
         } else {
-            $outbound_flight_max_stops = $outbound_flight->filter(function ($flight) use ($packageConfig) {
+            $logger->warning('No Direct Flight Found');
+            $logger->warning('Count: '.count($outbound_flight));
+
+            $outboundStops = [];
+            $outbound_flight_max_stops = $outbound_flight->filter(function ($flight) use ($packageConfig, &$outboundStops) {
                 if ($flight == null) {
                     return false;
                 }
 
+                $outboundStops[] = $flight->stopCount;
+
                 return $flight->stopCount <= $packageConfig->max_stop_count && $flight->stopCount_back <= $packageConfig->max_stop_count;
             });
+
+            $minOutboundStops = ! empty($outboundStops) ? min($outboundStops) : null;
+            $logger->info('Minimum outbound stopCount: '.($minOutboundStops ?? 'N/A'));
+            $logger->info("Flights after filtering based on ($packageConfig->max_stop_count) max stops");
+            $logger->info('Count: '.count($outbound_flight_max_stops));
 
             $outbound_flight = $outbound_flight_max_stops;
             $maxTransitTimeSettings = app(MaxTransitTime::class);
@@ -68,8 +86,12 @@ class FlightsAction
 
                 if ($outbound_flight_max_wait->isNotEmpty()) {
                     $outbound_flight = $outbound_flight_max_wait;
+
+                    $logger->info('Flights after filtering based on max transit time settings');
+                    $logger->info('Count: '.count($outbound_flight_max_wait));
                 }
             }
+
         }
 
         $outbound_flight_morning = $outbound_flight->when($destination->prioritize_morning_flights, function (Collection $collection) use ($destination) {
@@ -94,6 +116,8 @@ class FlightsAction
 
         //if we have morning flights, find the cheapest one
         if ($outbound_flight_morning->isNotEmpty()) {
+            $logger->info('Morning Flights found');
+            $logger->info('Count: '.count($outbound_flight_morning));
             $outbound_flight = $outbound_flight_morning;
         }
 
@@ -113,9 +137,14 @@ class FlightsAction
             ['price', 'asc'],
         ]);
 
+        $logger->warning('==============================================');
+        $logger->info('Final Flights Array');
+        $logger->info('Count: '.count($outbound_flight));
+        $logger->warning('==============================================');
+
         //if collection is empty return early and broadcast failure
         if ($outbound_flight->isEmpty()) {
-            broadcast(new LiveSearchFailed('No flights found', $batchId));
+            //            broadcast(new LiveSearchFailed('No flights found', $batchId));
 
             return;
         }
@@ -142,6 +171,17 @@ class FlightsAction
 
         $inbound_flight = Cache::get('flight_'.$return_date);
 
+        $logger->warning('==============================================');
+        $logger->warning('==============================================');
+        $logger->warning('==============================================');
+        $logger->info('NOW FOR RETURN FLIGHTS');
+        $logger->warning('==============================================');
+        $logger->warning('==============================================');
+        $logger->warning('==============================================');
+
+        $logger->info('TOTAL FLIGHTS START ===========================>');
+        $logger->info('Count: '.count($inbound_flight));
+
         $inbound_flight_direct = $inbound_flight->filter(function ($flight) {
             if ($flight == null) {
                 return false;
@@ -152,15 +192,29 @@ class FlightsAction
 
         //if we have direct flights, keep only direct flights
         if ($inbound_flight_direct->isNotEmpty()) {
+            $logger->info('Direct Flight Found');
+            $logger->info('Count: '.count($inbound_flight_direct));
             $inbound_flight = $inbound_flight_direct;
         } else {
-            $inbound_flight_max_stops = $inbound_flight->filter(function ($flight) use ($packageConfig) {
+            $logger->warning('No Direct Flight Found');
+            $logger->warning('Count: '.count($inbound_flight));
+
+            $inboundStops = [];
+
+            $inbound_flight_max_stops = $inbound_flight->filter(function ($flight) use ($packageConfig, &$inboundStops) {
                 if ($flight == null) {
                     return false;
                 }
 
+                $inboundStops[] = $flight->stopCount;
+
                 return $flight->stopCount <= $packageConfig->max_stop_count && $flight->stopCount_back <= $packageConfig->max_stop_count;
             });
+
+            $minInboundStops = ! empty($inboundStops) ? min($inboundStops) : null;
+            $logger->info('Minimum inbound stopCount: '.($minInboundStops ?? 'N/A'));
+            $logger->info("Flights after filtering based on ($packageConfig->max_stop_count) max stops");
+            $logger->info('Count: '.count($inbound_flight_max_stops));
 
             $inbound_flight = $inbound_flight_max_stops;
 
@@ -179,6 +233,9 @@ class FlightsAction
 
                 if ($inbound_flight_max_wait->isNotEmpty()) {
                     $inbound_flight = $inbound_flight_max_wait;
+
+                    $logger->info('Flights after filtering based on max transit time settings');
+                    $logger->info('Count: '.count($inbound_flight_max_wait));
                 }
             }
         }
@@ -205,6 +262,8 @@ class FlightsAction
 
         //if we have morning flights, find the cheapest one
         if ($inbound_flight_evening->isNotEmpty()) {
+            $logger->info('Evening Flights found');
+            $logger->info('Count: '.count($inbound_flight_evening));
             $inbound_flight = $inbound_flight_evening;
         }
 
@@ -224,9 +283,14 @@ class FlightsAction
             ['price', 'asc'],
         ]);
 
+        $logger->warning('==============================================');
+        $logger->info('Final Return Flights Array');
+        $logger->info('Count: '.count($inbound_flight));
+        $logger->warning('==============================================');
+
         //if collection is empty return early and broadcast failure
         if ($inbound_flight->isEmpty()) {
-            broadcast(new LiveSearchFailed('No flights found', $batchId));
+            //            broadcast(new LiveSearchFailed('No flights found', $batchId));
 
             return;
         }

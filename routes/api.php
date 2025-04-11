@@ -36,6 +36,8 @@ Route::post('/filter-data', [PackageController::class, 'getFilterData']);
 Route::get('/available-dates', [PackageController::class, 'getAvailableDates']);
 Route::get('/has-available-dates', [PackageController::class, 'hasAvailableDates']);
 Route::get('/has-available-return', [PackageController::class, 'hasAvailableReturn']);
+Route::get('/get-all-flights/{batchId}', [PackageController::class, 'getAllFlights']);
+Route::post('/update-flight/{batchId}', [PackageController::class, 'updateFlight']);
 Route::get('/offers', [PackageController::class, 'offers']);
 Route::get('/ads/{id}', [PackageController::class, 'adsShow']);
 

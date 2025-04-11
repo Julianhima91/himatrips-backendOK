@@ -11,6 +11,7 @@ use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
 
 class LiveSearchFlights implements ShouldQueue
 {
@@ -68,26 +69,6 @@ class LiveSearchFlights implements ShouldQueue
 
         try {
             $response = $request->send();
-
-            if (isset($response->json()['data']['context']['status']) && $response->json()['data']['context']['status'] == 'incomplete') {
-                $response = $this->getIncompleteResults($response->json()['data']['context']['sessionId']);
-            }
-
-            $itineraries = $response->dtoOrFail();
-
-            //            ray($itineraries)->purple();
-            if ($itineraries->isEmpty()) {
-                ray('empty itineraries 1111');
-                $this->release(1);
-            }
-
-            cache()->put('flight_'.$this->date, $itineraries, now()->addMinutes(5));
-            cache()->put('flight_'.$this->return_date, $itineraries, now()->addMinutes(5));
-            Cache::put("batch:{$this->batchId}:flights", $itineraries, now()->addMinutes(5));
-
-            if (! Cache::get("job_completed_{$this->batchId}")) {
-                Cache::put("job_completed_{$this->batchId}", true);
-            }
         } catch (\Exception $e) {
             //if its the first attempt, retry
             if ($this->attempts() == 1) {
@@ -98,21 +79,37 @@ class LiveSearchFlights implements ShouldQueue
         }
 
         //check if context is set, and if it is incomplete, then we have to hit another endpoint
+        if (isset($response->json()['data']['context']['status']) && $response->json()['data']['context']['status'] == 'incomplete') {
+            $response = $this->getIncompleteResults($response->json()['data']['context']['sessionId']);
+        }
 
-        //        try {
-        //
-        //        } catch (\Exception $e) {
-        //            $this->fail($e);
-        //        }
+        $logger = Log::channel('livesearch');
 
-        //put it in cache
-        //        cache()->put('flight_'.$this->date, $itineraries, now()->addMinutes(5));
-        //        cache()->put('flight_'.$this->return_date, $itineraries, now()->addMinutes(5));
-        //        Cache::put("batch:{$this->batchId}:flights", $itineraries, now()->addMinutes(5));
-        //
-        //        if (! Cache::get("job_completed_{$this->batchId}")) {
-        //            Cache::put("job_completed_{$this->batchId}", true);
-        //        }
+        try {
+            $itineraries = $response->dtoOrFail();
+
+            $logger->info("$this->batchId API 1 ITINERARIES COUNT:");
+            $logger->info(count($itineraries));
+            if ($itineraries->isEmpty()) {
+                ray('empty itineraries 1111');
+                $this->release(1);
+            } else {
+                cache()->put('flight_'.$this->date, $itineraries, now()->addMinutes(5));
+                cache()->put('flight_'.$this->return_date, $itineraries, now()->addMinutes(5));
+                Cache::put("batch:{$this->batchId}:flights", $itineraries, now()->addMinutes(5));
+
+                if (! Cache::get("job_completed_{$this->batchId}")) {
+                    Cache::put("job_completed_{$this->batchId}", true);
+                }
+            }
+        } catch (\Exception $e) {
+            //if its the first attempt, retry
+            if ($this->attempts() == 1) {
+                $this->release(1);
+            }
+
+            $this->fail($e);
+        }
     }
 
     private function getIncompleteResults($session)

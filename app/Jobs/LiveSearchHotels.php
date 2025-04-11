@@ -42,10 +42,12 @@ class LiveSearchHotels implements ShouldQueue
 
     public $batchId;
 
+    private $countryCode;
+
     /**
      * Create a new job instance.
      */
-    public function __construct($checkin_date, $nights, $destination, $adults, $children, $infants, $rooms, $batchId)
+    public function __construct($checkin_date, $nights, $destination, $adults, $children, $infants, $rooms, $batchId, $countryCode)
     {
         $this->checkin_date = $checkin_date;
         $this->nights = $nights;
@@ -55,6 +57,7 @@ class LiveSearchHotels implements ShouldQueue
         $this->infants = $infants;
         $this->rooms = $rooms;
         $this->batchId = $batchId;
+        $this->countryCode = $countryCode;
     }
 
     /**
@@ -76,7 +79,7 @@ class LiveSearchHotels implements ShouldQueue
 
         $boardOptions = Destination::find($this->destination)->board_options;
         try {
-            $response = $this->getHotelData($hotelIds, $this->checkin_date, $this->nights, $this->adults, $this->children, $this->infants, $this->rooms, $boardOptions);
+            $response = $this->getHotelData($hotelIds, $this->checkin_date, $this->nights, $this->adults, $this->children, $this->infants, $this->rooms, $boardOptions, $this->countryCode);
         } catch (\Exception $e) {
             //if it's the first time, we retry
             if ($this->attempts() == 1) {
@@ -155,7 +158,7 @@ class LiveSearchHotels implements ShouldQueue
         Cache::put("hotel_job_completed_{$this->batchId}", true, now()->addMinutes(1));
     }
 
-    public function getHotelData(string $hotelIds, mixed $arrivalDate, mixed $nights, $adults, $children, $infants, $rooms, $boardOptions): mixed
+    public function getHotelData(string $hotelIds, mixed $arrivalDate, mixed $nights, $adults, $children, $infants, $rooms, $boardOptions, $countryCode): mixed
     {
         //todo: Add All possible variations
         $oneRoom = [
@@ -241,9 +244,9 @@ class LiveSearchHotels implements ShouldQueue
         }
 
         if (in_array('doubleSearch', $combinationType)) {
-            $normalSearch = $this->sendXmlRequest($boardOptions, $hotelIds, $arrivalDate, $nights, $roomsXml);
+            $normalSearch = $this->sendXmlRequest($boardOptions, $hotelIds, $arrivalDate, $nights, $roomsXml, $countryCode);
 
-            $splitSearch = $this->sendXmlRequest($boardOptions, $hotelIds, $arrivalDate, $nights, $roomsTwoXml);
+            $splitSearch = $this->sendXmlRequest($boardOptions, $hotelIds, $arrivalDate, $nights, $roomsTwoXml, $countryCode);
 
             $normalSearchHotels = json_decode($normalSearch->MakeRequestResult)->Hotels;
             $splitSearchHotels = json_decode($splitSearch->MakeRequestResult)->Hotels;
@@ -275,7 +278,7 @@ class LiveSearchHotels implements ShouldQueue
 
             return $normalSearch;
         } else {
-            return $this->sendXmlRequest($boardOptions, $hotelIds, $arrivalDate, $nights, $roomsXml);
+            return $this->sendXmlRequest($boardOptions, $hotelIds, $arrivalDate, $nights, $roomsXml, $countryCode);
         }
     }
 
@@ -300,7 +303,7 @@ class LiveSearchHotels implements ShouldQueue
         return $roomsXml;
     }
 
-    private function sendXmlRequest($boardOptions, $hotelIds, $arrivalDate, $nights, $roomsXml)
+    private function sendXmlRequest($boardOptions, $hotelIds, $arrivalDate, $nights, $roomsXml, $countryCode)
     {
         $filterRoomBasisesXml = '<FilterRoomBasises>';
 
@@ -326,7 +329,7 @@ class LiveSearchHotels implements ShouldQueue
         </Hotels>
         <MaximumWaitTime>1500</MaximumWaitTime>
         {$filterRoomBasisesXml}
-        <Nationality>AL</Nationality>
+        <Nationality>{$countryCode}</Nationality>
         <ArrivalDate>{$arrivalDate}</ArrivalDate>
         <Nights>{$nights}</Nights>
         <Rooms>
