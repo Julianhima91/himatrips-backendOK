@@ -35,4 +35,14 @@ class HotelData extends Model
     {
         return $this->cheapestOffer ? $this->cheapestOffer->first()->price : null;
     }
+
+    public function mostExpensiveOffer()
+    {
+        return $this->hasMany(HotelOffer::class)->orderBy('price', 'desc')->limit(1);
+    }
+
+    public function getMostExpensiveOffer()
+    {
+        return $this->mostExpensiveOffer ? $this->mostExpensiveOffer->first()->price : null;
+    }
 }

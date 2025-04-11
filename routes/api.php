@@ -39,6 +39,7 @@ Route::get('/has-available-return', [PackageController::class, 'hasAvailableRetu
 Route::get('/get-all-flights/{batchId}', [PackageController::class, 'getAllFlights']);
 Route::post('/update-flight/{batchId}', [PackageController::class, 'updateFlight']);
 Route::get('/offers', [PackageController::class, 'offers']);
+Route::get('/ads/{id}', [PackageController::class, 'adsShow']);
 
 Route::get('/destinations', [DestinationController::class, 'index']);
 Route::get('/destinations/all', [DestinationController::class, 'indexAll']);

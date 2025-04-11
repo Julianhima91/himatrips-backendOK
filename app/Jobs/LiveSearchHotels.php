@@ -90,7 +90,7 @@ class LiveSearchHotels implements ShouldQueue
         }
 
         if (! isset(json_decode($response->MakeRequestResult)->Hotels)) {
-            Log::info('No hotels found');
+            //            Log::info('No hotels found');
             if ($this->attempts() == 1) {
                 addBreadcrumb('message', 'Hotel Attempts', ['attempts' => $this->attempts()]);
                 $this->release(1);
@@ -154,6 +154,7 @@ class LiveSearchHotels implements ShouldQueue
 
         //save the hotel results in cache
         Cache::put('hotels', $hotel_results, now()->addMinutes(5));
+        Cache::put("batch:{$this->batchId}:hotels", $hotel_results, now()->addMinutes(5));
         Cache::put("hotel_job_completed_{$this->batchId}", true, now()->addMinutes(1));
     }
 

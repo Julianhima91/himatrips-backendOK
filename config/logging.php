@@ -65,6 +65,24 @@ return [
             'replace_placeholders' => true,
         ],
 
+        'weekend' => [
+            'driver' => 'single',
+            'path' => storage_path('logs/weekend.log'),
+            'level' => 'debug',
+        ],
+
+        'holiday' => [
+            'driver' => 'single',
+            'path' => storage_path('logs/holiday.log'),
+            'level' => 'debug',
+        ],
+
+        'economic' => [
+            'driver' => 'single',
+            'path' => storage_path('logs/economic.log'),
+            'level' => 'debug',
+        ],
+
         'livesearch' => [
             'driver' => 'single',
             'path' => storage_path('logs/livesearch.log'),

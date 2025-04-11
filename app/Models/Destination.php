@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Spatie\Tags\HasTags;
@@ -17,7 +18,18 @@ class Destination extends Model
 
     protected $casts = [
         'board_options' => 'array',
+        'active_months' => 'array',
     ];
+
+    public function country(): BelongsTo
+    {
+        return $this->belongsTo(Country::class);
+    }
+
+    public function adConfigs(): BelongsToMany
+    {
+        return $this->belongsToMany(AdConfig::class);
+    }
 
     public function hotels(): BelongsToMany
     {
@@ -53,5 +65,15 @@ class Destination extends Model
     public function destinationPhotos(): HasMany
     {
         return $this->hasMany(DestinationPhoto::class);
+    }
+
+    public function getOfferCategoryAttribute($value)
+    {
+        return json_decode($value, true);
+    }
+
+    public function setOfferCategoryAttribute($value): void
+    {
+        $this->attributes['offer_category'] = json_encode($value);
     }
 }

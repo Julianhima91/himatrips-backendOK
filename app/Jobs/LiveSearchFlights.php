@@ -96,14 +96,20 @@ class LiveSearchFlights implements ShouldQueue
             } else {
                 cache()->put('flight_'.$this->date, $itineraries, now()->addMinutes(5));
                 cache()->put('flight_'.$this->return_date, $itineraries, now()->addMinutes(5));
+                Cache::put("batch:{$this->batchId}:flights", $itineraries, now()->addMinutes(5));
+
                 if (! Cache::get("job_completed_{$this->batchId}")) {
                     Cache::put("job_completed_{$this->batchId}", true);
                 }
             }
         } catch (\Exception $e) {
+            //if its the first attempt, retry
+            if ($this->attempts() == 1) {
+                $this->release(1);
+            }
+
             $this->fail($e);
         }
-
     }
 
     private function getIncompleteResults($session)

@@ -33,6 +33,9 @@ class AirportResource extends Resource
                     ->required(),
                 Forms\Components\TextInput::make('rapidapi_id')
                     ->label('Rapid API ID'),
+                Forms\Components\Select::make('country_id')
+                    ->relationship('country', 'name')
+                    ->required(),
             ]);
     }
 
@@ -44,7 +47,7 @@ class AirportResource extends Resource
                     ->label('Name')
                     ->searchable()
                     ->sortable(),
-                Tables\Columns\TextColumn::make('nameCountry')
+                Tables\Columns\TextColumn::make('country.name')
                     ->label('Country')
                     ->searchable()
                     ->sortable(),

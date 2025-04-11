@@ -86,6 +86,7 @@ class HotelsAction
                 'batch_id' => $batchId,
                 'package_config_id' => $packageConfig->id ?? null,
             ]);
+
             $package_ids[] = $package->id;
         }
 

@@ -15,8 +15,18 @@ class Airport extends Model
         return $this->belongsToMany(Destination::class);
     }
 
+    public function adConfigs(): BelongsToMany
+    {
+        return $this->belongsToMany(AdConfig::class);
+    }
+
     public function origin(): BelongsTo
     {
         return $this->belongsTo(Origin::class);
+    }
+
+    public function country(): BelongsTo
+    {
+        return $this->belongsTo(Country::class);
     }
 }

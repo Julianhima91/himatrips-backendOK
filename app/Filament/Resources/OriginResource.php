@@ -26,16 +26,14 @@ class OriginResource extends Resource
                     ->maxLength(255),
                 Forms\Components\Textarea::make('description')
                     ->required()
-                    ->maxLength(65535)
+                    ->maxLength(255)
                     ->columnSpanFull(),
                 Forms\Components\TextInput::make('city')
                     ->required()
                     ->maxLength(255),
-                Forms\Components\TextInput::make('country')
-                    ->required()
-                    ->maxLength(255),
-                Forms\Components\TextInput::make('country_code')
-                    ->maxLength(2),
+                Forms\Components\Select::make('country_id')
+                    ->relationship('country', 'name')
+                    ->required(),
             ]);
     }
 
