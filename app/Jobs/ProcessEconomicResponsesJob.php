@@ -79,7 +79,7 @@ class ProcessEconomicResponsesJob implements ShouldQueue
 
             Cache::forget("$this->adConfigId:$this->batchId:cheap_flights");
             Cache::forget("$this->adConfigId:$this->batchId:cheap_flights_return");
-            Cache::put("$this->adConfigId:$this->batchId:cheapest_combination", $cheapestCombination, now()->addMinutes(120));
+            Cache::put("$this->adConfigId:$this->batchId:cheapest_combination", $cheapestCombination, now()->addMinutes(180));
 
             $logger->error('2025-02-'.Cache::get("$this->adConfigId:$this->batchId:cheapest_combination")['outbound']['date']);
         }

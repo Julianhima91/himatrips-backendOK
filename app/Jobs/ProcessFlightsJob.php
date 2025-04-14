@@ -64,17 +64,17 @@ class ProcessFlightsJob implements ShouldQueue
             if (in_array('cheapest_date', $adConfig->extra_options)) {
                 $batchIds = Cache::get("$adConfig->id:batch_ids");
                 $batchIds[] = (string) $batchId;
-                Cache::put("$adConfig->id:batch_ids", $batchIds, now()->addMinutes(120));
+                Cache::put("$adConfig->id:batch_ids", $batchIds, now()->addMinutes(180));
             }
 
             if ($this->tempCache == 'weekend') {
                 $csvCache = Cache::get("$adConfig->id:weekend_create_csv");
                 $csvCache[] = (string) $batchId;
-                Cache::put("$adConfig->id:weekend_create_csv", $csvCache, now()->addMinutes(120));
+                Cache::put("$adConfig->id:weekend_create_csv", $csvCache, now()->addMinutes(180));
             } else {
                 $csvCache = Cache::get("$adConfig->id:create_csv");
                 $csvCache[] = (string) $batchId;
-                Cache::put("$adConfig->id:create_csv", $csvCache, now()->addMinutes(120));
+                Cache::put("$adConfig->id:create_csv", $csvCache, now()->addMinutes(180));
             }
         } else {
             $logger->warning("Flights data not found in cache for batch: {$batchId}");

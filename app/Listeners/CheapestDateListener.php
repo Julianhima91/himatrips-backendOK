@@ -22,12 +22,12 @@ class CheapestDateListener
         $currentBatchIds = Cache::get("$event->adConfigId:current_batch_ids");
         if ($event->batchId) {
             $currentBatchIds[] = (string) $event->batchId;
-            Cache::put("$event->adConfigId:current_batch_ids", $currentBatchIds, now()->addMinutes(120));
+            Cache::put("$event->adConfigId:current_batch_ids", $currentBatchIds, now()->addMinutes(180));
         }
 
         $formattedHolidays = array_map(fn ($date) => $date->format('Y-m-d'), $event->holidays);
         $holidaysMap = [$event->destinationId => array_unique($formattedHolidays)];
-        Cache::put("$event->adConfigId:current_holidays", $holidaysMap, now()->addMinutes(120));
+        Cache::put("$event->adConfigId:current_holidays", $holidaysMap, now()->addMinutes(180));
 
         $a = Cache::get("$event->adConfigId:current_holidays");
         $logger->info('Cached Holidays:', $a);

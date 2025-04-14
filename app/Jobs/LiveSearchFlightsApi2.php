@@ -103,7 +103,7 @@ class LiveSearchFlightsApi2 implements ShouldQueue
             } else {
                 cache()->put('flight_'.$this->date, $itineraries, now()->addMinutes(5));
                 cache()->put('flight_'.$this->return_date, $itineraries, now()->addMinutes(5));
-                Cache::put("batch:{$this->batchId}:flights", $itineraries, now()->addMinutes(120));
+                Cache::put("batch:{$this->batchId}:flights", $itineraries, now()->addMinutes(180));
 
                 if (! Cache::get("job_completed_{$this->batchId}")) {
                     Cache::put("job_completed_{$this->batchId}", true);
