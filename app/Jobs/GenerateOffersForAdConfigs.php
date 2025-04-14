@@ -202,7 +202,7 @@ class GenerateOffersForAdConfigs implements ShouldQueue
             ], JSON_PRETTY_PRINT));
 
             Bus::chain([
-                (new ProcessFlightsJob($request, $this->adConfigId, 'holiday'))->onQueue('holidays'),
+                (new ProcessFlightsJob($request, $this->adConfigId, 'holiday'))->onQueue('holiday'),
                 (new LiveSearchHotels(
                     $request['date'],
                     $request['nights'],
@@ -211,9 +211,10 @@ class GenerateOffersForAdConfigs implements ShouldQueue
                     0, // Children
                     0, // Infants
                     $request['rooms'],
-                    $request['batch_id']
-                ))->onQueue('holidays'),
-                (new ProcessResponsesJob($request['batch_id'], $request, $adConfig, $batchIds))->onQueue('holidays'),
+                    $request['batch_id'],
+                    $origin->country_code ?? 'AL'
+                ))->onQueue('holiday'),
+                (new ProcessResponsesJob($request['batch_id'], $request, $adConfig, $batchIds))->onQueue('holiday'),
             ])->dispatch();
 
         }
@@ -366,7 +367,8 @@ class GenerateOffersForAdConfigs implements ShouldQueue
                     0, // Children
                     0, // Infants
                     $request['rooms'],
-                    $request['batch_id']
+                    $request['batch_id'],
+                    $origin->country_code ?? 'AL'
                 ))->onQueue('weekend'),
                 (new ProcessWeekendResponsesJob($request['batch_id'], $request, $adConfig, $batchIds))->onQueue('weekend'),
             ])->dispatch();
