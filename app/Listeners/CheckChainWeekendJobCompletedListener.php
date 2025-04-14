@@ -268,8 +268,8 @@ class CheckChainWeekendJobCompletedListener
             if ($mostExpensivePrice != 0) {
                 $discountPercentage = round((($mostExpensivePrice - $cheapestPrice) / $mostExpensivePrice) * 100);
 
-                $logger->info('Cheapest Price: '.$cheapestPrice);
-                $logger->info('Most Expensive Price: '.$mostExpensivePrice);
+                $logger->info('Cheapest Hotel Offer Price: '.$cheapestPrice);
+                $logger->info('Most Expensive Hotel Offer Price: '.$mostExpensivePrice);
                 $logger->info('Discount Percentage: '.$discountPercentage.'%');
             } else {
                 $discountPercentage = 0;

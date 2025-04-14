@@ -6,6 +6,7 @@ use App\Models\Ad;
 use App\Models\AdConfig;
 use App\Models\AdConfigCsv;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Log;
 
@@ -60,13 +61,46 @@ class CheckEconomicJobCompletedListener
             Cache::forget("$event->adConfigId:economic_create_csv");
             Cache::forget("$event->adConfigId:current_economic_csv_batch_ids");
 
-            foreach ($batchIds as $batchId) {
-                $cheapestAd = Ad::where('batch_id', $batchId)
-                    ->orderBy('total_price', 'asc')
+            //todo: change for 1 ad per destination
+            //            foreach ($batchIds as $batchId) {
+            //                $cheapestAd = Ad::where('batch_id', $batchId)
+            //                    ->orderBy('total_price', 'asc')
+            //                    ->first();
+            //
+            //                Ad::where('batch_id', $batchId)
+            //                    ->where('id', '!=', optional($cheapestAd)->id)
+            //                    ->delete();
+            //            }
+            $cheapestAds = Ad::select('destination_id', DB::raw('MIN(total_price) as min_price'))
+                ->where([
+                    ['ad_config_id', $event->adConfigId],
+                    ['offer_category', 'economic'],
+                ])
+                ->whereIn('batch_id', $batchIds)
+                ->groupBy('destination_id')
+                ->get();
+
+            $logger->warning('Count'.count($cheapestAds));
+
+            foreach ($cheapestAds as $cheapestAd) {
+                $ad = Ad::where([
+                    ['ad_config_id', $event->adConfigId],
+                    ['offer_category', 'economic'],
+                    ['destination_id', $cheapestAd->destination_id],
+                    ['total_price', $cheapestAd->min_price],
+                ])
+                    ->whereIn('batch_id', $batchIds)
                     ->first();
 
-                Ad::where('batch_id', $batchId)
-                    ->where('id', '!=', optional($cheapestAd)->id)
+                $logger->warning("Ad ID: $ad->id");
+
+                Ad::where([
+                    ['ad_config_id', $event->adConfigId],
+                    ['offer_category', 'economic'],
+                    ['destination_id', $cheapestAd->destination_id],
+                ])
+                    ->whereIn('batch_id', $batchIds)
+                    ->where('id', '!=', $ad->id)
                     ->delete();
             }
 
@@ -258,8 +292,8 @@ class CheckEconomicJobCompletedListener
             if ($mostExpensivePrice != 0) {
                 $discountPercentage = round((($mostExpensivePrice - $cheapestPrice) / $mostExpensivePrice) * 100);
 
-                $logger->info('Cheapest Price: '.$cheapestPrice);
-                $logger->info('Most Expensive Price: '.$mostExpensivePrice);
+                $logger->info('Cheapest Hotel Offer Price: '.$cheapestPrice);
+                $logger->info('Most Expensive Hotel Offer Price: '.$mostExpensivePrice);
                 $logger->info('Discount Percentage: '.$discountPercentage.'%');
             } else {
                 $discountPercentage = 0;
