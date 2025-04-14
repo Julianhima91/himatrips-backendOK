@@ -99,11 +99,11 @@ class EconomicFlightSearch implements ShouldQueue
             } else {
                 $logger->warning("DONE================================: $this->batchId");
 
-                Cache::put("batch:{$this->batchId}:flights", $itineraries, now()->addMinutes(5));
+                Cache::put("batch:{$this->batchId}:flights", $itineraries, now()->addMinutes(120));
 
                 $csvCache = Cache::get("$this->adConfigId:economic_create_csv", []);
                 $csvCache[] = (string) $this->batchId;
-                Cache::put("$this->adConfigId:economic_create_csv", $csvCache);
+                Cache::put("$this->adConfigId:economic_create_csv", $csvCache, now()->addMinutes(120));
             }
         } catch (\Exception $e) {
             $logger->info($e->getMessage());

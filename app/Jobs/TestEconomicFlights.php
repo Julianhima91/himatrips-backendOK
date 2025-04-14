@@ -201,12 +201,12 @@ class TestEconomicFlights implements ShouldQueue
             if (in_array('cheapest_date', $this->adConfig->extra_options)) {
                 $batchIds = Cache::get("$adConfig->id:batch_ids");
                 unset($batchIds[array_search($this->batchId, $batchIds)]);
-                Cache::put("$adConfig->id:batch_ids", $batchIds);
+                Cache::put("$adConfig->id:batch_ids", $batchIds, now()->addMinutes(120));
             }
 
             $batchIds = Cache::get("$adConfig->id:create_csv");
             unset($batchIds[array_search($this->batchId, $batchIds)]);
-            Cache::put("$adConfig->id:create_csv", $batchIds);
+            Cache::put("$adConfig->id:create_csv", $batchIds, now()->addMinutes(120));
 
             return [null, null];
         } else {

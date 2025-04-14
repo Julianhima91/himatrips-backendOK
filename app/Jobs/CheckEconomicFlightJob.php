@@ -95,9 +95,9 @@ class CheckEconomicFlightJob implements ShouldQueue
             //            Log::error(print_r($outboundCheapMonthlyFlights, true));
 
             if ($this->isReturnFlight) {
-                Cache::put("$this->adConfigId:$this->batchId:cheap_flights", $outboundCheapMonthlyFlights);
+                Cache::put("$this->adConfigId:$this->batchId:cheap_flights", $outboundCheapMonthlyFlights, now()->addMinutes(120));
             } else {
-                Cache::put("$this->adConfigId:$this->batchId:cheap_flights_return", $outboundCheapMonthlyFlights);
+                Cache::put("$this->adConfigId:$this->batchId:cheap_flights_return", $outboundCheapMonthlyFlights, now()->addMinutes(120));
             }
 
         } catch (\Exception $e) {

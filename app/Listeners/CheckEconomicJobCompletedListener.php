@@ -25,7 +25,7 @@ class CheckEconomicJobCompletedListener
 
         if ($event->batchId) {
             $currentCsvBatchIds[] = (string) $event->batchId;
-            Cache::put("$event->adConfigId:current_economic_csv_batch_ids", $currentCsvBatchIds);
+            Cache::put("$event->adConfigId:current_economic_csv_batch_ids", $currentCsvBatchIds, now()->addMinutes(120));
         }
 
         $adConfig = AdConfig::find($event->adConfigId);

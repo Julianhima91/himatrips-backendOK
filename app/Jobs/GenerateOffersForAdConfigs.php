@@ -274,7 +274,6 @@ class GenerateOffersForAdConfigs implements ShouldQueue
         $logger->info('Weekend Job Started', ['job' => self::class]);
 
         $today = now();
-        //todo: change this to 3 months
         $months = app(MonthlyWeekendAds::class)->monthly;
         $threeMonthsFromNow = now()->addMonths($months);
 

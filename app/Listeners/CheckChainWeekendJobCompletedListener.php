@@ -22,7 +22,7 @@ class CheckChainWeekendJobCompletedListener
         $currentCsvBatchIds = Cache::get("$event->adConfigId:current_weekend_csv_batch_ids");
         if ($event->batchId) {
             $currentCsvBatchIds[] = (string) $event->batchId;
-            Cache::put("$event->adConfigId:current_weekend_csv_batch_ids", $currentCsvBatchIds);
+            Cache::put("$event->adConfigId:current_weekend_csv_batch_ids", $currentCsvBatchIds, now()->addMinutes(120));
         }
 
         //todo when count of both arrays is the same, then proceed to sort them
