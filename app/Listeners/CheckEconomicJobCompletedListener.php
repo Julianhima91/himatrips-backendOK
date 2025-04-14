@@ -53,7 +53,7 @@ class CheckEconomicJobCompletedListener
         //        $logger->info($batchIds === $currentCsvBatchIds);
         //        $logger->info("TOTAL: $total");
 
-        if ($batchIds === $currentCsvBatchIds) {
+        if (count(array_diff($batchIds, $currentCsvBatchIds)) === 0 && count(array_diff($currentCsvBatchIds, $batchIds)) === 0) {
             //            && count($batchIds) === $total && count($currentCsvBatchIds) === $total)
             $logger->info('SUCCESS (ECONOMIC)');
 
