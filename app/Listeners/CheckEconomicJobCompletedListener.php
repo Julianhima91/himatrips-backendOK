@@ -48,8 +48,8 @@ class CheckEconomicJobCompletedListener
             }
         }
 
-        //        $logger->info($batchIds);
-        //        $logger->info($currentCsvBatchIds);
+        $logger->info($batchIds);
+        $logger->info($currentCsvBatchIds);
         //        $logger->info($batchIds === $currentCsvBatchIds);
         //        $logger->info("TOTAL: $total");
 
