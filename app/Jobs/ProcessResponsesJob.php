@@ -86,6 +86,20 @@ class ProcessResponsesJob implements ShouldQueue
 
             event(new CheckChainJobCompletedEvent($this->request['batch_id'], $this->batchIds, $this->adConfig->id));
         } else {
+            $extraOptions = $this->adConfig->extra_options;
+
+            foreach ($extraOptions as $option) {
+                if ($option === 'cheapest_hotel') {
+                    $this->getCheapestHotel();
+                }
+
+                if ($option === 'cheapest_date') {
+                    event(new CheapestDateEvent(null, $this->batchIds, $this->adConfig->id, $this->request['holidays'], $this->request['destination_id']));
+                }
+            }
+
+            event(new CheckChainJobCompletedEvent(null, $this->batchIds, $this->adConfig->id));
+
             $logger->error("Missing data for batch {$this->batchId}");
         }
     }

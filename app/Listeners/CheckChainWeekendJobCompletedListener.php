@@ -122,6 +122,7 @@ class CheckChainWeekendJobCompletedListener
 
         $maxVideos = 0;
         $maxTagsPerVideo = [];
+        $maxDestinationTags = 0;
 
         foreach ($ads as $ad) {
             $photos = $ad->destination->destinationPhotos
@@ -136,6 +137,7 @@ class CheckChainWeekendJobCompletedListener
 
             $maxImages = max($maxImages, $photos->count());
             $maxVideos = max($maxVideos, $videos->count());
+            $maxDestinationTags = max($maxDestinationTags, $destinationTags->count());
 
             foreach ($photos as $index => $photo) {
                 $tagsCount = count($photo->tags);
@@ -175,8 +177,8 @@ class CheckChainWeekendJobCompletedListener
             }
         }
 
-        foreach ($destinationTags as $index => $tag) {
-            $headers[] = "type[$index]";
+        for ($i = 0; $i < $maxDestinationTags; $i++) {
+            $headers[] = "type[$i]";
         }
 
         // end part
@@ -258,8 +260,10 @@ class CheckChainWeekendJobCompletedListener
                 }
             }
 
-            foreach ($destinationTags as $tag) {
-                $row[] = $tag->name;
+            $currentAdDestinationTags = $ad->destination->tags;
+
+            for ($i = 0; $i < $maxDestinationTags; $i++) {
+                $row[] = $currentAdDestinationTags[$i]->name ?? '';
             }
 
             $cheapestPrice = $ad->hotelData->cheapestOffer[0]->price ?? 0;
@@ -287,7 +291,7 @@ class CheckChainWeekendJobCompletedListener
                 $ad->destination->neighborhood,
                 $ad->offer_category,
                 '-'.$discountPercentage,
-                env('FRONT_URL')."/admin/$ad->id",
+                env('FRONT_URL')."/offers/$ad->id",
             ]);
 
             fputcsv($file, $row);

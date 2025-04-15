@@ -112,21 +112,22 @@ class GenerateOffersForAdConfigs implements ShouldQueue
     {
         $logger = Log::channel('holiday');
 
+        $origin = $adConfig->origin;
         $logger->info('Holiday Job Started', ['job' => self::class]);
         $today = now();
-        $threeMonthsFromNow = now()->addMonths(3);
+        $endOfYear = now()->endOfYear();
 
-        $holidays = $destination
+        $holidays = $origin
             ->getRelationValue('country')
             ->holidays()
             ->get()
-            ->filter(function ($holiday) use ($today, $threeMonthsFromNow, $logger, $destination) {
+            ->filter(function ($holiday) use ($today, $endOfYear, $logger, $destination) {
                 [$day, $month] = explode('-', $holiday->day);
 
-                $logger->warning("HOLIDAY: $holiday->name - $holiday->day |||| DESTINATION: $destination->name");
+                $logger->warning("HOLIDAY: $holiday->name - $holiday->day | DESTINATION: $destination->name");
                 $holidayDate = now()->startOfYear()->setMonth($month)->setDay($day);
 
-                return $holidayDate->between($today, $threeMonthsFromNow);
+                return $holidayDate->between($today, $endOfYear);
             })
             ->pluck('day')
             ->map(function ($holiday) {
@@ -138,6 +139,7 @@ class GenerateOffersForAdConfigs implements ShouldQueue
                     ->timezone('Europe/Amsterdam');
             })
             ->toArray();
+
         $destinationHolidays = $holidays;
 
         $requests = [];
@@ -155,8 +157,9 @@ class GenerateOffersForAdConfigs implements ShouldQueue
                     $startDate = $holiday->copy()->subDays($startOffset);
                     $endDate = $startDate->copy()->addDays($nights);
 
-                    if ($startDate->between($today, $threeMonthsFromNow) && $endDate->between($today, $threeMonthsFromNow)) {
+                    if ($startDate->between($today, $endOfYear) && $endDate->between($today, $endOfYear)) {
                         $batchId = Str::orderedUuid();
+                        $logger->info($batchId);
 
                         $requests[] = [
                             'origin_airport' => $airport,
@@ -196,7 +199,7 @@ class GenerateOffersForAdConfigs implements ShouldQueue
                 'return_date' => $request['return_date'],
                 'origin_id' => $adConfig->origin_id,
                 'destination_id' => $destination->id,
-                'batch_id' => $batchId,
+                'batch_id' => $request['batch_id'],
                 'category' => OfferCategoryEnum::HOLIDAY->value,
                 'holidays' => $destinationHolidays,
             ], JSON_PRETTY_PRINT));
@@ -351,7 +354,7 @@ class GenerateOffersForAdConfigs implements ShouldQueue
                 'return_date' => $request['return_date'],
                 'origin_id' => $adConfig->origin_id,
                 'destination_id' => $destination->id,
-                'batch_id' => $batchId,
+                'batch_id' => $request['batch_id'],
                 'category' => OfferCategoryEnum::WEEKEND->value,
             ], JSON_PRETTY_PRINT));
             $logger->info('====================================================');
