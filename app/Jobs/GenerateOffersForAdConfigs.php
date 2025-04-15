@@ -52,6 +52,9 @@ class GenerateOffersForAdConfigs implements ShouldQueue
         //do logic here
         $this->adConfigId = $adConfig->id;
 
+        $adConfig->job_updated_at = Carbon::now();
+        $adConfig->save();
+
         Log::info("CONFIG ID: $this->adConfigId");
         Log::info("TYPE ID: $this->type");
         $this->generateOffers($adConfig);

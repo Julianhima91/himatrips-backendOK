@@ -121,6 +121,10 @@ class AdConfigResource extends Resource
                     ->label('Extra Options')
                     ->badge()
                     ->sortable(),
+                TextColumn::make('job_updated_at')
+                    ->label('Job Updated At')
+                    ->dateTime()
+                    ->sortable(),
             ])
             ->filters([
                 //
