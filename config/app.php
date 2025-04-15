@@ -17,6 +17,7 @@ return [
     */
 
     'name' => env('APP_NAME', 'Laravel'),
+    'front_url' => env('FRONT_URL', 'http://localhost:3001'),
 
     /*
     |--------------------------------------------------------------------------

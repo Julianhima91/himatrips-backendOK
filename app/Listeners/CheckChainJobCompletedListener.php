@@ -125,7 +125,7 @@ class CheckChainJobCompletedListener
 
             $maxImages = max($maxImages, $photos->count());
             $maxVideos = max($maxVideos, $videos->count());
-            $maxDestinationTags = max($maxDestinationTags, $destinationTags->count());
+            $maxDestinationTags = min(3, max($maxDestinationTags, $destinationTags->count()));
 
             foreach ($photos as $index => $photo) {
                 $tagsCount = count($photo->tags);
@@ -309,7 +309,7 @@ class CheckChainJobCompletedListener
                 $ad->destination->neighborhood,
                 $ad->offer_category,
                 '-'.$discountPercentage,
-                env('FRONT_URL')."/offers/$ad->id",
+                config('app.front_url')."/offers/$ad->id",
             ]);
 
             fputcsv($file, $row);

@@ -62,7 +62,7 @@ class ClientSearchesResource extends Resource
                     ->label('Search Link')
                     ->formatStateUsing(fn ($state, $record) => Action::make('searchLink')
                         ->label('LINK')
-                        ->url(fn () => env('FRONT_URL').'/search-'.strtolower(
+                        ->url(fn () => config('app.front_url').'/search-'.strtolower(
                             str_replace(' ', '-', "{$record->packageConfig->destination_origin->origin->name}").
                             '-to-'.
                             str_replace(' ', '-', "{$record->packageConfig->destination_origin->destination->name}")
