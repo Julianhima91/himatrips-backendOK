@@ -38,6 +38,8 @@ class CheapestDateListener
             sort($currentBatchIds);
         }
 
+        $logger->warning($batchIds);
+        $logger->warning($currentBatchIds);
         $logger->error('comparison result: '.var_export($batchIds == $currentBatchIds, true));
 
         if ($batchIds === $currentBatchIds) {

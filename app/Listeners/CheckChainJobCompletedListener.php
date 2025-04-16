@@ -185,36 +185,6 @@ class CheckChainJobCompletedListener
 
         fputcsv($file, $headers);
 
-        $nights = $ad->hotelData->number_of_nights;
-        $pricePerPerson = $ad->total_price / 2;
-        $departureDate = $ad->outboundFlight->departure->format('d/m');
-        $arrivalDate = $ad->inboundFlight->departure->format('d/m');
-        $origin = $ad->adConfig->origin->name;
-        $destination = $ad->destination;
-        $boardOptions = $ad->hotelData->cheapestOffer->first()->room_basis;
-
-        $departureFormatted = str_replace('/', '-', $departureDate);
-        $arrivalFormatted = str_replace('/', '-', $arrivalDate);
-
-        $holiday = Holiday::query()
-            ->where(function ($query) use ($departureFormatted, $arrivalFormatted) {
-                $query->whereRaw('STRCMP(?, day) <= 0', [$departureFormatted])
-                    ->orWhereRaw('STRCMP(?, day) >= 0', [$arrivalFormatted]);
-            })
-            ->where(function ($query) use ($departureFormatted, $arrivalFormatted) {
-                $query->whereRaw('RIGHT(day, 2) = ?', [substr($departureFormatted, -2)])
-                    ->orWhereRaw('RIGHT(day, 2) = ?', [substr($arrivalFormatted, -2)]);
-            })
-            ->first();
-
-        $description = "❣️ $holiday->name";
-
-        if ($boardOptions == 'AI') {
-            $description .= ' All Inclusive';
-        }
-
-        $description .= " ne $destination->name Nga $origin ❣️";
-
         $months = [
             'January' => 'Janar', 'February' => 'Shkurt', 'March' => 'Mars',
             'April' => 'Prill', 'May' => 'Maj', 'June' => 'Qershor',
@@ -224,6 +194,37 @@ class CheckChainJobCompletedListener
 
         foreach ($ads as $ad) {
             $formatDate = fn ($date) => $date->format('d').' '.$months[$date->format('F')];
+
+            $nights = $ad->hotelData->number_of_nights;
+            $pricePerPerson = $ad->total_price / 2;
+            $departureDate = $ad->outboundFlight->departure->format('d/m');
+            $arrivalDate = $ad->inboundFlight->departure->format('d/m');
+            $origin = $ad->adConfig->origin->name;
+            $destination = $ad->destination;
+            $boardOptions = $ad->hotelData->cheapestOffer->first()->room_basis;
+
+            $departureFormatted = str_replace('/', '-', $departureDate);
+            $arrivalFormatted = str_replace('/', '-', $arrivalDate);
+
+            $holiday = Holiday::query()
+                ->where(function ($query) use ($departureFormatted, $arrivalFormatted) {
+                    $query->whereRaw('STRCMP(?, day) <= 0', [$departureFormatted])
+                        ->orWhereRaw('STRCMP(?, day) >= 0', [$arrivalFormatted]);
+                })
+                ->where(function ($query) use ($departureFormatted, $arrivalFormatted) {
+                    $query->whereRaw('RIGHT(day, 2) = ?', [substr($departureFormatted, -2)])
+                        ->orWhereRaw('RIGHT(day, 2) = ?', [substr($arrivalFormatted, -2)]);
+                })
+                ->where('country_id', $ad->adConfig->origin->country_id)
+                ->first();
+
+            $description = "❣️ $holiday->name";
+
+            if ($boardOptions == 'AI') {
+                $description .= ' All Inclusive';
+            }
+
+            $description .= " ne $destination->name Nga $origin ❣️";
 
             $row = [
                 //we can remove id, only for debugging
