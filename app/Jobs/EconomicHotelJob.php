@@ -55,7 +55,16 @@ class EconomicHotelJob implements ShouldQueue
 
     public function handle(): void
     {
-        $date = $this->yearMonth.'-'.Cache::get("$this->adConfigId:$this->batchId:cheapest_combination")['outbound']['date'];
+        $logger = Log::channel('economic');
+
+        $cheapest = Cache::get("$this->adConfigId:$this->batchId:cheapest_combination");
+
+        if (! $cheapest) {
+            $logger->info("Cancelling hotel job since there was no cheapest combination found for batch: $this->batchId");
+
+            return;
+        }
+        $date = $this->yearMonth.'-'.$cheapest['outbound']['date'];
 
         $hotelIds = Hotel::whereHas('destinations', function ($query) {
             $query->where('destination_id', $this->destination);

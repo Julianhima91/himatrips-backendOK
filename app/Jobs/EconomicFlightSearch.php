@@ -62,6 +62,11 @@ class EconomicFlightSearch implements ShouldQueue
         $request = new RetrieveFlightsRequest;
 
         $cheapest = Cache::get("$this->adConfigId:$this->batchId:cheapest_combination");
+        if (! $cheapest) {
+            $logger->info("Cancelling flight job since there was no cheapest combination found for batch: $this->batchId");
+
+            return;
+        }
         $date = $this->yearMonth.'-'.$cheapest['outbound']['date'];
         $returnDate = $this->yearMonth.'-'.$cheapest['return']['date'];
         $logger->warning("Processing batch: $this->batchId");

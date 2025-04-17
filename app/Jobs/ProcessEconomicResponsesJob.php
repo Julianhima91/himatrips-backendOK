@@ -73,15 +73,18 @@ class ProcessEconomicResponsesJob implements ShouldQueue
 
             if ($cheapestCombination) {
                 $logger->info('Final cheapest combination: '.json_encode($cheapestCombination));
+
+                Cache::put("$this->adConfigId:$this->batchId:cheapest_combination", $cheapestCombination, now()->addMinutes(180));
+
+                $logger->error('Outbound Date: '.Cache::get("$this->adConfigId:$this->batchId:cheapest_combination")['outbound']['date']);
+                $logger->error('Return Date: '.Cache::get("$this->adConfigId:$this->batchId:cheapest_combination")['return']['date']);
+
             } else {
                 $logger->info('No valid flight combination found.');
             }
 
             Cache::forget("$this->adConfigId:$this->batchId:cheap_flights");
             Cache::forget("$this->adConfigId:$this->batchId:cheap_flights_return");
-            Cache::put("$this->adConfigId:$this->batchId:cheapest_combination", $cheapestCombination, now()->addMinutes(180));
-
-            $logger->error('2025-02-'.Cache::get("$this->adConfigId:$this->batchId:cheapest_combination")['outbound']['date']);
         }
     }
 }
