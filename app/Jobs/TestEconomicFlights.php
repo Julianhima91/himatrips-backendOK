@@ -67,6 +67,13 @@ class TestEconomicFlights implements ShouldQueue
         $hotels = Cache::get("batch:{$this->batchId}:hotels");
         $adConfigId = $this->adConfig->id;
         $combination = Cache::get("$adConfigId:$this->batchId:cheapest_combination");
+
+        if (! $combination) {
+            $logger->info("Cancelling final job since there was no cheapest combination found for batch: $this->batchId");
+
+            return;
+        }
+
         $date = $this->yearMonth.'-'.$combination['outbound']['date'];
         $returnDate = $this->yearMonth.'-'.$combination['return']['date'];
 

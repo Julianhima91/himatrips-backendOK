@@ -24,8 +24,23 @@ class PackagesAction
                     $query->orderBy('price', 'asc');
                 },
             ])
-            ->paginate(10);
+            ->get()
+            ->sortBy(function (Package $package) {
+                return optional($package->hotelData->offers->first())->total_price_for_this_offer ?? INF;
+            })
+            ->values();
 
-        return [$packages, $minTotalPrice, $maxTotalPrice, $packageConfigId];
+        $page = request()->get('page', 1);
+        $perPage = 10;
+
+        $paginated = new \Illuminate\Pagination\LengthAwarePaginator(
+            $packages->forPage($page, $perPage),
+            $packages->count(),
+            $perPage,
+            $page,
+            ['path' => request()->url(), 'query' => request()->query()]
+        );
+
+        return [$paginated, $minTotalPrice, $maxTotalPrice, $packageConfigId];
     }
 }
