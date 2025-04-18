@@ -205,15 +205,16 @@ class TestEconomicFlights implements ShouldQueue
             $logger->warning("No flight for batch {$this->batchId}");
 
             $adConfig = $this->adConfig;
-            if (in_array('cheapest_date', $this->adConfig->extra_options)) {
-                $batchIds = Cache::get("$adConfig->id:batch_ids");
-                unset($batchIds[array_search($this->batchId, $batchIds)]);
-                Cache::put("$adConfig->id:batch_ids", $batchIds, now()->addMinutes(180));
-            }
+            //in case we go back to the old logic =D
+//            if (in_array('cheapest_date', $this->adConfig->extra_options)) {
+//                $batchIds = Cache::get("$adConfig->id:economic_create_csv");
+//                unset($batchIds[array_search($this->batchId, $batchIds)]);
+//                Cache::put("$adConfig->id:economic_create_csv", $batchIds, now()->addMinutes(180));
+//            }
 
-            $batchIds = Cache::get("$adConfig->id:create_csv");
+            $batchIds = Cache::get("$adConfig->id:economic_create_csv");
             unset($batchIds[array_search($this->batchId, $batchIds)]);
-            Cache::put("$adConfig->id:create_csv", $batchIds, now()->addMinutes(180));
+            Cache::put("$adConfig->id:economic_create_csv", $batchIds, now()->addMinutes(180));
 
             return [null, null];
         } else {
