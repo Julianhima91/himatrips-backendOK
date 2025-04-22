@@ -84,10 +84,10 @@ class EconomicFlightSearch implements ShouldQueue
         try {
             $response = $request->send();
 
-            if (isset($response->json()['data']['context']['status']) &&
-                $response->json()['data']['context']['status'] === 'incomplete') {
-                $response = $this->getIncompleteResults($response->json()['data']['context']['sessionId']);
-            }
+            //            if (isset($response->json()['data']['context']['status']) &&
+            //                $response->json()['data']['context']['status'] === 'incomplete') {
+            //                $response = $this->getIncompleteResults($response->json()['data']['context']['sessionId']);
+            //            }
 
             $itineraries = $response->dtoOrFail();
 
