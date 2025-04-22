@@ -146,6 +146,7 @@ class CheckChainJobCompletedListener
             'price',
             'name',
             'description',
+            'custom_label_0',
         ];
 
         // dynamic fields
@@ -243,6 +244,9 @@ class CheckChainJobCompletedListener
 📍 Tiranë: Tek kryqëzimi i Rrugës Muhamet Gjollesha me Myslym Shyrin.
 📞 +355694767427';
 
+            $customLabel = '🌍️ Pushimet e tua me nisje nga '.$ad->adConfig->origin->name.'! - Zgjidh midis ofertave me te mira sot!
+💡 Rezervo tani!📞 Ofertat janë të limituara!';
+
             $row = [
                 //we can remove id, only for debugging
                 //                $ad->id,
@@ -250,6 +254,7 @@ class CheckChainJobCompletedListener
                 floor($ad->total_price / 2),
                 $description,
                 $message,
+                $customLabel,
             ];
 
             $photos = $ad->destination->destinationPhotos->filter(fn ($file) => ! str_ends_with($file->file_path, '.mp4'))->values();
