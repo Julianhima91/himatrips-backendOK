@@ -4,6 +4,7 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\OriginResource\Pages;
 use App\Filament\Resources\OriginResource\RelationManagers;
+use App\Jobs\OriginPackageConfigJob;
 use App\Models\Origin;
 use Filament\Forms;
 use Filament\Forms\Form;
@@ -61,6 +62,13 @@ class OriginResource extends Resource
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),
+                Tables\Actions\Action::make('Create Connections')
+                    ->label('Create Connections')
+                    ->action(function ($record) {
+                        OriginPackageConfigJob::dispatch($record->id);
+                    })
+                    ->color('primary')
+                    ->icon('heroicon-o-bolt'),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
