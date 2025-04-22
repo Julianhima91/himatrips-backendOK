@@ -33,6 +33,7 @@ class PopularPackages extends BaseWidget
             ->leftJoin('package_configs', 'destination_origins.id', '=', 'package_configs.destination_origin_id')
             ->leftJoin('packages', 'packages.package_config_id', '=', 'package_configs.id')
             ->leftJoin('flight_data', 'flight_data.id', '=', 'packages.outbound_flight_id')
+            ->leftJoin('countries', 'destinations.country_id', '=', 'countries.id')
             ->groupBy('destinations.id')
             ->orderBy('search_count', 'desc');
 
@@ -88,13 +89,13 @@ class PopularPackages extends BaseWidget
                     ->form([
                         Select::make('origin_country')
                             ->label('Select Origin Country')
-                            ->options(Origin::select('country')->distinct()->pluck('country', 'country'))
+                            ->relationship('country', 'name')
                             ->reactive()
                             ->searchable(),
                     ])
                     ->query(function ($query, array $data) {
                         if (! empty($data['origin_country'])) {
-                            return $query->where('origins.country', $data['origin_country']);
+                            return $query->where('countries.id', $data['origin_country']);
                         }
 
                         return $query;
@@ -147,13 +148,13 @@ class PopularPackages extends BaseWidget
                     ->form([
                         Select::make('destination_country')
                             ->label('Select Destination Country')
-                            ->options(Destination::select('country')->distinct()->pluck('country', 'country'))
+                            ->relationship('country', 'name')
                             ->reactive()
                             ->searchable(),
                     ])
                     ->query(function ($query, array $data) {
                         if (! empty($data['destination_country'])) {
-                            return $query->where('destinations.country', $data['destination_country']);
+                            return $query->where('countries.id', $data['destination_country']);
                         }
 
                         return $query;
