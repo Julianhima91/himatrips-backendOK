@@ -206,23 +206,35 @@ class CheckChainWeekendJobCompletedListener
 
         foreach ($ads as $ad) {
             $formatDate = fn ($date) => $date->format('d').' '.$months[$date->format('F')];
+            $boardOptions = $ad->hotelData->cheapestOffer->first()->room_basis;
+
+            $temp = '';
+
+            if ($boardOptions == 'AI') {
+                $temp = '✅ All Inclusive';
+            }
+
+            if ($boardOptions == 'BB') {
+                $temp = '✅ Me Mengjes';
+            }
+
+            $message = '❣️ Fundjave ne '.$ad->destination->name.' Nga '.$ad->adConfig->origin->name.' ❣️
+✈️ '.$formatDate($ad->outboundFlight->departure).' - '.$formatDate($ad->inboundFlight->departure).' ➥ '.($ad->total_price / 2).' €/P '.$ad->hotelData->number_of_nights.' Nete
+✅ Bilete Vajtje - Ardhje nga '.$ad->adConfig->origin->name.'
+✅ Cante 10 Kg
+✅ Taksa Aeroportuale
+✅ Akomodim ne Hotel
+'.$temp.'
+📍 Tiranë: Tek kryqëzimi i Rrugës Muhamet Gjollesha me Myslym Shyrin.
+📞 +355694767427';
 
             $row = [
                 //we can remove id, only for debugging
                 //                $ad->id,
                 $ad->package_config_id,
-                $ad->total_price,
+                $ad->total_price / 2,
                 '❣️ Fundjave ne '.$ad->destination->name.' Nga '.$ad->adConfig->origin->name.' ❣️',
-                '❣️ Fundjave ne '.$ad->destination->name.' Nga '.$ad->adConfig->origin->name.' ❣️
-                '.
-        '✈️ '.$formatDate($ad->outboundFlight->departure).' - '.$formatDate($ad->inboundFlight->departure).' ➥ '.($ad->total_price / 2).' €/P '.$ad->hotelData->number_of_nights.' Nete
-        ✅ Bilete Vajtje - Ardhje nga '.$ad->adConfig->origin->name.'
-        ✅ Cante 10 Kg
-        ✅ Taksa Aeroportuale
-        ✅ Akomodim ne Hotel
-        ✅ Me Mengjes
-        📍 Tiranë: Tek kryqëzimi i Rrugës Muhamet Gjollesha me Myslym Shyrin.
-        📞 +355694767427',
+                $message,
             ];
 
             $photos = $ad->destination->destinationPhotos->filter(fn ($file) => ! str_ends_with($file->file_path, '.mp4'))->values();
