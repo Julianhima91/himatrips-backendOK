@@ -219,7 +219,7 @@ class CheckChainWeekendJobCompletedListener
             }
 
             $message = '❣️ Fundjave ne '.$ad->destination->name.' Nga '.$ad->adConfig->origin->name.' ❣️
-✈️ '.$formatDate($ad->outboundFlight->departure).' - '.$formatDate($ad->inboundFlight->departure).' ➥ '.($ad->total_price / 2).' €/P '.$ad->hotelData->number_of_nights.' Nete
+✈️ '.$formatDate($ad->outboundFlight->departure).' - '.$formatDate($ad->inboundFlight->departure).' ➥ '.(floor($ad->total_price / 2)).' €/P '.$ad->hotelData->number_of_nights.' Nete
 ✅ Bilete Vajtje - Ardhje nga '.$ad->adConfig->origin->name.'
 ✅ Cante 10 Kg
 ✅ Taksa Aeroportuale
@@ -232,7 +232,7 @@ class CheckChainWeekendJobCompletedListener
                 //we can remove id, only for debugging
                 //                $ad->id,
                 $ad->package_config_id,
-                $ad->total_price / 2,
+                floor($ad->total_price / 2),
                 '❣️ Fundjave ne '.$ad->destination->name.' Nga '.$ad->adConfig->origin->name.' ❣️',
                 $message,
             ];

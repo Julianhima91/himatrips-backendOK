@@ -243,7 +243,7 @@ class CheckEconomicJobCompletedListener
             }
 
             $message = "❣️ Oferta Ekonomike ne $destination->name Nga $origin ❣️
-✈️ ".$formatDate($ad->outboundFlight->departure).' - '.$formatDate($ad->inboundFlight->departure).' ➥ '.($ad->total_price / 2).' €/P '.$ad->hotelData->number_of_nights.' Nete
+✈️ ".$formatDate($ad->outboundFlight->departure).' - '.$formatDate($ad->inboundFlight->departure).' ➥ '.(floor($ad->total_price / 2)).' €/P '.$ad->hotelData->number_of_nights.' Nete
 ✅ Bilete Vajtje - Ardhje nga '.$ad->adConfig->origin->name.'
 ✅ Cante 10 Kg
 ✅ Taksa Aeroportuale
@@ -256,7 +256,7 @@ class CheckEconomicJobCompletedListener
                 //we can remove id, only for debugging
                 //                $ad->id,
                 $ad->package_config_id,
-                $ad->total_price / 2,
+                floor($ad->total_price / 2),
                 "❣️ Oferta Ekonomike ne $destination->name Nga $origin ❣️",
                 $message,
             ];
