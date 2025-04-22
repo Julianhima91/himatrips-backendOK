@@ -220,8 +220,15 @@ class CheckChainJobCompletedListener
 
             $description = "❣️ $holiday->name";
 
+            $temp = '';
+
             if ($boardOptions == 'AI') {
                 $description .= ' All Inclusive';
+                $temp = '✅ All Inclusive';
+            }
+
+            if ($boardOptions == 'BB') {
+                $temp = '✅ Me Mengjes';
             }
 
             $description .= " ne $destination->name Nga $origin ❣️";
@@ -230,7 +237,7 @@ class CheckChainJobCompletedListener
                 //we can remove id, only for debugging
                 //                $ad->id,
                 $ad->package_config_id,
-                $ad->total_price,
+                $ad->total_price / 2,
                 $description,
                 $description.'
                 '.
@@ -239,7 +246,7 @@ class CheckChainJobCompletedListener
         ✅ Cante 10 Kg
         ✅ Taksa Aeroportuale
         ✅ Akomodim ne Hotel
-        ✅ Me Mengjes
+        '.$temp.'
         📍 Tiranë: Tek kryqëzimi i Rrugës Muhamet Gjollesha me Myslym Shyrin.
         📞 +355694767427',
             ];

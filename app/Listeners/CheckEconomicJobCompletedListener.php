@@ -227,15 +227,26 @@ class CheckEconomicJobCompletedListener
 
         foreach ($ads as $ad) {
             $formatDate = fn ($date) => $date->format('d').' '.$months[$date->format('F')];
+            $boardOptions = $ad->hotelData->cheapestOffer->first()->room_basis;
 
             $origin = $ad->adConfig->origin->name;
             $destination = $ad->destination;
+
+            $temp = '';
+
+            if ($boardOptions == 'AI') {
+                $temp = '✅ All Inclusive';
+            }
+
+            if ($boardOptions == 'BB') {
+                $temp = '✅ Me Mengjes';
+            }
 
             $row = [
                 //we can remove id, only for debugging
                 //                $ad->id,
                 $ad->package_config_id,
-                $ad->total_price,
+                $ad->total_price / 2,
                 "❣️ Oferta Ekonomike ne $destination->name Nga $origin ❣️",
                 "❣️ Oferta Ekonomike ne $destination->name Nga $origin ❣️
                 ".
@@ -244,7 +255,7 @@ class CheckEconomicJobCompletedListener
         ✅ Cante 10 Kg
         ✅ Taksa Aeroportuale
         ✅ Akomodim ne Hotel
-        ✅ Me Mengjes
+        '.$temp.'
         📍 Tiranë: Tek kryqëzimi i Rrugës Muhamet Gjollesha me Myslym Shyrin.
         📞 +355694767427',
             ];
