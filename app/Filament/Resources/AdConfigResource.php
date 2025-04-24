@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources;
 
+use App\Enums\BoardOptionEnum;
 use App\Filament\Resources\AdConfigResource\Pages;
 use App\Filament\Resources\AdConfigResource\RelationManagers\CSVRelationManager;
 use App\Jobs\GenerateOffersForAdConfigs;
@@ -100,6 +101,18 @@ class AdConfigResource extends Resource
                     ])
                     ->required()
                     ->reactive(),
+
+                Forms\Components\Select::make('boarding_options')
+                    ->label('Boarding Options')
+                    ->multiple()
+                    ->options(
+                        collect(BoardOptionEnum::cases())
+                            ->mapWithKeys(fn ($case) => [$case->name => $case->getLabel()])
+                            ->toArray()
+                    )
+                    ->searchable()
+                    ->preload()
+                    ->columnSpanFull(),
             ]);
     }
 

@@ -4,7 +4,9 @@ namespace App\Jobs;
 
 use App\Data\HotelDataDTO;
 use App\Data\HotelOfferDTO;
+use App\Models\Destination;
 use App\Models\Hotel;
+use Illuminate\Bus\Batchable;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -18,55 +20,56 @@ use Spatie\LaravelData\Optional;
 
 use function Sentry\addBreadcrumb;
 
-class EconomicHotelJob implements ShouldQueue
+class AdsSearchHotels implements ShouldQueue
 {
-    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+    use Batchable, Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public int $tries = 2;
 
+    private $checkin_date;
+
     private $nights;
 
-    private $adults = 2;
-
-    private $children = 0;
-
-    private $infants = 0;
-
     private $destination;
+
+    private $adults;
+
+    private $children;
+
+    private $infants;
 
     private $rooms;
 
     public $batchId;
 
-    public $yearMonth;
-
-    private $adConfigId;
+    private $countryCode;
 
     private $adConfig;
 
-    public function __construct($nights, $destination, $rooms, $batchId, $yearMonth, $adConfigId, $adConfig)
+    /**
+     * Create a new job instance.
+     */
+    public function __construct($checkin_date, $nights, $destination, $adults, $children, $infants, $rooms, $batchId, $countryCode, $adConfig)
     {
+        $this->checkin_date = $checkin_date;
         $this->nights = $nights;
         $this->destination = $destination;
+        $this->adults = $adults;
+        $this->children = $children;
+        $this->infants = $infants;
         $this->rooms = $rooms;
         $this->batchId = $batchId;
-        $this->yearMonth = $yearMonth;
-        $this->adConfigId = $adConfigId;
+        $this->countryCode = $countryCode;
         $this->adConfig = $adConfig;
     }
 
+    /**
+     * Execute the job.
+     */
     public function handle(): void
     {
-        $logger = Log::channel('economic');
-
-        $cheapest = Cache::get("$this->adConfigId:$this->batchId:cheapest_combination");
-
-        if (! $cheapest) {
-            $logger->info("Cancelling hotel job since there was no cheapest combination found for batch: $this->batchId");
-
-            return;
-        }
-        $date = $this->yearMonth.'-'.$cheapest['outbound']['date'];
+        //get the hotel IDs
+        //        $hotelIds = Hotel::where('destination_id', $this->destination)->pluck('hotel_id');
 
         $hotelIds = Hotel::whereHas('destinations', function ($query) {
             $query->where('destination_id', $this->destination);
@@ -79,7 +82,7 @@ class EconomicHotelJob implements ShouldQueue
 
         $boardOptions = $this->adConfig->boarding_options;
         try {
-            $response = $this->getHotelData($hotelIds, $date, $this->nights, $this->adults, $this->children, $this->infants, $this->rooms, $boardOptions);
+            $response = $this->getHotelData($hotelIds, $this->checkin_date, $this->nights, $this->adults, $this->children, $this->infants, $this->rooms, $boardOptions, $this->countryCode);
         } catch (\Exception $e) {
             //if it's the first time, we retry
             if ($this->attempts() == 1) {
@@ -107,7 +110,7 @@ class EconomicHotelJob implements ShouldQueue
                 $hotel = new HotelDataDTO(
                     id: new Optional,
                     hotel_id: $hotel,
-                    check_in_date: Carbon::createFromFormat('Y-m-d', $date),
+                    check_in_date: Carbon::createFromFormat('Y-m-d', $this->checkin_date),
                     number_of_nights: $this->nights,
                     room_count: count($this->rooms),
                     adults: $this->adults,
@@ -153,12 +156,12 @@ class EconomicHotelJob implements ShouldQueue
         }
 
         //save the hotel results in cache
-        //        Cache::put('hotels', $hotel_results, now()->addMinutes(5));
+        Cache::put('hotels', $hotel_results, now()->addMinutes(5));
         Cache::put("batch:{$this->batchId}:hotels", $hotel_results, now()->addMinutes(180));
-        //        Cache::put("hotel_job_completed_{$this->batchId}", true, now()->addMinutes(1));
+        Cache::put("hotel_job_completed_{$this->batchId}", true, now()->addMinutes(2));
     }
 
-    public function getHotelData(string $hotelIds, mixed $arrivalDate, mixed $nights, $adults, $children, $infants, $rooms, $boardOptions): mixed
+    public function getHotelData(string $hotelIds, mixed $arrivalDate, mixed $nights, $adults, $children, $infants, $rooms, $boardOptions, $countryCode): mixed
     {
         //todo: Add All possible variations
         $oneRoom = [
@@ -244,9 +247,9 @@ class EconomicHotelJob implements ShouldQueue
         }
 
         if (in_array('doubleSearch', $combinationType)) {
-            $normalSearch = $this->sendXmlRequest($boardOptions, $hotelIds, $arrivalDate, $nights, $roomsXml);
+            $normalSearch = $this->sendXmlRequest($boardOptions, $hotelIds, $arrivalDate, $nights, $roomsXml, $countryCode);
 
-            $splitSearch = $this->sendXmlRequest($boardOptions, $hotelIds, $arrivalDate, $nights, $roomsTwoXml);
+            $splitSearch = $this->sendXmlRequest($boardOptions, $hotelIds, $arrivalDate, $nights, $roomsTwoXml, $countryCode);
 
             $normalSearchHotels = json_decode($normalSearch->MakeRequestResult)->Hotels;
             $splitSearchHotels = json_decode($splitSearch->MakeRequestResult)->Hotels;
@@ -278,7 +281,7 @@ class EconomicHotelJob implements ShouldQueue
 
             return $normalSearch;
         } else {
-            return $this->sendXmlRequest($boardOptions, $hotelIds, $arrivalDate, $nights, $roomsXml);
+            return $this->sendXmlRequest($boardOptions, $hotelIds, $arrivalDate, $nights, $roomsXml, $countryCode);
         }
     }
 
@@ -303,7 +306,7 @@ class EconomicHotelJob implements ShouldQueue
         return $roomsXml;
     }
 
-    private function sendXmlRequest($boardOptions, $hotelIds, $arrivalDate, $nights, $roomsXml)
+    private function sendXmlRequest($boardOptions, $hotelIds, $arrivalDate, $nights, $roomsXml, $countryCode)
     {
         $filterRoomBasisesXml = '<FilterRoomBasises>';
 
@@ -329,7 +332,7 @@ class EconomicHotelJob implements ShouldQueue
         </Hotels>
         <MaximumWaitTime>1500</MaximumWaitTime>
         {$filterRoomBasisesXml}
-        <Nationality>AL</Nationality>
+        <Nationality>{$countryCode}</Nationality>
         <ArrivalDate>{$arrivalDate}</ArrivalDate>
         <Nights>{$nights}</Nights>
         <Rooms>
@@ -358,6 +361,15 @@ XML;
                 'cache_wsdl' => WSDL_CACHE_NONE,
             ])
             ->withHeaders($header)
+            ->afterRequesting(function ($request, $response) {
+                // Log the response
+                //\Log::info('HOTEL SEARCH REQUEST');
+                //ray($request->getBody());
+                //ray($response);
+                //\Log::info("HOTEL SEARCH REQUEST END\n");
+                //\Log::info("RESPONSE START\n");
+                //\Log::info(json_encode($response));
+            })
             ->call('MakeRequest', [
                 'requestType' => 11,
                 'xmlRequest' => $xmlRequestBody,

@@ -11,6 +11,10 @@ class AdConfig extends Model
 {
     protected $guarded = [];
 
+    protected $casts = [
+        'boarding_options' => 'array',
+    ];
+
     public function origin(): BelongsTo
     {
         return $this->belongsTo(Origin::class);

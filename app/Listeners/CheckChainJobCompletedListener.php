@@ -2,6 +2,7 @@
 
 namespace App\Listeners;
 
+use App\Enums\BoardOptionEnum;
 use App\Events\CheckChainJobCompletedEvent;
 use App\Models\Ad;
 use App\Models\AdConfigCsv;
@@ -222,14 +223,26 @@ class CheckChainJobCompletedListener
             $description = "❣️ $holiday->name";
 
             $temp = '';
+            $logger->error($boardOptions);
 
-            if ($boardOptions == 'AI') {
-                $description .= ' All Inclusive';
-                $temp = '✅ All Inclusive';
-            }
+            $enum = BoardOptionEnum::fromName($boardOptions);
+            $logger->error($enum->name); // logs 'RO', 'BB', etc.
 
-            if ($boardOptions == 'BB') {
-                $temp = '✅ Me Mengjes';
+            if ($enum) {
+                $logger->error('ENUM EXISTS');
+                $logger->error(BoardOptionEnum::BB->name);
+                $labelMap = [
+                    BoardOptionEnum::BB->name => '✅ Me Mëngjes',
+                    BoardOptionEnum::HB->name => '✅ Half Board',
+                    BoardOptionEnum::FB->name => '✅ Full Board',
+                    BoardOptionEnum::AI->name => '✅ All Inclusive',
+                    BoardOptionEnum::RO->name => '✅ Vetëm Dhoma',
+                    BoardOptionEnum::CB->name => '✅ Mëngjes Kontinental',
+                    BoardOptionEnum::BD->name => '✅ Mëngjes & Darkë',
+                ];
+                $logger->error($labelMap[$enum->name]);
+
+                $temp = $labelMap[$enum->name] ?? '';
             }
 
             $description .= " ne $destination->name Nga $origin ❣️";
