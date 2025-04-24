@@ -211,14 +211,10 @@ class CheckChainWeekendJobCompletedListener
             $boardOptions = $ad->hotelData->cheapestOffer->first()->room_basis;
 
             $temp = '';
-            $logger->error($boardOptions);
 
             $enum = BoardOptionEnum::fromName($boardOptions);
-            $logger->error($enum->name); // logs 'RO', 'BB', etc.
 
             if ($enum) {
-                $logger->error('ENUM EXISTS');
-                $logger->error(BoardOptionEnum::BB->name);
                 $labelMap = [
                     BoardOptionEnum::BB->name => '✅ Me Mëngjes',
                     BoardOptionEnum::HB->name => '✅ Half Board',
@@ -228,7 +224,6 @@ class CheckChainWeekendJobCompletedListener
                     BoardOptionEnum::CB->name => '✅ Mëngjes Kontinental',
                     BoardOptionEnum::BD->name => '✅ Mëngjes & Darkë',
                 ];
-                $logger->error($labelMap[$enum->name]);
 
                 $temp = $labelMap[$enum->name] ?? '';
             }
