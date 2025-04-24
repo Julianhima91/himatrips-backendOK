@@ -2,6 +2,7 @@
 
 namespace App\Listeners;
 
+use App\Enums\BoardOptionEnum;
 use App\Events\CheckChainJobCompletedEvent;
 use App\Models\Ad;
 use App\Models\AdConfigCsv;
@@ -223,13 +224,20 @@ class CheckChainJobCompletedListener
 
             $temp = '';
 
-            if ($boardOptions == 'AI') {
-                $description .= ' All Inclusive';
-                $temp = '✅ All Inclusive';
-            }
+            $enum = BoardOptionEnum::fromName($boardOptions);
 
-            if ($boardOptions == 'BB') {
-                $temp = '✅ Me Mengjes';
+            if ($enum) {
+                $labelMap = [
+                    BoardOptionEnum::BB->name => '✅ Me Mëngjes',
+                    BoardOptionEnum::HB->name => '✅ Half Board',
+                    BoardOptionEnum::FB->name => '✅ Full Board',
+                    BoardOptionEnum::AI->name => '✅ All Inclusive',
+                    BoardOptionEnum::RO->name => '✅ Vetëm Dhoma',
+                    BoardOptionEnum::CB->name => '✅ Mëngjes Kontinental',
+                    BoardOptionEnum::BD->name => '✅ Mëngjes & Darkë',
+                ];
+
+                $temp = $labelMap[$enum->name] ?? '';
             }
 
             $description .= " ne $destination->name Nga $origin ❣️";

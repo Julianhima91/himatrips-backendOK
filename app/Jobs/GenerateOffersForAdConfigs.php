@@ -209,7 +209,7 @@ class GenerateOffersForAdConfigs implements ShouldQueue
 
             Bus::chain([
                 (new ProcessFlightsJob($request, $this->adConfigId, 'holiday'))->onQueue('holiday'),
-                (new LiveSearchHotels(
+                (new AdsSearchHotels(
                     $request['date'],
                     $request['nights'],
                     $request['destination_id'],
@@ -218,7 +218,8 @@ class GenerateOffersForAdConfigs implements ShouldQueue
                     0, // Infants
                     $request['rooms'],
                     $request['batch_id'],
-                    $origin->country_code ?? 'AL'
+                    $origin->country_code ?? 'AL',
+                    $adConfig,
                 ))->onQueue('holiday'),
                 (new ProcessResponsesJob($request['batch_id'], $request, $adConfig, $batchIds))->onQueue('holiday'),
             ])->dispatch();
@@ -266,6 +267,7 @@ class GenerateOffersForAdConfigs implements ShouldQueue
                     $batchId,
                     $month,
                     $this->adConfigId,
+                    $adConfig,
                 ))->onQueue('economic'),
                 (new TestEconomicFlights($batchId, $adConfig, $month, $adConfig->origin_id, $destination->id, $airport, $destinationAirport, $batchIds))->onQueue('economic'),
             ])->dispatch();
@@ -364,7 +366,7 @@ class GenerateOffersForAdConfigs implements ShouldQueue
 
             Bus::chain([
                 (new ProcessFlightsJob($request, $this->adConfigId, 'weekend'))->onQueue('weekend'),
-                (new LiveSearchHotels(
+                (new AdsSearchHotels(
                     $request['date'],
                     $request['nights'],
                     $request['destination_id'],
@@ -373,7 +375,8 @@ class GenerateOffersForAdConfigs implements ShouldQueue
                     0, // Infants
                     $request['rooms'],
                     $request['batch_id'],
-                    $origin->country_code ?? 'AL'
+                    $origin->country_code ?? 'AL',
+                    $adConfig,
                 ))->onQueue('weekend'),
                 (new ProcessWeekendResponsesJob($request['batch_id'], $request, $adConfig, $batchIds))->onQueue('weekend'),
             ])->dispatch();

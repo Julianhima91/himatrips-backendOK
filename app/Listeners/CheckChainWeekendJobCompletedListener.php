@@ -2,6 +2,7 @@
 
 namespace App\Listeners;
 
+use App\Enums\BoardOptionEnum;
 use App\Models\Ad;
 use App\Models\AdConfigCsv;
 use Illuminate\Support\Facades\Cache;
@@ -211,12 +212,20 @@ class CheckChainWeekendJobCompletedListener
 
             $temp = '';
 
-            if ($boardOptions == 'AI') {
-                $temp = '✅ All Inclusive';
-            }
+            $enum = BoardOptionEnum::fromName($boardOptions);
 
-            if ($boardOptions == 'BB') {
-                $temp = '✅ Me Mengjes';
+            if ($enum) {
+                $labelMap = [
+                    BoardOptionEnum::BB->name => '✅ Me Mëngjes',
+                    BoardOptionEnum::HB->name => '✅ Half Board',
+                    BoardOptionEnum::FB->name => '✅ Full Board',
+                    BoardOptionEnum::AI->name => '✅ All Inclusive',
+                    BoardOptionEnum::RO->name => '✅ Vetëm Dhoma',
+                    BoardOptionEnum::CB->name => '✅ Mëngjes Kontinental',
+                    BoardOptionEnum::BD->name => '✅ Mëngjes & Darkë',
+                ];
+
+                $temp = $labelMap[$enum->name] ?? '';
             }
 
             $message = '❣️ Fundjave ne '.$ad->destination->name.' Nga '.$ad->adConfig->origin->name.' ❣️
