@@ -6,6 +6,7 @@ use App\Enums\BoardOptionEnum;
 use App\Models\Ad;
 use App\Models\AdConfig;
 use App\Models\AdConfigCsv;
+use App\Models\DestinationOrigin;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
@@ -147,11 +148,16 @@ class CheckEconomicJobCompletedListener
         $maxDestinationTags = 0;
 
         foreach ($ads as $ad) {
-            $photos = $ad->destination->destinationPhotos
+            $destinationOrigin = DestinationOrigin::where([
+                ['destination_id', $ad->destination_id],
+                ['origin_id', $ad->adConfig->origin_id],
+            ])->first();
+
+            $photos = $destinationOrigin->photos
                 ->filter(fn ($file) => ! str_ends_with($file->file_path, '.mp4'))
                 ->values();
 
-            $videos = $ad->destination->destinationPhotos
+            $videos = $destinationOrigin->photos
                 ->filter(fn ($file) => str_ends_with($file->file_path, '.mp4'))
                 ->values();
 
@@ -275,8 +281,13 @@ class CheckEconomicJobCompletedListener
                 $customLabel,
             ];
 
-            $photos = $ad->destination->destinationPhotos->filter(fn ($file) => ! str_ends_with($file->file_path, '.mp4'))->values();
-            $videos = $ad->destination->destinationPhotos->filter(fn ($file) => str_ends_with($file->file_path, '.mp4'))->values();
+            $destinationOrigin = DestinationOrigin::where([
+                ['destination_id', $ad->destination_id],
+                ['origin_id', $ad->adConfig->origin_id],
+            ])->first();
+
+            $photos = $destinationOrigin->photos->filter(fn ($file) => ! str_ends_with($file->file_path, '.mp4'))->values();
+            $videos = $destinationOrigin->photos->filter(fn ($file) => str_ends_with($file->file_path, '.mp4'))->values();
 
             for ($i = 0; $i < $maxImages; $i++) {
                 if (isset($photos[$i])) {

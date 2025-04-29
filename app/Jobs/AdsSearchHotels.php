@@ -5,6 +5,7 @@ namespace App\Jobs;
 use App\Data\HotelDataDTO;
 use App\Data\HotelOfferDTO;
 use App\Models\Destination;
+use App\Models\DestinationOrigin;
 use App\Models\Hotel;
 use Illuminate\Bus\Batchable;
 use Illuminate\Bus\Queueable;
@@ -80,7 +81,12 @@ class AdsSearchHotels implements ShouldQueue
             return "<HotelId>{$hotelId}</HotelId>";
         }, $hotelIds->toArray()));
 
-        $boardOptions = $this->adConfig->boarding_options;
+        $destinationOrigin = DestinationOrigin::where([
+            ['destination_id', $this->destination],
+            ['origin_id', $this->adConfig->origin_id],
+        ])->first();
+        $boardOptions = $destinationOrigin->boarding_options;
+
         try {
             $response = $this->getHotelData($hotelIds, $this->checkin_date, $this->nights, $this->adults, $this->children, $this->infants, $this->rooms, $boardOptions, $this->countryCode);
         } catch (\Exception $e) {

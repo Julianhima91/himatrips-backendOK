@@ -6,10 +6,17 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 use Illuminate\Database\Eloquent\Relations\Pivot;
+use Spatie\Tags\HasTags;
 
 class DestinationOrigin extends Pivot
 {
+    use HasTags;
+
     protected $guarded = [];
+
+    protected $casts = [
+        'boarding_options' => 'array',
+    ];
 
     protected $table = 'destination_origins';
 
@@ -38,5 +45,10 @@ class DestinationOrigin extends Pivot
     public function directFlightsAvailability()
     {
         return $this->hasMany(DirectFlightAvailability::class, 'destination_origin_id');
+    }
+
+    public function photos(): HasMany
+    {
+        return $this->hasMany(DestinationOriginPhoto::class, 'destination_origin_id', 'id');
     }
 }
