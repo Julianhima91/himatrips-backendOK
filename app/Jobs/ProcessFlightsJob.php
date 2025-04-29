@@ -54,7 +54,7 @@ class ProcessFlightsJob implements ShouldQueue
             $batchId
         ));
 
-        //        dispatch_sync(new LiveSearchFlights($this->request['date'], $this->request['return_date'], $this->request['origin_airport'], $this->request['destination_airport'], $this->request['rooms'][0]['adults'], $this->request['rooms'][0]['children'], $this->request['rooms'][0]['infants'], $batchId));
+        dispatch_sync(new LiveSearchFlights($this->request['date'], $this->request['return_date'], $this->request['origin_airport'], $this->request['destination_airport'], $this->request['rooms'][0]['adults'], $this->request['rooms'][0]['children'], $this->request['rooms'][0]['infants'], $batchId));
 
         $flights = Cache::get("batch:{$batchId}:flights");
 
