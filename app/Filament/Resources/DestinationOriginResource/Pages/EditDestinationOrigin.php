@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\DestinationOriginResource\Pages;
 
 use App\Filament\Resources\DestinationOriginResource;
+use App\Models\Tag;
 use Filament\Actions;
 use Filament\Resources\Pages\EditRecord;
 use Illuminate\Database\Eloquent\Model;
@@ -37,7 +38,12 @@ class EditDestinationOrigin extends EditRecord
 
             if (! empty($image['tags'])) {
                 \Log::info('INSIDE tags');
-                $photo->tags()->attach($image['tags']);
+                \Log::info($image);
+                $tagIds = collect($image['tags'])->map(function ($tagName) {
+                    return Tag::firstOrCreate(['name' => $tagName])->id;
+                });
+
+                $photo->tags()->attach($tagIds);
             }
         }
 
