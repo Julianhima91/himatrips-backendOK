@@ -6,6 +6,7 @@ use App\Enums\OfferCategoryEnum;
 use App\Models\AdConfig;
 use App\Models\Airport;
 use App\Models\Destination;
+use App\Models\DestinationOrigin;
 use App\Settings\MonthlyWeekendAds;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -120,6 +121,11 @@ class GenerateOffersForAdConfigs implements ShouldQueue
         $today = now();
         $endOfYear = now()->endOfYear();
 
+        $destinationOrigin = DestinationOrigin::where([
+            ['destination_id', $destination->id],
+            ['origin_id', $adConfig->origin_id],
+        ])->first();
+
         $holidays = $origin
             ->getRelationValue('country')
             ->holidays()
@@ -149,11 +155,10 @@ class GenerateOffersForAdConfigs implements ShouldQueue
 
         foreach ($holidays as $holiday) {
             //            [$holidayDay, $holidayMonth] = explode('-', $holiday);
-            //
             //            $holidayDate = now()->startOfYear()->setMonth($holidayMonth)->setDay($holidayDay);
 
-            $minNights = $destination->ad_min_nights;
-            $maxNights = $destination->ad_max_nights;
+            $minNights = $destinationOrigin->min_nights;
+            $maxNights = $destinationOrigin->max_nights;
 
             for ($nights = $minNights; $nights <= $maxNights; $nights++) {
                 for ($startOffset = 1; $startOffset <= max(1, $nights - 1); $startOffset++) {

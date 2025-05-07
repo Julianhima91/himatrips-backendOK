@@ -7,6 +7,7 @@ use App\Events\CheckChainJobCompletedEvent;
 use App\Models\Ad;
 use App\Models\AdConfig;
 use App\Models\Destination;
+use App\Models\DestinationOrigin;
 use App\Models\FlightData;
 use App\Models\HotelData;
 use App\Models\HotelOffer;
@@ -108,6 +109,11 @@ class ProcessResponsesJob implements ShouldQueue
     {
         $logger = Log::channel('holiday');
 
+        $destinationOrigin = DestinationOrigin::where([
+            ['destination_id', $destination_id],
+            ['origin_id', $this->adConfig->origin_id],
+        ])->first();
+
         $outbound_flight_direct = $flights->filter(function ($flight) {
             if ($flight == null) {
                 return false;
@@ -127,12 +133,12 @@ class ProcessResponsesJob implements ShouldQueue
         if ($outbound_flight_direct->isNotEmpty()) {
             $outbound_flight = $outbound_flight_direct;
         } else {
-            $outbound_flight_max_stops = $flights->filter(function ($flight) use ($packageConfig) {
+            $outbound_flight_max_stops = $flights->filter(function ($flight) use ($destinationOrigin) {
                 if ($flight == null) {
                     return false;
                 }
 
-                return $flight->stopCount <= $packageConfig->max_stop_count && $flight->stopCount_back <= $packageConfig->max_stop_count;
+                return $flight->stopCount <= $destinationOrigin->stops && $flight->stopCount_back <= $destinationOrigin->stops;
             });
 
             $flights = $outbound_flight_max_stops;

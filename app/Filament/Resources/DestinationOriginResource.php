@@ -44,6 +44,20 @@ class DestinationOriginResource extends Resource
                     ->searchable()
                     ->preload()
                     ->columnSpanFull(),
+                Forms\Components\TextInput::make('min_nights')
+                    ->numeric()
+                    ->label('Minimum Nights')
+                    ->required(),
+
+                Forms\Components\TextInput::make('max_nights')
+                    ->numeric()
+                    ->label('Maximum Nights')
+                    ->required(),
+
+                Forms\Components\TextInput::make('stops')
+                    ->numeric()
+                    ->label('Stops')
+                    ->required(),
                 Forms\Components\Section::make('Destination Origin Photos')
                     ->schema([
                         Repeater::make('photos')
