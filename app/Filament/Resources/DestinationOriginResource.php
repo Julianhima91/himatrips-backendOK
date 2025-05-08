@@ -68,7 +68,7 @@ class DestinationOriginResource extends Resource
                                     ->required(),
                                 Select::make('tags')
                                     ->label('Select Tags')
-                                    ->options(Tag::all()->pluck('name', 'id'))
+                                    ->options(Tag::all()->pluck('name', 'name'))
                                     ->multiple()
                                     ->searchable()
                                     ->required(),

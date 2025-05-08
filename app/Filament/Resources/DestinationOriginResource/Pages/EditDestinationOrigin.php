@@ -40,7 +40,7 @@ class EditDestinationOrigin extends EditRecord
                 \Log::info('INSIDE tags');
                 \Log::info($image);
                 $tagIds = collect($image['tags'])->map(function ($tagName) {
-                    return Tag::firstOrCreate(['name' => $tagName])->id;
+                    return Tag::whereJsonContains('name->en', $tagName)->value('id');
                 });
 
                 $photo->tags()->attach($tagIds);
