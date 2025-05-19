@@ -227,7 +227,9 @@ class TestEconomicFlights implements ShouldQueue
             $flights = $flights->reject(null);
             $first_outbound_flight = $flights[0] ?? $flights->first();
 
-            $logger->error("FLIGHT PRICE:::::::::::::::::::: $first_outbound_flight->price");
+            //$logger->error("FLIGHT PRICE:::::::::::::::::::: $first_outbound_flight->price");
+            $logger->warning("origin: $first_outbound_flight->origin");
+            $logger->warning("destination: $first_outbound_flight->destination");
             $outbound_flight_hydrated = FlightData::create([
                 'price' => $first_outbound_flight->price,
                 'departure' => $first_outbound_flight->departure,
