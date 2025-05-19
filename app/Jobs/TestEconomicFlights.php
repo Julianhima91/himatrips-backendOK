@@ -104,7 +104,7 @@ class TestEconomicFlights implements ShouldQueue
                     'batch_id' => $this->batchId,
                 ]);
 
-                //todo: REMOVE FROM CACHE BATCH HERE?
+                event(new CheckEconomicJobCompletedEvent(null, $this->batchIds, $this->adConfig->id));
 
                 return;
             }
