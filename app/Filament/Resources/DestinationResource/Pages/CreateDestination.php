@@ -20,14 +20,16 @@ class CreateDestination extends CreateRecord
 
         $destination = static::getModel()::create($data);
 
-        if (! isset($image)) {
+        if (! isset($image) || (is_array($image) && empty($image))) {
             return $destination;
         }
 
-        $destination->destinationPhotos()->updateOrCreate([
-            'file_path' => $image,
-            'destination_id' => $destination->id,
-        ]);
+        foreach ($image as $img) {
+            $destination->destinationPhotos()->updateOrCreate([
+                'file_path' => $img,
+                'destination_id' => $destination->id,
+            ]);
+        }
 
         return $destination;
     }
