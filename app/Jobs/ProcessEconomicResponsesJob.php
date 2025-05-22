@@ -2,6 +2,7 @@
 
 namespace App\Jobs;
 
+use Illuminate\Bus\Batchable;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -12,9 +13,9 @@ use Illuminate\Support\Facades\Log;
 
 class ProcessEconomicResponsesJob implements ShouldQueue
 {
-    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+    use Batchable, Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    private $batchId;
+    private $baseBatchId;
 
     private $adConfigId;
 
@@ -22,7 +23,7 @@ class ProcessEconomicResponsesJob implements ShouldQueue
 
     public function __construct(string $batchId, $adConfigId, $minNights)
     {
-        $this->batchId = $batchId;
+        $this->baseBatchId = $batchId;
         $this->adConfigId = $adConfigId;
         $this->minNights = $minNights;
     }
@@ -34,8 +35,11 @@ class ProcessEconomicResponsesJob implements ShouldQueue
     {
         $logger = Log::channel('economic');
 
-        $flights = Cache::get("$this->adConfigId:$this->batchId:cheap_flights");
-        $flightsReturn = Cache::get("$this->adConfigId:$this->batchId:cheap_flights_return");
+        $flights = Cache::get("$this->adConfigId:$this->baseBatchId:cheap_flights");
+        $flightsReturn = Cache::get("$this->adConfigId:$this->baseBatchId:cheap_flights_return");
+        //        $logger->info("second job $this->baseBatchId");
+        //        $logger->warning($flights);
+        //        $logger->warning($flightsReturn);
 
         if ($flights && $flightsReturn) {
             $cheapestCombination = null;
@@ -74,17 +78,17 @@ class ProcessEconomicResponsesJob implements ShouldQueue
             if ($cheapestCombination) {
                 $logger->info('Final cheapest combination: '.json_encode($cheapestCombination));
 
-                Cache::put("$this->adConfigId:$this->batchId:cheapest_combination", $cheapestCombination, now()->addMinutes(180));
+                Cache::put("$this->adConfigId:$this->baseBatchId:cheapest_combination", $cheapestCombination, now()->addMinutes(180));
 
-                $logger->error('Outbound Date: '.Cache::get("$this->adConfigId:$this->batchId:cheapest_combination")['outbound']['date']);
-                $logger->error('Return Date: '.Cache::get("$this->adConfigId:$this->batchId:cheapest_combination")['return']['date']);
+                $logger->error('Outbound Date: '.Cache::get("$this->adConfigId:$this->baseBatchId:cheapest_combination")['outbound']['date']);
+                $logger->error('Return Date: '.Cache::get("$this->adConfigId:$this->baseBatchId:cheapest_combination")['return']['date']);
 
             } else {
                 $logger->info('No valid flight combination found.');
             }
 
-            Cache::forget("$this->adConfigId:$this->batchId:cheap_flights");
-            Cache::forget("$this->adConfigId:$this->batchId:cheap_flights_return");
+            Cache::forget("$this->adConfigId:$this->baseBatchId:cheap_flights");
+            Cache::forget("$this->adConfigId:$this->baseBatchId:cheap_flights_return");
         }
     }
 }

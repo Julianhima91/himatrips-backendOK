@@ -31,7 +31,7 @@ class EconomicFlightSearch implements ShouldQueue
 
     public int $backoff = 3;
 
-    public $batchId;
+    public $baseBatchId;
 
     public $adConfigId;
 
@@ -47,7 +47,7 @@ class EconomicFlightSearch implements ShouldQueue
         $this->adults = $adults;
         $this->children = $children;
         $this->infants = $infants;
-        $this->batchId = $batchId;
+        $this->baseBatchId = $batchId;
         $this->adConfigId = $adConfigId;
         $this->yearMonth = $yearMonth;
     }
@@ -61,15 +61,19 @@ class EconomicFlightSearch implements ShouldQueue
 
         $request = new RetrieveFlightsRequest;
 
-        $cheapest = Cache::get("$this->adConfigId:$this->batchId:cheapest_combination");
+        //        $logger->info("third job $this->baseBatchId");
+
+        $cheapest = Cache::get("$this->adConfigId:$this->baseBatchId:cheapest_combination");
+        //        $logger->warning($cheapest);
+
         if (! $cheapest) {
-            $logger->info("Cancelling flight job since there was no cheapest combination found for batch: $this->batchId");
+            $logger->info("Cancelling flight job since there was no cheapest combination found for batch: $this->baseBatchId");
 
             return;
         }
         $date = $this->yearMonth.'-'.$cheapest['outbound']['date'];
         $returnDate = $this->yearMonth.'-'.$cheapest['return']['date'];
-        $logger->warning("Processing batch: $this->batchId");
+        $logger->warning("Processing batch: $this->baseBatchId");
 
         $request->query()->merge([
             'fromEntityId' => $this->origin->rapidapi_id,
@@ -102,12 +106,12 @@ class EconomicFlightSearch implements ShouldQueue
 
                 return;
             } else {
-                $logger->warning("DONE================================: $this->batchId");
+                $logger->warning("DONE================================: $this->baseBatchId");
 
-                Cache::put("batch:{$this->batchId}:flights", $itineraries, now()->addMinutes(180));
+                Cache::put("batch:{$this->baseBatchId}:flights", $itineraries, now()->addMinutes(180));
 
                 $csvCache = Cache::get("$this->adConfigId:economic_create_csv", []);
-                $csvCache[] = (string) $this->batchId;
+                $csvCache[] = (string) $this->baseBatchId;
                 Cache::put("$this->adConfigId:economic_create_csv", $csvCache, now()->addMinutes(180));
             }
         } catch (\Exception $e) {
@@ -125,7 +129,7 @@ class EconomicFlightSearch implements ShouldQueue
         $logger = Log::channel('economic');
 
         $request = new RetrieveIncompleteFlights($this->adults, $this->children, $this->infants);
-        $logger->warning("Retrieving incomplete results for batch: $this->batchId");
+        $logger->warning("Retrieving incomplete results for batch: $this->baseBatchId");
 
         $request->query()->merge([
             'sessionId' => $session,
