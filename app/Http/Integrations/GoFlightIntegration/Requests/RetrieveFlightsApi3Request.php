@@ -4,6 +4,7 @@ namespace App\Http\Integrations\GoFlightIntegration\Requests;
 
 use App\Data\FlightDataDTO;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
 use Saloon\Enums\Method;
 use Saloon\Http\Request;
 use Saloon\Http\SoloRequest;
@@ -30,6 +31,11 @@ class RetrieveFlightsApi3Request extends SoloRequest
         public int $number_of_childrens,
         public int $number_of_infants,
     ) {}
+
+    public function resolveBaseUrl(): string
+    {
+        return '';
+    }
 
     /**
      * Define the endpoint for the request
@@ -119,12 +125,12 @@ class RetrieveFlightsApi3Request extends SoloRequest
                 segments: json_encode(collect($legOut['segment_ids'])->map(fn ($id) => $segments[$id] ?? [])),
                 segments_back: json_encode(collect($legBack['segment_ids'])->map(fn ($id) => $segments[$id] ?? [])),
                 carriers: array_merge($carrierIdsOut, $carrierIdsBack),
-                timeBetweenFlights: $this->getTimeBetweenFlights([$legOut, $legBack]) ?? 0
+                timeBetweenFlights: $this->getTimeBetweenFlights([$legOut, $legBack], $segments) ?? []
             );
         })->filter();
     }
 
-    private function getTimeBetweenFlights(array $legs): array
+    private function getTimeBetweenFlights(array $legs, Collection $segments): array
     {
         $timeBetweenFlights = [];
 
@@ -134,14 +140,15 @@ class RetrieveFlightsApi3Request extends SoloRequest
             }
 
             $segmentIds = $leg['segment_ids'];
-            $segments = collect($segmentIds)
-                ->map(fn ($id) => $this->segments[$id] ?? null)
+
+            $legSegments = collect($segmentIds)
+                ->map(fn ($id) => $segments[$id] ?? null)
                 ->filter()
                 ->values();
 
-            for ($i = 0; $i < $segments->count() - 1; $i++) {
-                $arrivalTime = $segments[$i]['arrival'];
-                $departureTime = $segments[$i + 1]['departure'];
+            for ($i = 0; $i < $legSegments->count() - 1; $i++) {
+                $arrivalTime = $legSegments[$i]['arrival'];
+                $departureTime = $legSegments[$i + 1]['departure'];
                 $diffInMinutes = Carbon::parse($departureTime)->diffInMinutes(Carbon::parse($arrivalTime));
                 $timeBetweenFlights[] = $diffInMinutes;
             }
