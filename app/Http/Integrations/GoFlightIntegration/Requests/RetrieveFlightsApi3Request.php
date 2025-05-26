@@ -32,44 +32,22 @@ class RetrieveFlightsApi3Request extends SoloRequest
         public int $number_of_infants,
     ) {}
 
-    public function resolveBaseUrl(): string
-    {
-        return '';
-    }
-
     /**
      * Define the endpoint for the request
      */
     public function resolveEndpoint(): string
     {
-        $query = $this->query();
-
         return sprintf(
             'https://api.flightapi.io/roundtrip/%s/%s/%s/%s/%s/%s/%s/%s/Economy/EUR',
             config('app.flight_api_key_3'),
-            $query->get('departure_airport_code'),
-            $query->get('arrival_airport_code'),
-            $query->get('departure_date'),
-            $query->get('arrival_date'),
-            $query->get('number_of_adults'),
-            $query->get('number_of_childrens'),
-            $query->get('number_of_infants'),
+            $this->departure_airport_code,
+            $this->arrival_airport_code,
+            $this->departure_date,
+            $this->arrival_date,
+            $this->number_of_adults,
+            $this->number_of_childrens,
+            $this->number_of_infants,
         );
-    }
-
-    protected function defaultQuery(): array
-    {
-        return [
-            'api_key' => config('app.flight_api_key_3'),
-            'currency' => 'EUR',
-            'departure_airport_code' => $this->departure_airport_code,
-            'arrival_airport_code' => $this->arrival_airport_code,
-            'departure_date' => $this->departure_date,
-            'arrival_date' => $this->arrival_date,
-            'number_of_adults' => $this->number_of_adults,
-            'number_of_childrens' => $this->number_of_childrens,
-            'number_of_infants' => $this->number_of_infants,
-        ];
     }
 
     public function createDtoFromResponse($response): mixed
