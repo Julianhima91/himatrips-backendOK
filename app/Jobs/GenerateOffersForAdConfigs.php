@@ -257,7 +257,7 @@ class GenerateOffersForAdConfigs implements ShouldQueue
             Bus::chain([
                 (new CheckEconomicFlightJob($airport, $destinationAirport, $month, $this->adConfigId, $batchId, false))->onQueue('economic'),
                 (new CheckEconomicFlightJob($airport, $destinationAirport, $month, $this->adConfigId, $batchId, true))->onQueue('economic'),
-                (new ProcessEconomicResponsesJob($batchId, $this->adConfigId, $destination->ad_min_nights))->onQueue('economic'),
+                (new ProcessEconomicResponsesJob($batchId, $this->adConfigId, $destination->ad_min_nights, $adConfig, $destination))->onQueue('economic'),
                 (new EconomicFlightSearch($month, $airport, $destinationAirport, 2, 0, 0, $batchId, $this->adConfigId))->onQueue('economic'),
                 (new EconomicHotelJob(
                     $destination->ad_min_nights,
