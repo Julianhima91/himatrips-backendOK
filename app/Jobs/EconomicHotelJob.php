@@ -64,7 +64,7 @@ class EconomicHotelJob implements ShouldQueue
         $cheapest = Cache::get("$this->adConfigId:$this->baseBatchId:cheapest_combination");
         //        $logger->info("fourth job $this->baseBatchId");
         //                $logger->error($cheapest['nights']);
-        $this->nights = $cheapest['nights'];
+        $this->nights = $cheapest['nights'] ?? $this->nights;
 
         if (! $cheapest) {
             $logger->info("Cancelling hotel job since there was no cheapest combination found for batch: $this->baseBatchId");
