@@ -70,7 +70,7 @@ class UpdateEconomicAdDestinationJob implements ShouldQueue
             foreach ($months as $batchId => $month) {
                 $allJobs[] = new CheckEconomicFlightJob($airport, $destinationAirport, $month, $this->adConfig->id, $batchId, false);
                 $allJobs[] = new CheckEconomicFlightJob($airport, $destinationAirport, $month, $this->adConfig->id, $batchId, true);
-                $allJobs[] = new ProcessEconomicResponsesJob($batchId, $this->adConfig->id, $destination->ad_min_nights);
+                $allJobs[] = new ProcessEconomicResponsesJob($batchId, $this->adConfig->id, $destination->ad_min_nights, $adConfig, $destination);
                 $allJobs[] = new EconomicFlightSearch($month, $airport, $destinationAirport, 2, 0, 0, $batchId, $this->adConfig->id);
                 $allJobs[] = new EconomicHotelJob(
                     $destination->ad_min_nights,
