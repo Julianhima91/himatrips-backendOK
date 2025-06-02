@@ -77,9 +77,11 @@ class LiveSearchHotels implements ShouldQueue
             return "<HotelId>{$hotelId}</HotelId>";
         }, $hotelIds->toArray()));
 
-        $boardOptions = Destination::find($this->destination)->board_options;
+        // We will use board options more like a filter in the front end rather than a filter in hotel api
+        //$boardOptions = Destination::find($this->destination)->board_options;
+
         try {
-            $response = $this->getHotelData($hotelIds, $this->checkin_date, $this->nights, $this->adults, $this->children, $this->infants, $this->rooms, $boardOptions, $this->countryCode);
+            $response = $this->getHotelData($hotelIds, $this->checkin_date, $this->nights, $this->adults, $this->children, $this->infants, $this->rooms, null, $this->countryCode);
         } catch (\Exception $e) {
             //if it's the first time, we retry
             if ($this->attempts() == 1) {

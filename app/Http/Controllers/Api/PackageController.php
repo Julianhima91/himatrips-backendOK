@@ -166,10 +166,11 @@ class PackageController extends Controller
                     //                    $hotelsElapsed = $hotelsFinished - $flightsFinished;
                     //                    Log::info("Hotels finished time: {$hotelsElapsed} seconds");
 
-                    [$packages, $minTotalPrice, $maxTotalPrice, $packageConfigId] = $packagesAction->handle($package_ids);
+                    $firstBoardOption = $destination->board_options ?? null;
+                    [$packages, $minTotalPrice, $maxTotalPrice, $packageConfigId] = $packagesAction->handle($package_ids, $firstBoardOption);
 
                     //fire off event
-                    broadcast(new LiveSearchCompleted($packages, $batchId, $minTotalPrice, $maxTotalPrice, $packageConfigId));
+                    broadcast(new LiveSearchCompleted($packages, $batchId, $minTotalPrice, $maxTotalPrice, $packageConfigId, $firstBoardOption));
                     $logger->info('======================================');
                     $logger->info('Broadcasting sent. SUCCESS');
                     $logger->info('======================================');
