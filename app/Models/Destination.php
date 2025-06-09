@@ -76,4 +76,9 @@ class Destination extends Model
     {
         $this->attributes['offer_category'] = json_encode($value);
     }
+
+    public function commissionRule(): BelongsTo
+    {
+        return $this->belongsTo(CommissionRule::class, 'commission_rule_id');
+    }
 }

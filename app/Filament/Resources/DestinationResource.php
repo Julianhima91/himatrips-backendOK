@@ -7,6 +7,8 @@ use App\Enums\BoardOptionEnum;
 use App\Enums\OfferCategoryEnum;
 use App\Filament\Resources\DestinationResource\Pages;
 use App\Filament\Resources\DestinationResource\RelationManagers;
+use App\Jobs\DestinationPackageConfigJob;
+use App\Models\CommissionRule;
 use App\Models\Destination;
 use Filament\Forms;
 use Filament\Forms\Components\SpatieTagsInput;
@@ -115,6 +117,12 @@ class DestinationResource extends Resource
                     ->numeric()
                     ->required()
                     ->placeholder('Min Nights Stay'),
+                Forms\Components\Select::make('commission_rule_id')
+                    ->label('Commission Rule')
+                    ->options(CommissionRule::all()->pluck('name', 'id'))
+                    ->searchable()
+                    ->nullable()
+                    ->helperText('Select a commission rule or leave empty for default'),
                 Forms\Components\Section::make('Destination Photo')
                     ->schema([
                         Forms\Components\FileUpload::make('Images')
@@ -165,6 +173,13 @@ class DestinationResource extends Resource
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),
+                Tables\Actions\Action::make('Create Connections')
+                    ->label('Create Connections')
+                    ->action(function ($record) {
+                        DestinationPackageConfigJob::dispatch($record->id);
+                    })
+                    ->color('primary')
+                    ->icon('heroicon-o-bolt'),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
