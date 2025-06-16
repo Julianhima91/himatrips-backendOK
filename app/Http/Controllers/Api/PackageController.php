@@ -11,6 +11,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Livesearch\LivesearchRequest;
 use App\Jobs\LiveSearchFlights;
 use App\Jobs\LiveSearchFlightsApi2;
+use App\Jobs\LiveSearchFlightsApi3;
 use App\Jobs\LiveSearchHotels;
 use App\Models\Ad;
 use App\Models\Airport;
@@ -116,8 +117,9 @@ class PackageController extends Controller
             }
 
             $jobs = [
-                new LiveSearchFlightsApi2($origin_airport, $destination_airport, $date, $return_date, $origin_airport, $destination_airport, $totalAdults, $totalChildren, $totalInfants, $batchId),
+                //new LiveSearchFlightsApi2($origin_airport, $destination_airport, $date, $return_date, $origin_airport, $destination_airport, $totalAdults, $totalChildren, $totalInfants, $batchId),
                 new LiveSearchFlights($date, $return_date, $origin_airport, $destination_airport, $totalAdults, $totalChildren, $totalInfants, $batchId),
+                //                new LiveSearchFlightsApi3($date, $return_date, $origin_airport, $destination_airport, $totalAdults, $totalChildren, $totalInfants, $batchId),
                 new LiveSearchHotels($hotelStartDate, $request->nights, $request->destination_id, $totalAdults, $totalChildren, $totalInfants, $request->rooms, $batchId, $origin->country_code ?? 'AL'),
             ];
 
@@ -127,6 +129,7 @@ class PackageController extends Controller
             //            $startTime = microtime(true);
             //            Log::info("Start time: {$startTime} seconds");
 
+            //            dd('end');
             // Continuously check the shared state until one job completes
             while (true) {
                 if (Cache::get("job_completed_{$batchId}") && Cache::get("hotel_job_completed_{$batchId}")) {
@@ -163,10 +166,11 @@ class PackageController extends Controller
                     //                    $hotelsElapsed = $hotelsFinished - $flightsFinished;
                     //                    Log::info("Hotels finished time: {$hotelsElapsed} seconds");
 
-                    [$packages, $minTotalPrice, $maxTotalPrice, $packageConfigId] = $packagesAction->handle($package_ids);
+                    $firstBoardOption = $destination->board_options ?? null;
+                    [$packages, $minTotalPrice, $maxTotalPrice, $packageConfigId] = $packagesAction->handle($package_ids, $firstBoardOption);
 
                     //fire off event
-                    broadcast(new LiveSearchCompleted($packages, $batchId, $minTotalPrice, $maxTotalPrice, $packageConfigId));
+                    broadcast(new LiveSearchCompleted($packages, $batchId, $minTotalPrice, $maxTotalPrice, $packageConfigId, $firstBoardOption));
                     $logger->info('======================================');
                     $logger->info('Broadcasting sent. SUCCESS');
                     $logger->info('======================================');

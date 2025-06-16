@@ -6,6 +6,7 @@ use App\Data\HotelDataDTO;
 use App\Data\HotelOfferDTO;
 use App\Models\DestinationOrigin;
 use App\Models\Hotel;
+use Illuminate\Bus\Batchable;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -21,7 +22,7 @@ use function Sentry\addBreadcrumb;
 
 class EconomicHotelJob implements ShouldQueue
 {
-    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+    use Batchable, Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public int $tries = 2;
 
@@ -37,7 +38,7 @@ class EconomicHotelJob implements ShouldQueue
 
     private $rooms;
 
-    public $batchId;
+    public $baseBatchId;
 
     public $yearMonth;
 
@@ -50,7 +51,7 @@ class EconomicHotelJob implements ShouldQueue
         $this->nights = $nights;
         $this->destination = $destination;
         $this->rooms = $rooms;
-        $this->batchId = $batchId;
+        $this->baseBatchId = $batchId;
         $this->yearMonth = $yearMonth;
         $this->adConfigId = $adConfigId;
         $this->adConfig = $adConfig;
@@ -60,10 +61,13 @@ class EconomicHotelJob implements ShouldQueue
     {
         $logger = Log::channel('economic');
 
-        $cheapest = Cache::get("$this->adConfigId:$this->batchId:cheapest_combination");
+        $cheapest = Cache::get("$this->adConfigId:$this->baseBatchId:cheapest_combination");
+        //        $logger->info("fourth job $this->baseBatchId");
+        //                $logger->error($cheapest['nights']);
+        $this->nights = $cheapest['nights'] ?? $this->nights;
 
         if (! $cheapest) {
-            $logger->info("Cancelling hotel job since there was no cheapest combination found for batch: $this->batchId");
+            $logger->info("Cancelling hotel job since there was no cheapest combination found for batch: $this->baseBatchId");
 
             return;
         }
@@ -160,8 +164,8 @@ class EconomicHotelJob implements ShouldQueue
 
         //save the hotel results in cache
         //        Cache::put('hotels', $hotel_results, now()->addMinutes(5));
-        Cache::put("batch:{$this->batchId}:hotels", $hotel_results, now()->addMinutes(180));
-        //        Cache::put("hotel_job_completed_{$this->batchId}", true, now()->addMinutes(1));
+        Cache::put("batch:{$this->baseBatchId}:hotels", $hotel_results, now()->addMinutes(180));
+        //        Cache::put("hotel_job_completed_{$this->baseBatchId}", true, now()->addMinutes(1));
     }
 
     public function getHotelData(string $hotelIds, mixed $arrivalDate, mixed $nights, $adults, $children, $infants, $rooms, $boardOptions): mixed

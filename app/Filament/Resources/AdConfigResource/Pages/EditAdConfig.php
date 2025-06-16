@@ -3,8 +3,11 @@
 namespace App\Filament\Resources\AdConfigResource\Pages;
 
 use App\Filament\Resources\AdConfigResource;
+use App\Jobs\UpdateEconomicAdDestinationJob;
 use App\Models\AdConfig;
 use Filament\Actions;
+use Filament\Actions\Action;
+use Filament\Forms\Components\Select;
 use Filament\Resources\Pages\EditRecord;
 
 class EditAdConfig extends EditRecord
@@ -15,6 +18,20 @@ class EditAdConfig extends EditRecord
     {
         return [
             Actions\DeleteAction::make(),
+            Action::make('openModal')
+                ->label('Choose Destination to update')
+                ->modalHeading('Select an Option')
+                ->form([
+                    Select::make('temp_destination_id')
+                        ->label('Destination')
+                        ->options(fn () => $this->record->destinations()->pluck('name', 'destinations.id'))
+                        ->required(),
+                ])
+                ->action(function (array $data) {
+                    UpdateEconomicAdDestinationJob::dispatch($data['temp_destination_id'], $this->record);
+                })
+                ->modalSubmitActionLabel('Confirm')
+                ->icon('heroicon-o-adjustments-vertical'),
         ];
     }
 

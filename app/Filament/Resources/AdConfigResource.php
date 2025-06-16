@@ -5,6 +5,7 @@ namespace App\Filament\Resources;
 use App\Enums\BoardOptionEnum;
 use App\Filament\Resources\AdConfigResource\Pages;
 use App\Filament\Resources\AdConfigResource\RelationManagers\CSVRelationManager;
+use App\Jobs\EconomicAdJob;
 use App\Jobs\GenerateOffersForAdConfigs;
 use App\Models\AdConfig;
 use App\Models\Airport;
@@ -179,7 +180,7 @@ class AdConfigResource extends Resource
                     ->icon('heroicon-o-sparkles')
                     ->color('success')
                     ->action(function ($record) {
-                        GenerateOffersForAdConfigs::dispatch(type: 'economic', adConfigId: $record->id)
+                        EconomicAdJob::dispatch(adConfigId: $record->id)
                             ->onQueue('economic');
 
                         Notification::make()

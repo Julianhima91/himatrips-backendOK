@@ -19,6 +19,7 @@ return [
     'name' => env('APP_NAME', 'Laravel'),
     'front_url' => env('FRONT_URL', 'http://localhost:3001'),
 
+    'flight_api_key_3' => env('FLIGHT_API_KEY_3', ''),
     /*
     |--------------------------------------------------------------------------
     | Application Environment

@@ -3,6 +3,7 @@
 namespace App\Jobs;
 
 use App\Http\Integrations\GoFlightIntegration\Requests\OneWayDirectFlightCalendarRequest;
+use Illuminate\Bus\Batchable;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -13,7 +14,7 @@ use Illuminate\Support\Facades\Log;
 
 class CheckEconomicFlightJob implements ShouldQueue
 {
-    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+    use Batchable, Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     private $origin_airport;
 
@@ -31,9 +32,9 @@ class CheckEconomicFlightJob implements ShouldQueue
 
     private $adConfigId;
 
-    private $batchId;
+    private $baseBatchId;
 
-    public function __construct($origin_airport, $destination_airport, $yearMonth, $adConfigId, $batchId, $isReturnFlight)
+    public function __construct($origin_airport, $destination_airport, $yearMonth, $adConfigId, $baseBatchId, $isReturnFlight)
     {
         $this->origin_airport = $origin_airport;
         $this->destination_airport = $destination_airport;
@@ -42,7 +43,7 @@ class CheckEconomicFlightJob implements ShouldQueue
         $this->isReturnFlight = $isReturnFlight;
         $this->yearMonth = $yearMonth;
         $this->adConfigId = $adConfigId;
-        $this->batchId = $batchId;
+        $this->baseBatchId = $baseBatchId;
     }
 
     /**
@@ -51,6 +52,7 @@ class CheckEconomicFlightJob implements ShouldQueue
     public function handle(): void
     {
         $flightRequest = new OneWayDirectFlightCalendarRequest;
+        $logger = Log::channel('economic');
 
         //        Log::info($this->origin_airport?->rapidapi_id);
         //        Log::info($this->destination_airport?->rapidapi_id);
@@ -94,10 +96,12 @@ class CheckEconomicFlightJob implements ShouldQueue
             //            }
             //            Log::error(print_r($outboundCheapMonthlyFlights, true));
 
+            //            $logger->info("first job $this->baseBatchId");
+            //            $logger->warning($outboundCheapMonthlyFlights);
             if ($this->isReturnFlight) {
-                Cache::put("$this->adConfigId:$this->batchId:cheap_flights", $outboundCheapMonthlyFlights, now()->addMinutes(180));
+                Cache::put("$this->adConfigId:$this->baseBatchId:cheap_flights", $outboundCheapMonthlyFlights, now()->addMinutes(180));
             } else {
-                Cache::put("$this->adConfigId:$this->batchId:cheap_flights_return", $outboundCheapMonthlyFlights, now()->addMinutes(180));
+                Cache::put("$this->adConfigId:$this->baseBatchId:cheap_flights_return", $outboundCheapMonthlyFlights, now()->addMinutes(180));
             }
 
         } catch (\Exception $e) {
