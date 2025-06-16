@@ -119,7 +119,7 @@ class PackageController extends Controller
             $jobs = [
                 //new LiveSearchFlightsApi2($origin_airport, $destination_airport, $date, $return_date, $origin_airport, $destination_airport, $totalAdults, $totalChildren, $totalInfants, $batchId),
                 new LiveSearchFlights($date, $return_date, $origin_airport, $destination_airport, $totalAdults, $totalChildren, $totalInfants, $batchId),
-                //                new LiveSearchFlightsApi3($date, $return_date, $origin_airport, $destination_airport, $totalAdults, $totalChildren, $totalInfants, $batchId),
+                new LiveSearchFlightsApi3($date, $return_date, $origin_airport, $destination_airport, $totalAdults, $totalChildren, $totalInfants, $batchId),
                 new LiveSearchHotels($hotelStartDate, $request->nights, $request->destination_id, $totalAdults, $totalChildren, $totalInfants, $request->rooms, $batchId, $origin->country_code ?? 'AL'),
             ];
 
