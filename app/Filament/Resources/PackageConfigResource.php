@@ -172,6 +172,35 @@ class PackageConfigResource extends Resource
     public static function table(Table $table): Table
     {
         return $table
+            ->headerActions([
+                Tables\Actions\Action::make('Run Top Searched Job')
+                    ->label('Run Top Searched')
+                    ->icon('heroicon-o-arrow-trending-up')
+                    ->color('primary')
+                    ->action(function () {
+                        \App\Jobs\UpdateFlightDatesForTopSearchedPackages::dispatch(4);
+
+                        Notification::make()
+                            ->success()
+                            ->title('Top Searched Job Dispatched')
+                            ->body('Job for packages searched > 4 was successfully dispatched.')
+                            ->send();
+                    }),
+
+                Tables\Actions\Action::make('Run Medium Searched Job')
+                    ->label('Run from 1-3 Searched')
+                    ->icon('heroicon-o-arrow-trending-down')
+                    ->color('primary')
+                    ->action(function () {
+                        \App\Jobs\UpdateFlightDatesForTopSearchedPackages::dispatch(1, 4);
+
+                        Notification::make()
+                            ->success()
+                            ->title('Medium Searched Job Dispatched')
+                            ->body('Job for packages searched between 1 and 4 was successfully dispatched.')
+                            ->send();
+                    }),
+            ])
             ->columns([
                 Tables\Columns\TextColumn::make('destination_origin.origin.name')
                     ->label('Origin')

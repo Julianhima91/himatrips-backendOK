@@ -40,4 +40,11 @@ class OneWayDirectFlightCalendarRequest extends SoloRequest
             'X-RapidAPI-Host' => 'flights-search3.p.rapidapi.com',
         ];
     }
+
+    public function defaultOptions(): array
+    {
+        return [
+            'timeout' => 60,
+        ];
+    }
 }
