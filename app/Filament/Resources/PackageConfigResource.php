@@ -188,7 +188,7 @@ class PackageConfigResource extends Resource
                     }),
 
                 Tables\Actions\Action::make('Run Medium Searched Job')
-                    ->label('Run from 1-3 Searched')
+                    ->label('Run from 1-4 Searched')
                     ->icon('heroicon-o-arrow-trending-down')
                     ->color('primary')
                     ->action(function () {
