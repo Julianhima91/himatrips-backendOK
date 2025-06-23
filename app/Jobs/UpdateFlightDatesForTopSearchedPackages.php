@@ -75,7 +75,7 @@ class UpdateFlightDatesForTopSearchedPackages implements ShouldQueue
                 continue;
             }
 
-            ProcessPackageConfigJob::dispatch($packageConfig);
+            ProcessPackageConfigJob::dispatch($packageConfig)->onQueue('directdates');
         }
     }
 }
