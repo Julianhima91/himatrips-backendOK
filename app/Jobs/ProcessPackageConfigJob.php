@@ -13,6 +13,7 @@ use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 class ProcessPackageConfigJob implements ShouldQueue
@@ -112,6 +113,17 @@ class ProcessPackageConfigJob implements ShouldQueue
             }
         } catch (\Exception $e) {
             $logger->error("Failed to check flights for $yearMonth. Error: ".$e->getMessage());
+
+            DB::table('failed_availability_checks')->insert([
+                'origin_airport_id' => $originAirport->id,
+                'destination_airport_id' => $destinationAirport->id,
+                'year_month' => $yearMonth,
+                'is_return_flight' => $isReturnFlight,
+                'destination_origin_id' => $destinationOriginId,
+                'error_message' => $e->getMessage(),
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
         }
     }
 }

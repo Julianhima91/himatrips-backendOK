@@ -2,6 +2,7 @@
 
 namespace App\Console;
 
+use App\Console\Commands\DispatchRefreshAdConfigs;
 use App\Jobs\CheckDirectFlightForPackageConfigJob;
 use App\Jobs\DestinationOriginJob;
 use Illuminate\Console\Scheduling\Schedule;
@@ -20,6 +21,7 @@ class Kernel extends ConsoleKernel
     {
         $schedule->job(new CheckDirectFlightForPackageConfigJob)->dailyAt('00:00');
         $schedule->job(new DestinationOriginJob)->dailyAt('00:00');
+        $schedule->job(new DispatchRefreshAdConfigs)->everyFifteenMinutes();
         $schedule->command('check:package-hotels')->dailyAt('01:00');
         $schedule->command('check:package-flights')->dailyAt('01:00');
         $schedule->command('flights:truncate')->monthlyOn(1, '00:00');

@@ -173,6 +173,20 @@ class PackageConfigResource extends Resource
     {
         return $table
             ->headerActions([
+                Tables\Actions\Action::make('Retry failed jobs')
+                    ->label('Retry failed jobs')
+                    ->icon('heroicon-o-arrow-path')
+                    ->color('primary')
+                    ->action(function () {
+                        \App\Jobs\RetryFailedAvailabilityJob::dispatch();
+
+                        Notification::make()
+                            ->success()
+                            ->title('Retry Job Dispatched')
+                            ->body('Retrying all failed jobs.')
+                            ->send();
+                    }),
+
                 Tables\Actions\Action::make('Run Top Searched Job')
                     ->label('Run Top Searched')
                     ->icon('heroicon-o-arrow-trending-up')

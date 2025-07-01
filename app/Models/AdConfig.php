@@ -13,6 +13,7 @@ class AdConfig extends Model
 
     protected $casts = [
         'boarding_options' => 'array',
+        'job_status' => 'string',
     ];
 
     public function origin(): BelongsTo
