@@ -173,6 +173,20 @@ class PackageConfigResource extends Resource
     {
         return $table
             ->headerActions([
+                Tables\Actions\Action::make('Score Origin & Destination')
+                    ->label('Score Origin & Destination')
+                    ->icon('heroicon-o-star')
+                    ->color('primary')
+                    ->action(function () {
+                        \App\Jobs\ScoreOriginDestinationJob::dispatch();
+
+                        Notification::make()
+                            ->success()
+                            ->title('Score Job Dispatched')
+                            ->body('Scoring all origins and destinations.')
+                            ->send();
+                    }),
+
                 Tables\Actions\Action::make('Retry failed jobs')
                     ->label('Retry failed jobs')
                     ->icon('heroicon-o-arrow-path')
