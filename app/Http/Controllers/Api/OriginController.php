@@ -17,6 +17,7 @@ class OriginController extends Controller
                     return $pivotQuery;
                 });
             })
+            ->orderBy('search_count', 'desc')
             ->get();
 
         if ($origins->isEmpty()) {

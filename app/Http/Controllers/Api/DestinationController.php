@@ -103,6 +103,7 @@ class DestinationController extends Controller
             ->where('destination_origins.origin_id', $originId)
             ->where('package_configs.is_active', true)
             ->groupBy('destinations.id', 'package_configs.manual_date_combination')
+            ->orderBy('search_count', 'desc')
             ->get();
 
         return response()->json([
