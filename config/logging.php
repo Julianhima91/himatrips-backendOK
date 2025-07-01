@@ -89,6 +89,12 @@ return [
             'level' => 'debug',
         ],
 
+        'directdates' => [
+            'driver' => 'single',
+            'path' => storage_path('logs/directdates.log'),
+            'level' => 'debug',
+        ],
+
         'daily' => [
             'driver' => 'daily',
             'path' => storage_path('logs/laravel.log'),

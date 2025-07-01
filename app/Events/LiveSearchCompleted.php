@@ -22,7 +22,7 @@ class LiveSearchCompleted implements ShouldBroadcast
 
     public $content_id;
 
-    private $boardOptions;
+    public $boardOptions;
 
     /**
      * Create a new event instance.

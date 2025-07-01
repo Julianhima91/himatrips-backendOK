@@ -25,8 +25,11 @@ class PackagesAction
                 'hotelData.hotel.hotelPhotos',
                 'outboundFlight',
                 'inboundFlight',
-                'hotelData.offers' => function ($query) {
-                    $query->orderBy('price', 'asc');
+                'hotelData.offers' => function ($query) use ($firstBoardOption) {
+                    $query->when($firstBoardOption, function ($query) use ($firstBoardOption) {
+                        $query->whereIn('room_basis', $firstBoardOption);
+                    })
+                        ->orderBy('price', 'asc');
                 },
             ])
             ->get()

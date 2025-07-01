@@ -34,6 +34,8 @@ class EconomicAdJob implements ShouldQueue
     {
         $adConfig = AdConfig::find($this->adConfigId);
 
+        $adConfigId = $this->adConfigId;
+
         $adConfig->job_updated_at = Carbon::now();
         $adConfig->save();
 
@@ -124,11 +126,19 @@ class EconomicAdJob implements ShouldQueue
             ->then(function (Batch $batch) use ($adConfig, $batchIds) {
                 EconomicCSVJob::dispatch($adConfig, $batchIds);
             })
-            ->catch(function (Batch $batch, Throwable $e) {
-                Log::error('Economic batch failed: '.$e->getMessage());
+            ->catch(function (Batch $batch, Throwable $e) use ($adConfigId) {
+                $logger = Log::channel('economic');
+                $logger->error('Economic batch failed: '.$e->getMessage());
+                Log::info($adConfigId);
+                $adConfig1 = AdConfig::find($adConfigId);
+                $adConfig1->update(['job_status' => 'failed']);
             })
-            ->finally(function (Batch $batch) {
-                Log::info('Economic batch finished');
+            ->finally(function (Batch $batch) use ($adConfigId) {
+                $logger = Log::channel('economic');
+                $logger->info('Economic batch finished');
+                Log::info($adConfigId);
+                $adConfig1 = AdConfig::find($adConfigId);
+                $adConfig1->update(['job_status' => 'completed']);
             })
             ->onQueue('economic')
             ->dispatch();
