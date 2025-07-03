@@ -93,13 +93,8 @@ class DestinationController extends Controller
         $originId = $origin->id;
 
         $destinations = Destination::select('destinations.*', 'package_configs.manual_date_combination')
-            ->selectRaw('COUNT(packages.id) AS packages_count')
             ->leftJoin('destination_origins', 'destinations.id', '=', 'destination_origins.destination_id')
             ->leftJoin('package_configs', 'destination_origins.id', '=', 'package_configs.destination_origin_id')
-            ->leftJoin('packages', function ($join) {
-                $join->on('packages.package_config_id', '=', 'package_configs.id')
-                    ->whereNull('packages.deleted_at');
-            })
             ->where('destination_origins.origin_id', $originId)
             ->where('package_configs.is_active', true)
             ->groupBy('destinations.id', 'package_configs.manual_date_combination')
@@ -108,6 +103,7 @@ class DestinationController extends Controller
 
         return response()->json([
             'data' => DestinationPlainResource::collection($destinations),
+            'count' => $destinations->count(),
         ], 200);
     }
 
