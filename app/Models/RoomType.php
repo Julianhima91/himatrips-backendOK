@@ -4,19 +4,23 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 
-class HotelOffer extends Model
+class RoomType extends Model
 {
     protected $guarded = [];
+
+    public function hotel(): BelongsTo
+    {
+        return $this->belongsTo(Hotel::class);
+    }
 
     public function hotelData(): BelongsTo
     {
         return $this->belongsTo(HotelData::class);
     }
 
-    public function roomTypes(): HasMany
+    public function hotelOffer(): BelongsTo
     {
-        return $this->hasMany(RoomType::class);
+        return $this->belongsTo(HotelOffer::class);
     }
 }

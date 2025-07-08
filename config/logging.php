@@ -95,6 +95,12 @@ return [
             'level' => 'debug',
         ],
 
+        'hotels' => [
+            'driver' => 'single',
+            'path' => storage_path('logs/hotels.log'),
+            'level' => 'debug',
+        ],
+
         'daily' => [
             'driver' => 'daily',
             'path' => storage_path('logs/laravel.log'),

@@ -25,4 +25,14 @@ class Hotel extends Model
     {
         return $this->morphedByMany(Transfer::class, 'bundleable');
     }
+
+    public function roomTypes(): HasMany
+    {
+        return $this->hasMany(RoomType::class);
+    }
+
+    public function hotelData(): HasMany
+    {
+        return $this->hasMany(HotelData::class, 'hotel_id', 'id');
+    }
 }

@@ -4,10 +4,12 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\HotelResource\Pages;
 use App\Filament\Resources\HotelResource\RelationManagers\DestinationsRelationManager;
+use App\Filament\Resources\HotelResource\RelationManagers\RoomTypesRelationManager;
 use App\Filament\Resources\HotelResource\RelationManagers\TransfersRelationManager;
 use App\Models\Hotel;
 use Filament\Forms;
 use Filament\Forms\Form;
+use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Filters\SelectFilter;
@@ -76,6 +78,21 @@ class HotelResource extends Resource
     public static function table(Table $table): Table
     {
         return $table
+            ->headerActions([
+                Tables\Actions\Action::make('Extract Room Types')
+                    ->label('Extract Room Types')
+                    ->icon('heroicon-o-document-magnifying-glass')
+                    ->color('primary')
+                    ->action(function () {
+                        \App\Jobs\ExtractRoomTypesFromHotelOffers::dispatch()->onQueue('hotel-room-types');
+
+                        Notification::make()
+                            ->success()
+                            ->title('Score Job Dispatched')
+                            ->body('Extracting all rooms for active hotels.')
+                            ->send();
+                    }),
+            ])
             ->columns([
                 //                Tables\Columns\TextColumn::make('destination.name')
                 //                    ->label('Destination')
@@ -132,6 +149,7 @@ class HotelResource extends Resource
         return [
             DestinationsRelationManager::class,
             TransfersRelationManager::class,
+            RoomTypesRelationManager::class,
         ];
     }
 

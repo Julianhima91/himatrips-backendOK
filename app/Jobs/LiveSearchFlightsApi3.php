@@ -67,12 +67,12 @@ class LiveSearchFlightsApi3 implements ShouldQueue
 
         try {
             $response = $request->send();
-            ray('trying')->purple();
-            ray($response->json())->purple();
-            ray($response->json()['places'])->purple();
+            //            ray('trying')->purple();
+            //            ray($response->json())->purple();
+            //            ray($response->json()['places'])->purple();
         } catch (\Exception $e) {
-            ray('Exception caught')->purple();
-            ray($e->getMessage())->purple();
+            //            ray('Exception caught')->purple();
+            //            ray($e->getMessage())->purple();
             if ($this->attempts() == 1) {
                 $this->release(1);
             }

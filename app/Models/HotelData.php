@@ -26,6 +26,11 @@ class HotelData extends Model
         return $this->hasMany(HotelOffer::class);
     }
 
+    public function roomTypes(): HasMany
+    {
+        return $this->hasMany(RoomType::class);
+    }
+
     public function cheapestOffer()
     {
         return $this->hasMany(HotelOffer::class)->orderBy('price')->limit(1);
