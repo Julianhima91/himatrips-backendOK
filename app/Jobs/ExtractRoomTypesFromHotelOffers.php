@@ -29,32 +29,43 @@ class ExtractRoomTypesFromHotelOffers implements ShouldQueue
                     foreach ($hotelData->offers as $offer) {
                         $roomTypes = json_decode($offer->room_type, true);
 
-                        if (!is_array($roomTypes)) {
-//                            $logger->warning("Invalid room_type JSON for Offer ID {$offer->id}");
+                        if (! is_array($roomTypes)) {
+                            //                            $logger->warning("Invalid room_type JSON for Offer ID {$offer->id}");
 
                             continue;
                         }
 
                         foreach ($roomTypes as $roomName) {
-                            if (!is_string($roomName)) {
+                            if (! is_string($roomName)) {
                                 $logger->warning("Unexpected room type format in Offer ID {$offer->id}");
 
                                 continue;
                             }
 
                             if (in_array($roomName, $existingRoomNames)) {
-//                                $logger->info("Skipping duplicate room type '{$roomName}' for Hotel ID {$hotel->id}");
+                                //                                $logger->info("Skipping duplicate room type '{$roomName}' for Hotel ID {$hotel->id}");
 
                                 continue;
                             }
+
                             $split = preg_split('/\s*[-–—]+\s*/u', $roomName);
-                            $shortName = trim($split[0]);
+                            $roomNameShort = trim($split[0]);
+
+                            //sometimes data is seperated with . not -
+                            if (count($split) === 1 && str_contains($roomNameShort, '.')) {
+                                $sentenceSplit = preg_split('/\.\s+/', $roomName);
+                                $roomNameShort = trim($sentenceSplit[0]);
+                            }
+
+                            if (! $roomNameShort) {
+                                $roomNameShort = 'error_'.substr(md5($roomName.microtime()), 0, 6);
+                            }
 
                             RoomType::create([
                                 'hotel_id' => $hotel->id,
                                 'hotel_data_id' => $hotelData->id,
                                 'hotel_offer_id' => $offer->id,
-                                'name' => $shortName,
+                                'name' => $roomNameShort,
                                 'details' => json_encode([
                                     'source' => 'hotel_offer',
                                     'room_full_name' => $roomName,
@@ -62,7 +73,7 @@ class ExtractRoomTypesFromHotelOffers implements ShouldQueue
                             ]);
 
                             $existingRoomNames[] = $roomName;
-//                            $logger->info("Saved room type '{$roomName}' for Hotel ID {$hotel->id}, Offer ID {$offer->id}");
+                            //                            $logger->info("Saved room type '{$roomName}' for Hotel ID {$hotel->id}, Offer ID {$offer->id}");
                         }
                     }
                 }
