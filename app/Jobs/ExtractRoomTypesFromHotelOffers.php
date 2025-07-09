@@ -30,7 +30,7 @@ class ExtractRoomTypesFromHotelOffers implements ShouldQueue
                         $roomTypes = json_decode($offer->room_type, true);
 
                         if (! is_array($roomTypes)) {
-                            $logger->warning("Invalid room_type JSON for Offer ID {$offer->id}");
+//                            $logger->warning("Invalid room_type JSON for Offer ID {$offer->id}");
 
                             continue;
                         }
@@ -43,7 +43,7 @@ class ExtractRoomTypesFromHotelOffers implements ShouldQueue
                             }
 
                             if (in_array($roomName, $existingRoomNames)) {
-                                $logger->info("Skipping duplicate room type '{$roomName}' for Hotel ID {$hotel->id}");
+//                                $logger->info("Skipping duplicate room type '{$roomName}' for Hotel ID {$hotel->id}");
 
                                 continue;
                             }
@@ -57,7 +57,7 @@ class ExtractRoomTypesFromHotelOffers implements ShouldQueue
                             ]);
 
                             $existingRoomNames[] = $roomName;
-                            $logger->info("Saved room type '{$roomName}' for Hotel ID {$hotel->id}, Offer ID {$offer->id}");
+//                            $logger->info("Saved room type '{$roomName}' for Hotel ID {$hotel->id}, Offer ID {$offer->id}");
                         }
                     }
                 }
