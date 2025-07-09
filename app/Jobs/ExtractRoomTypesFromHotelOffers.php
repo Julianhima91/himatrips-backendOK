@@ -29,14 +29,14 @@ class ExtractRoomTypesFromHotelOffers implements ShouldQueue
                     foreach ($hotelData->offers as $offer) {
                         $roomTypes = json_decode($offer->room_type, true);
 
-                        if (! is_array($roomTypes)) {
+                        if (!is_array($roomTypes)) {
 //                            $logger->warning("Invalid room_type JSON for Offer ID {$offer->id}");
 
                             continue;
                         }
 
                         foreach ($roomTypes as $roomName) {
-                            if (! is_string($roomName)) {
+                            if (!is_string($roomName)) {
                                 $logger->warning("Unexpected room type format in Offer ID {$offer->id}");
 
                                 continue;
@@ -47,13 +47,18 @@ class ExtractRoomTypesFromHotelOffers implements ShouldQueue
 
                                 continue;
                             }
+                            $split = preg_split('/\s*[-–—]+\s*/u', $roomName);
+                            $shortName = trim($split[0]);
 
                             RoomType::create([
                                 'hotel_id' => $hotel->id,
                                 'hotel_data_id' => $hotelData->id,
                                 'hotel_offer_id' => $offer->id,
-                                'name' => $roomName,
-                                'details' => json_encode(['source' => 'hotel_offer']),
+                                'name' => $shortName,
+                                'details' => json_encode([
+                                    'source' => 'hotel_offer',
+                                    'room_full_name' => $roomName,
+                                ]),
                             ]);
 
                             $existingRoomNames[] = $roomName;
