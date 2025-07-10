@@ -57,7 +57,7 @@ class ExtractRoomTypesFromHotelOffers implements ShouldQueue
                                 $roomNameShort = trim($sentenceSplit[0]);
                             }
 
-                            if (! $roomNameShort || count($split) === 1) {
+                            if (! $roomNameShort || strlen($roomNameShort) > 255) {
                                 $roomNameShort = 'error_'.substr(md5($roomName.microtime()), 0, 6);
                             }
 
