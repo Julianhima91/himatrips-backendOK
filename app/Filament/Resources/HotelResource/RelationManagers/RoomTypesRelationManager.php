@@ -32,7 +32,11 @@ class RoomTypesRelationManager extends RelationManager
         return $table
             ->recordTitleAttribute('name')
             ->columns([
-                Tables\Columns\TextColumn::make('name'),
+                Tables\Columns\TextColumn::make('name')
+                    ->getStateUsing(function ($record) {
+                        $details = json_decode($record->details, true);
+                        return $details['room_full_name'] ?? $record->name;
+                    }),
             ])
             ->filters([
                 //
