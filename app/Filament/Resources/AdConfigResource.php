@@ -7,6 +7,7 @@ use App\Filament\Resources\AdConfigResource\Pages;
 use App\Filament\Resources\AdConfigResource\RelationManagers\CSVRelationManager;
 use App\Jobs\EconomicAdJob;
 use App\Jobs\GenerateOffersForAdConfigs;
+use App\Jobs\HolidayAdJob;
 use App\Models\AdConfig;
 use App\Models\Airport;
 use App\Models\Destination;
@@ -165,7 +166,11 @@ class AdConfigResource extends Resource
                     ->icon('heroicon-o-sparkles')
                     ->color('success')
                     ->action(function ($record) {
-                        GenerateOffersForAdConfigs::dispatch(type: 'holiday', adConfigId: $record->id)
+                        //                        Old Version 1.0
+                        //                        GenerateOffersForAdConfigs::dispatch(type: 'holiday', adConfigId: $record->id)
+                        //                            ->onQueue('holiday');
+
+                        HolidayAdJob::dispatch(adConfigId: $record->id)
                             ->onQueue('holiday');
 
                         Notification::make()
