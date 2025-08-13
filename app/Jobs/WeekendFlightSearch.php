@@ -13,7 +13,7 @@ use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 
-class HolidayFlightSearch implements ShouldQueue
+class WeekendFlightSearch implements ShouldQueue
 {
     use Batchable, Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
@@ -54,7 +54,7 @@ class HolidayFlightSearch implements ShouldQueue
      */
     public function handle(): void
     {
-        $logger = Log::channel('holiday');
+        $logger = Log::channel('weekend');
 
         $request = new RetrieveFlightsRequest;
 
@@ -93,9 +93,9 @@ class HolidayFlightSearch implements ShouldQueue
 
                 Cache::put("batch:{$this->baseBatchId}:flights", $itineraries, now()->addMinutes(180));
 
-                $csvCache = Cache::get("$this->adConfigId:holiday_create_csv", []);
+                $csvCache = Cache::get("$this->adConfigId:weekend_create_csv", []);
                 $csvCache[] = (string) $this->baseBatchId;
-                Cache::put("$this->adConfigId:holiday_create_csv", $csvCache, now()->addMinutes(180));
+                Cache::put("$this->adConfigId:weekend_create_csv", $csvCache, now()->addMinutes(180));
             }
         } catch (\Exception $e) {
             $logger->info($e->getMessage());
@@ -109,7 +109,7 @@ class HolidayFlightSearch implements ShouldQueue
 
     private function getIncompleteResults($session)
     {
-        $logger = Log::channel('holiday');
+        $logger = Log::channel('weekend');
 
         $request = new RetrieveIncompleteFlights($this->adults, $this->children, $this->infants);
         $logger->warning("Retrieving incomplete results for batch: $this->baseBatchId");

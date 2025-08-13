@@ -8,6 +8,7 @@ use App\Filament\Resources\AdConfigResource\RelationManagers\CSVRelationManager;
 use App\Jobs\EconomicAdJob;
 use App\Jobs\GenerateOffersForAdConfigs;
 use App\Jobs\HolidayAdJob;
+use App\Jobs\WeekendAdJob;
 use App\Models\AdConfig;
 use App\Models\Airport;
 use App\Models\Destination;
@@ -152,7 +153,11 @@ class AdConfigResource extends Resource
                     ->icon('heroicon-o-sparkles')
                     ->color('success')
                     ->action(function ($record) {
-                        GenerateOffersForAdConfigs::dispatch(type: 'weekend', adConfigId: $record->id)
+                        //                        Old Version 1.0
+                        //                        GenerateOffersForAdConfigs::dispatch(type: 'weekend', adConfigId: $record->id)
+                        //                            ->onQueue('weekend');
+
+                        WeekendAdJob::dispatch(adConfigId: $record->id)
                             ->onQueue('weekend');
 
                         Notification::make()
