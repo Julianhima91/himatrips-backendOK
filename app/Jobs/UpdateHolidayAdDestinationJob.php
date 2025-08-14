@@ -179,6 +179,7 @@ class UpdateHolidayAdDestinationJob implements ShouldQueue
         }
 
         $destinationId = $this->destinationId;
+
         Bus::batch($allJobs)
             ->then(function (Batch $batch) use ($adConfig, $batchIds, $destinationId) {
                 HolidayAppendDestinationToCSVJob::dispatch($adConfig, $batchIds, $destinationId)->onQueue('holiday');

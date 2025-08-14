@@ -95,6 +95,7 @@ class WeekendAdJob implements ShouldQueue
 
                 foreach ($groupedWeekends as $groupedWeekend) {
                     $batchId = Str::orderedUuid();
+                    $batchIds[] = $batchId;
 
                     $requests[] = [
                         'origin_airport' => $airport,
@@ -116,7 +117,7 @@ class WeekendAdJob implements ShouldQueue
                     ];
                 }
 
-                $batchIds = array_map('strval', array_column($requests, 'batch_id'));
+                //                $batchIds = array_map('strval', array_column($requests, 'batch_id'));
 
                 //                $logger->info('===================================');
                 //                $logger->info($groupedWeekends);

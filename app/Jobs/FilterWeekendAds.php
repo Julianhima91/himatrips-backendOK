@@ -88,7 +88,7 @@ class FilterWeekendAds implements ShouldQueue
                 ],
             ],
             'batch_id' => $this->baseBatchId,
-            'category' => OfferCategoryEnum::HOLIDAY->value,
+            'category' => OfferCategoryEnum::WEEKEND->value,
         ];
 
         if ($flights && $hotels) {
