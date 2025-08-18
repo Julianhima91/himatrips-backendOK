@@ -45,6 +45,8 @@ class EconomicCSVJob implements ShouldQueue
             ->groupBy('destination_id')
             ->get();
 
+        $logger->info('START CHEAPEST ADS: '.$cheapestAds->count());
+
         foreach ($cheapestAds as $cheapestAd) {
             $ad = Ad::where([
                 ['ad_config_id', $this->adConfig->id],
@@ -72,12 +74,18 @@ class EconomicCSVJob implements ShouldQueue
             ->orderBy('total_price', 'asc')
             ->get();
 
+        $logger->info('END CHEAPEST ADS: '.$ads->count());
+
         [$csvPath, $adConfigId] = $this->exportAdsToCsv($ads);
 
-        AdConfigCsv::updateOrCreate([
-            'ad_config_id' => $adConfigId,
-            'file_path' => $csvPath,
-        ]);
+        if ($csvPath !== null) {
+            AdConfigCsv::updateOrCreate([
+                'ad_config_id' => $adConfigId,
+                'file_path' => $csvPath,
+            ]);
+        } else {
+            $logger->info('NOTHING TO EXPORT');
+        }
     }
 
     public function exportAdsToCsv($ads)
@@ -85,7 +93,15 @@ class EconomicCSVJob implements ShouldQueue
         $logger = Log::channel('economic');
 
         $totalAds = count($ads);
-        $adConfig = $ads[0]->ad_config_id;
+        $firstAd = $ads->first();
+
+        if (! $firstAd) {
+            $logger->warning('No ads found to export. Total: '.$totalAds);
+
+            return [null, null];
+        }
+
+        $adConfig = $firstAd->ad_config_id;
         $adConfigDescription = preg_replace('/\s+/', '_', $ads[0]->adConfig->description ?? 'no_description');
         $logger->info("Exporting $totalAds ads for economic... Ad config id: $adConfig");
 

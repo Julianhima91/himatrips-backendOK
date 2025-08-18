@@ -37,7 +37,7 @@ class HolidayAdJob implements ShouldQueue
 
         $logger->info('STARTING HOLIDAY JOB');
 
-        $adConfig->holidays_last_run = Carbon::now();
+        $adConfig->holiday_last_run = Carbon::now();
         $adConfig->save();
 
         $allJobs = [];
@@ -177,6 +177,9 @@ class HolidayAdJob implements ShouldQueue
 
         Bus::batch($allJobs)
             ->then(function (Batch $batch) use ($adConfig, $batchIds) {
+                $logger = Log::channel('holiday');
+                $logger->error('INSIDE THE CSV SECTION');
+
                 HolidayCSVJob::dispatch($adConfig, $batchIds)->onQueue('holiday');
             })
             ->catch(function (Batch $batch, Throwable $e) use ($adConfigId) {
@@ -184,14 +187,17 @@ class HolidayAdJob implements ShouldQueue
                 $logger->error('Holiday batch failed: '.$e->getMessage());
 
                 $adConfig1 = AdConfig::find($adConfigId);
-                $adConfig1->update(['holidays_status' => 'failed']);
+                $adConfig1->update(['holiday_status' => 'failed']);
             })
-            ->finally(function (Batch $batch) use ($adConfigId) {
+            ->finally(function (Batch $batch) use ($adConfigId, $adConfig, $batchIds) {
                 $logger = Log::channel('holiday');
                 $logger->info('Holiday batch finished');
 
                 $adConfig1 = AdConfig::find($adConfigId);
-                $adConfig1->update(['holidays_status' => 'completed']);
+                $adConfig1->update(['holiday_status' => 'completed']);
+
+                //todo: we can remove it from then
+                HolidayCSVJob::dispatch($adConfig, $batchIds)->onQueue('holiday');
             })
             ->onQueue('holiday')
             ->dispatch();

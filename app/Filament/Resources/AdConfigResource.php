@@ -123,22 +123,32 @@ class AdConfigResource extends Resource
     {
         return $table
             ->columns([
-                TextColumn::make('origin.country')
-                    ->label('Origin')
-                    ->sortable()
-                    ->searchable(),
+                //                TextColumn::make('origin.country')
+                //                    ->label('Origin')
+                //                    ->sortable()
+                //                    ->searchable(),
                 TextColumn::make('description')
                     ->label('Description')
-                    ->sortable(),
+                    ->sortable()
+                    ->wrap(),
                 TextColumn::make('refresh_hours')
                     ->label('Refresh Hours')
-                    ->sortable(),
+                    ->sortable()
+                    ->suffix(' hrs'),
                 TextColumn::make('extra_options')
                     ->label('Extra Options')
                     ->badge()
                     ->sortable(),
-                TextColumn::make('job_updated_at')
-                    ->label('Job Updated At')
+                TextColumn::make('economic_last_run')
+                    ->label('Economic Last Run')
+                    ->dateTime()
+                    ->sortable(),
+                TextColumn::make('holiday_last_run')
+                    ->label('Holiday Last Run')
+                    ->dateTime()
+                    ->sortable(),
+                TextColumn::make('weekend_last_run')
+                    ->label('Weekend Last Run')
                     ->dateTime()
                     ->sortable(),
             ])

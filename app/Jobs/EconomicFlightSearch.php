@@ -98,9 +98,10 @@ class EconomicFlightSearch implements ShouldQueue
             if ($itineraries->isEmpty()) {
                 $logger->error('EMPTY ITINERARIES | Attempt: '.$this->attempts());
 
-                if ($this->attempts() < 1) {
+                if ($this->attempts() < $this->tries) {
                     $this->release(5);
                 } else {
+                    $logger->error('==FAIL== EMPTY ITINERARIES | Attempt: '.$this->attempts());
                     $this->fail('Itineraries are empty after 3 attempts');
                 }
 

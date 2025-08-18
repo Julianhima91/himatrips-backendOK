@@ -27,6 +27,9 @@ class FilterHolidayAds implements ShouldQueue
 {
     use Batchable, Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
+    //todo: check the retry logic using the flights and itineraries to find the issue
+    public int $tries = 3;
+
     private $baseBatchId;
 
     private AdConfig $adConfig;
@@ -66,8 +69,6 @@ class FilterHolidayAds implements ShouldQueue
 
         $flights = Cache::get("batch:{$this->baseBatchId}:flights");
         $hotels = Cache::get("batch:{$this->baseBatchId}:hotels");
-
-        $adConfigId = $this->adConfig->id;
 
         $logger->warning('INSIDE LAST STEP');
         $logger->warning($this->baseBatchId);
@@ -110,6 +111,13 @@ class FilterHolidayAds implements ShouldQueue
             ]);
 
             $this->handleCheapestAd($this->adConfig, $this->baseBatchId);
+        } else {
+            $this->release(30);
+
+            $logger->info('+++++++++++++++++++++');
+            $logger->info(count($flights ?? []));
+            $logger->info(count($hotels ?? []));
+            $logger->info('+++++++++++++++++++++');
         }
 
     }

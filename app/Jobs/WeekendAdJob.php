@@ -41,7 +41,7 @@ class WeekendAdJob implements ShouldQueue
         $logger = Log::channel('weekend');
         $logger->info('STARTING WEEKEND JOB');
 
-        $adConfig->weekends_last_run = Carbon::now();
+        $adConfig->weekend_last_run = Carbon::now();
         $adConfig->save();
         $allJobs = [];
         $batchIds = [];
@@ -164,6 +164,9 @@ class WeekendAdJob implements ShouldQueue
 
         Bus::batch($allJobs)
             ->then(function (Batch $batch) use ($adConfig, $batchIds) {
+                $logger = Log::channel('weekend');
+                $logger->error('INSIDE THE CSV SECTION');
+
                 WeekendCSVJob::dispatch($adConfig, $batchIds)->onQueue('weekend');
             })
             ->catch(function (Batch $batch, Throwable $e) use ($adConfigId) {
@@ -171,14 +174,16 @@ class WeekendAdJob implements ShouldQueue
                 $logger->error('Weekend batch failed: '.$e->getMessage());
 
                 $adConfig1 = AdConfig::find($adConfigId);
-                $adConfig1->update(['weekends_status' => 'failed']);
+                $adConfig1->update(['weekend_status' => 'failed']);
             })
-            ->finally(function (Batch $batch) use ($adConfigId) {
+            ->finally(function (Batch $batch) use ($adConfigId, $adConfig, $batchIds) {
                 $logger = Log::channel('weekend');
                 $logger->info('Weekend batch finished');
 
                 $adConfig1 = AdConfig::find($adConfigId);
-                $adConfig1->update(['weekends_status' => 'completed']);
+                $adConfig1->update(['weekend_status' => 'completed']);
+
+                WeekendCSVJob::dispatch($adConfig, $batchIds)->onQueue('weekend');
             })
             ->onQueue('weekend')
             ->dispatch();

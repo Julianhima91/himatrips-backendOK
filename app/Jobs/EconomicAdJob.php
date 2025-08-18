@@ -36,7 +36,7 @@ class EconomicAdJob implements ShouldQueue
 
         $adConfigId = $this->adConfigId;
 
-        $adConfig->holidays_last_run = Carbon::now();
+        $adConfig->holiday_last_run = Carbon::now();
         $adConfig->save();
 
         $allJobs = [];
@@ -97,7 +97,10 @@ class EconomicAdJob implements ShouldQueue
 
         Bus::batch($allJobs)
             ->then(function (Batch $batch) use ($adConfig, $batchIds) {
-                EconomicCSVJob::dispatch($adConfig, $batchIds);
+                $logger = Log::channel('economic');
+                $logger->error('INSIDE THE CSV SECTION');
+
+                EconomicCSVJob::dispatch($adConfig, $batchIds)->onQueue('economic');
             })
             ->catch(function (Batch $batch, Throwable $e) use ($adConfigId) {
                 $logger = Log::channel('economic');
@@ -106,12 +109,14 @@ class EconomicAdJob implements ShouldQueue
                 $adConfig1 = AdConfig::find($adConfigId);
                 $adConfig1->update(['economic_status' => 'failed']);
             })
-            ->finally(function (Batch $batch) use ($adConfigId) {
+            ->finally(function (Batch $batch) use ($adConfigId, $adConfig, $batchIds) {
                 $logger = Log::channel('economic');
                 $logger->info('Economic batch finished');
-                Log::info($adConfigId);
+
                 $adConfig1 = AdConfig::find($adConfigId);
                 $adConfig1->update(['economic_status' => 'completed']);
+
+                EconomicCSVJob::dispatch($adConfig, $batchIds)->onQueue('economic');
             })
             ->onQueue('economic')
             ->dispatch();

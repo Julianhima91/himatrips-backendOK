@@ -56,6 +56,8 @@ class HolidayCSVJob implements ShouldQueue
             ->groupBy('destination_id')
             ->get();
 
+        $logger->info('START CHEAPEST ADS: '.$cheapestAds->count());
+
         foreach ($cheapestAds as $cheapestAd) {
             $ad = Ad::where([
                 ['ad_config_id', $this->adConfig->id],
@@ -83,12 +85,19 @@ class HolidayCSVJob implements ShouldQueue
             ->orderBy('total_price', 'asc')
             ->get();
 
+        $logger->info('END CHEAPEST ADS: '.$ads->count());
+
         [$csvPath, $adConfigId] = $this->exportAdsToCsv($ads);
 
-        AdConfigCsv::updateOrCreate([
-            'ad_config_id' => $adConfigId,
-            'file_path' => $csvPath,
-        ]);
+        if ($csvPath !== null) {
+            AdConfigCsv::updateOrCreate([
+                'ad_config_id' => $adConfigId,
+                'file_path' => $csvPath,
+            ]);
+        } else {
+            $logger->info('NOTHING TO EXPORT');
+        }
+
     }
 
     public function exportAdsToCsv($ads)
@@ -96,7 +105,15 @@ class HolidayCSVJob implements ShouldQueue
         $logger = Log::channel('holiday');
 
         $totalAds = count($ads);
-        $adConfig = $ads[0]->ad_config_id;
+        $firstAd = $ads->first();
+
+        if (! $firstAd) {
+            $logger->warning('No ads found to export. Total: '.$totalAds);
+
+            return [null, null];
+        }
+
+        $adConfig = $firstAd->ad_config_id;
         $adConfigDescription = preg_replace('/\s+/', '_', $ads[0]->adConfig->description ?? 'no_description');
         $logger->info("Exporting $totalAds ads for holiday... Ad config id: $adConfig");
 
@@ -229,7 +246,8 @@ class HolidayCSVJob implements ShouldQueue
                 $temp = $labelMap[$enum->name] ?? '';
             }
 
-            $message = "❣️ Oferta Ekonomike ne $destination->name Nga $origin ❣️
+            $message = "🌍️ Pushimet e tua me nisje nga $origin ! - Zgjidh midis ofertave me te mira sot!
+💡 Rezervo tani!📞 Ofertat janë të limituara!
 ✈️ ".$formatDate($ad->outboundFlight->departure).' - '.$formatDate($ad->inboundFlight->departure).' ➥ '.(floor($ad->total_price / 2)).' €/P '.$ad->hotelData->number_of_nights.' Nete
 ✅ Bilete Vajtje - Ardhje nga '.$ad->adConfig->origin->name.'
 ✅ Cante 10 Kg
@@ -247,7 +265,7 @@ class HolidayCSVJob implements ShouldQueue
                 //                $ad->id,
                 $ad->package_config_id,
                 floor($ad->total_price / 2),
-                "❣️ Oferta Ekonomike ne $destination->name Nga $origin ❣️",
+                "❣️ Pushime ne $destination->name Nga $origin ❣️",
                 $message,
                 $customLabel,
             ];
