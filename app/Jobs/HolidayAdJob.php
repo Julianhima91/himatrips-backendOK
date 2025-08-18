@@ -176,11 +176,11 @@ class HolidayAdJob implements ShouldQueue
         }
 
         Bus::batch($allJobs)
-            ->then(function (Batch $batch) use ($adConfig, $batchIds) {
-                $logger = Log::channel('holiday');
-                $logger->error('INSIDE THE CSV SECTION');
-
-                HolidayCSVJob::dispatch($adConfig, $batchIds)->onQueue('holiday');
+            ->then(function (Batch $batch) {
+                //                $logger = Log::channel('holiday');
+                //                $logger->error('INSIDE THE CSV SECTION');
+                //
+                //                HolidayCSVJob::dispatch($adConfig, $batchIds)->onQueue('holiday');
             })
             ->catch(function (Batch $batch, Throwable $e) use ($adConfigId) {
                 $logger = Log::channel('holiday');

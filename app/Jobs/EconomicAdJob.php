@@ -96,11 +96,11 @@ class EconomicAdJob implements ShouldQueue
         }
 
         Bus::batch($allJobs)
-            ->then(function (Batch $batch) use ($adConfig, $batchIds) {
-                $logger = Log::channel('economic');
-                $logger->error('INSIDE THE CSV SECTION');
-
-                EconomicCSVJob::dispatch($adConfig, $batchIds)->onQueue('economic');
+            ->then(function (Batch $batch) {
+                //                $logger = Log::channel('economic');
+                //                $logger->error('INSIDE THE CSV SECTION');
+                //
+                //                EconomicCSVJob::dispatch($adConfig, $batchIds)->onQueue('economic');
             })
             ->catch(function (Batch $batch, Throwable $e) use ($adConfigId) {
                 $logger = Log::channel('economic');

@@ -163,11 +163,11 @@ class WeekendAdJob implements ShouldQueue
         }
 
         Bus::batch($allJobs)
-            ->then(function (Batch $batch) use ($adConfig, $batchIds) {
-                $logger = Log::channel('weekend');
-                $logger->error('INSIDE THE CSV SECTION');
-
-                WeekendCSVJob::dispatch($adConfig, $batchIds)->onQueue('weekend');
+            ->then(function (Batch $batch) {
+                //                $logger = Log::channel('weekend');
+                //                $logger->error('INSIDE THE CSV SECTION');
+                //
+                //                WeekendCSVJob::dispatch($adConfig, $batchIds)->onQueue('weekend');
             })
             ->catch(function (Batch $batch, Throwable $e) use ($adConfigId) {
                 $logger = Log::channel('weekend');
