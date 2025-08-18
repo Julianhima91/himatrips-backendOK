@@ -36,7 +36,7 @@ class EconomicAdJob implements ShouldQueue
 
         $adConfigId = $this->adConfigId;
 
-        $adConfig->holiday_last_run = Carbon::now();
+        $adConfig->economic_last_run = Carbon::now();
         $adConfig->save();
 
         $allJobs = [];
