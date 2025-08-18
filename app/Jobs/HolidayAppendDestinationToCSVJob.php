@@ -84,6 +84,12 @@ class HolidayAppendDestinationToCSVJob implements ShouldQueue
             ->where('file_path', 'like', '%holiday%')
             ->first();
 
+        if (count($ads) == 0) {
+            $logger->warning('==========================');
+            $logger->warning('No Ads available to append');
+            $logger->warning('==========================');
+        }
+
         $this->appendToCSV($ads, $csv);
     }
 
