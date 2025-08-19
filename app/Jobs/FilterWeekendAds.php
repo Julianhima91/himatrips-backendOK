@@ -207,6 +207,10 @@ class FilterWeekendAds implements ShouldQueue
             $flights = $flights->reject(null);
             $first_outbound_flight = $flights[0] ?? $flights->first();
 
+            //todo: Let's add logs so we can see where flights reach 0
+            //example: if there is no direct flight or no morning flight
+            //case: ZRH - JMK. ID: 12. Zvicer-Basel - Santorini
+
             //$logger->error("FLIGHT PRICE:::::::::::::::::::: $first_outbound_flight->price");
             $logger->warning("origin: $first_outbound_flight->origin");
             $logger->warning("destination: $first_outbound_flight->destination");
