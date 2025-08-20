@@ -39,10 +39,11 @@ class DispatchRefreshAdConfigs extends Command
         $statusColumn = "{$type}_status";
         $lastRunColumn = "{$type}_last_run";
 
-        AdConfig::where(function ($query) use ($now, $lastRunColumn) {
-            $query->whereNull($lastRunColumn)
-                ->orWhereRaw("TIMESTAMPDIFF(HOUR, {$lastRunColumn}, ?) >= refresh_hours", [$now]);
-        })
+        AdConfig::where('autoupdate', true)
+            ->where(function ($query) use ($now, $lastRunColumn) {
+                $query->whereNull($lastRunColumn)
+                    ->orWhereRaw("TIMESTAMPDIFF(HOUR, {$lastRunColumn}, ?) >= refresh_hours", [$now]);
+            })
             ->where($statusColumn, '!=', 'running')
             ->orderByRaw("COALESCE({$lastRunColumn}, created_at) ASC")
             ->chunkById(5, function ($configs) use ($queue, $statusColumn, $lastRunColumn, $type, $jobClasses) {

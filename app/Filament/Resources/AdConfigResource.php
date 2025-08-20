@@ -105,6 +105,10 @@ class AdConfigResource extends Resource
                     ->required()
                     ->reactive(),
 
+                Forms\Components\Toggle::make('autoupdate')
+                    ->label('Autoupdate')
+                    ->required(),
+
                 Forms\Components\Select::make('boarding_options')
                     ->label('Boarding Options')
                     ->multiple()
@@ -123,10 +127,9 @@ class AdConfigResource extends Resource
     {
         return $table
             ->columns([
-                //                TextColumn::make('origin.country')
-                //                    ->label('Origin')
-                //                    ->sortable()
-                //                    ->searchable(),
+                Tables\Columns\ToggleColumn::make('autoupdate')
+                    ->label('Auto Update')
+                    ->disabled(),
                 TextColumn::make('description')
                     ->label('Description')
                     ->sortable()
