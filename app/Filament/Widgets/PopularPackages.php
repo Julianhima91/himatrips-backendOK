@@ -10,6 +10,7 @@ use Filament\Forms\Components\Select;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Filament\Widgets\TableWidget as BaseWidget;
+use Illuminate\Support\Facades\DB;
 
 class PopularPackages extends BaseWidget
 {
@@ -23,19 +24,20 @@ class PopularPackages extends BaseWidget
     {
         $destinations = Destination::query()
             ->selectRaw('
-                destinations.id,
-                destinations.name,
-                destinations.country,
-                COUNT(DISTINCT packages.batch_id) AS search_count
-            ')
+        destinations.id,
+        destinations.name,
+        destinations.country,
+        COUNT(DISTINCT packages.batch_id) AS search_count
+    ')
             ->leftJoin('destination_origins', 'destinations.id', '=', 'destination_origins.destination_id')
             ->leftJoin('origins', 'destination_origins.origin_id', '=', 'origins.id')
             ->leftJoin('package_configs', 'destination_origins.id', '=', 'package_configs.destination_origin_id')
             ->leftJoin('packages', 'packages.package_config_id', '=', 'package_configs.id')
             ->leftJoin('flight_data', 'flight_data.id', '=', 'packages.outbound_flight_id')
             ->leftJoin('countries', 'destinations.country_id', '=', 'countries.id')
-            ->groupBy('destinations.id')
-            ->orderBy('search_count', 'desc');
+            ->whereBetween(DB::raw('DATE(packages.created_at)'), ['2024-01-01', now()->toDateString()])
+            ->groupBy('destinations.id', 'destinations.name', 'destinations.country')
+            ->orderByDesc('search_count');
 
         return $table
             ->query($destinations)
