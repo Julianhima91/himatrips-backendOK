@@ -118,6 +118,8 @@ class FilterWeekendAds implements ShouldQueue
     {
         $logger = Log::channel('weekend');
 
+        $logger->info('Starting flights count: '.$flights->count());
+
         $destinationOrigin = DestinationOrigin::where([
             ['destination_id', $destination_id],
             ['origin_id', $this->adConfig->origin_id],
@@ -130,6 +132,7 @@ class FilterWeekendAds implements ShouldQueue
 
             return $flight->stopCount === 0 && $flight->stopCount_back === 0;
         });
+        $logger->info('After direct flights filter: '.$outbound_flight_direct->count());
 
         $packageConfig = PackageConfig::query()
             ->whereHas('destination_origin', function ($query) use ($destination_id, $origin_id) {
@@ -149,6 +152,7 @@ class FilterWeekendAds implements ShouldQueue
 
                 return $flight->stopCount <= $destinationOrigin->stops && $flight->stopCount_back <= $destinationOrigin->stops;
             });
+            $logger->info('After max stops filter: '.$outbound_flight_max_stops->count());
 
             $flights = $outbound_flight_max_stops;
             $maxTransitTimeSettings = app(MaxTransitTime::class);
@@ -163,6 +167,7 @@ class FilterWeekendAds implements ShouldQueue
                         return $timeBetweenFlight <= $maxTransitTimeSettings->minutes;
                     });
                 });
+                $logger->info('After max waiting time filter: '.$outbound_flight_max_wait->count());
 
                 if ($outbound_flight_max_wait->isNotEmpty()) {
                     $outbound_flight = $outbound_flight_max_wait;
@@ -189,6 +194,7 @@ class FilterWeekendAds implements ShouldQueue
                 return true;
             });
         });
+        $logger->info('After morning flights filter: '.$outbound_flight_morning->count());
 
         if ($outbound_flight_morning->isNotEmpty()) {
             $flights = $outbound_flight_morning;
@@ -198,6 +204,7 @@ class FilterWeekendAds implements ShouldQueue
             ['stopCount', 'asc'],
             ['price', 'asc'],
         ]);
+        $logger->info('After sorting, flights left: '.$flights->count());
 
         if ($flights->isEmpty()) {
             $logger->warning("No flight for batch {$this->baseBatchId}");
@@ -211,9 +218,10 @@ class FilterWeekendAds implements ShouldQueue
             //example: if there is no direct flight or no morning flight
             //case: ZRH - JMK. ID: 12. Zvicer-Basel - Santorini
 
-            //$logger->error("FLIGHT PRICE:::::::::::::::::::: $first_outbound_flight->price");
-            $logger->warning("origin: $first_outbound_flight->origin");
-            $logger->warning("destination: $first_outbound_flight->destination");
+            $logger->info("Selected outbound flight price: {$first_outbound_flight->price}");
+            $logger->info("Outbound origin: {$first_outbound_flight->origin}");
+            $logger->info("Outbound destination: {$first_outbound_flight->destination}");
+
             $outbound_flight_hydrated = FlightData::create([
                 'price' => $first_outbound_flight->price,
                 'departure' => $first_outbound_flight->departure,

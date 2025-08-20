@@ -12,7 +12,6 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Log;
 
@@ -47,47 +46,44 @@ class HolidayCSVJob implements ShouldQueue
 
         $logger->info('Batch Id Count: '.count($this->batchIds));
 
-        $cheapestAds = Ad::select('destination_id', DB::raw('MIN(total_price) as min_price'))
-            ->where([
-                ['ad_config_id', $this->adConfig->id],
-                ['offer_category', 'holiday'],
-            ])
+        $ads = Ad::query()
+            ->where('ad_config_id', $this->adConfig->id)
+            ->where('offer_category', 'holiday')
             ->whereIn('batch_id', $this->batchIds)
-            ->groupBy('destination_id')
             ->get();
 
-        $logger->info('START CHEAPEST ADS: '.$cheapestAds->count());
+        $logger->info("Total ads fetched: {$ads->count()}");
 
-        foreach ($cheapestAds as $cheapestAd) {
-            $ad = Ad::where([
-                ['ad_config_id', $this->adConfig->id],
-                ['offer_category', 'holiday'],
-                ['destination_id', $cheapestAd->destination_id],
-                ['total_price', $cheapestAd->min_price],
-            ])
-                ->whereIn('batch_id', $this->batchIds)
-                ->first();
+        $adsByHoliday = $ads->groupBy(function ($ad) {
+            $req = json_decode($ad->request_data, true);
+            $date = $req['date'] ?? 'unknown';
+            $returnDate = $req['return_date'] ?? 'unknown';
 
-            $logger->warning("Ad ID: $ad->id");
+            return $ad->destination_id.'|'.$date.'|'.$returnDate;
+        });
 
-            Ad::where([
-                ['ad_config_id', $this->adConfig->id],
-                ['offer_category', 'holiday'],
-                ['destination_id', $cheapestAd->destination_id],
-            ])
-                ->whereIn('batch_id', $this->batchIds)
-                ->where('id', '!=', $ad->id)
-                ->delete();
+        $logger->info('Unique holiday groups: '.$adsByHoliday->count());
+
+        $keptAds = collect();
+
+        foreach ($adsByHoliday as $holidayKey => $holidayAds) {
+            $logger->info("Processing group: {$holidayKey} (ads: {$holidayAds->count()})");
+
+            $sorted = $holidayAds->sortBy('total_price');
+            $cheapest = $sorted->first();
+
+            if ($cheapest) {
+                $logger->warning("Keeping Ad ID {$cheapest->id} with price {$cheapest->total_price}");
+                $keptAds->push($cheapest);
+
+                $toDelete = $sorted->slice(1);
+                if ($toDelete->isNotEmpty()) {
+                    Ad::whereIn('id', $toDelete->pluck('id'))->delete();
+                }
+            }
         }
 
-        $ads = Ad::query()
-            ->whereIn('batch_id', $this->batchIds)
-            ->orderBy('total_price', 'asc')
-            ->get();
-
-        $logger->info('END CHEAPEST ADS: '.$ads->count());
-
-        [$csvPath, $adConfigId] = $this->exportAdsToCsv($ads);
+        [$csvPath, $adConfigId] = $this->exportAdsToCsv($keptAds);
 
         if ($csvPath !== null) {
             AdConfigCsv::updateOrCreate([
@@ -97,7 +93,6 @@ class HolidayCSVJob implements ShouldQueue
         } else {
             $logger->info('NOTHING TO EXPORT');
         }
-
     }
 
     public function exportAdsToCsv($ads)

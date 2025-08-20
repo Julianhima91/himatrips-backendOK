@@ -126,6 +126,8 @@ class FilterHolidayAds implements ShouldQueue
     {
         $logger = Log::channel('holiday');
 
+        $logger->info('Starting flights count: '.$flights->count());
+
         $destinationOrigin = DestinationOrigin::where([
             ['destination_id', $destination_id],
             ['origin_id', $this->adConfig->origin_id],
@@ -138,6 +140,7 @@ class FilterHolidayAds implements ShouldQueue
 
             return $flight->stopCount === 0 && $flight->stopCount_back === 0;
         });
+        $logger->info('After direct flights filter: '.$outbound_flight_direct->count());
 
         $packageConfig = PackageConfig::query()
             ->whereHas('destination_origin', function ($query) use ($destination_id, $origin_id) {
@@ -157,6 +160,7 @@ class FilterHolidayAds implements ShouldQueue
 
                 return $flight->stopCount <= $destinationOrigin->stops && $flight->stopCount_back <= $destinationOrigin->stops;
             });
+            $logger->info('After max stops filter: '.$outbound_flight_max_stops->count());
 
             $flights = $outbound_flight_max_stops;
             $maxTransitTimeSettings = app(MaxTransitTime::class);
@@ -171,6 +175,7 @@ class FilterHolidayAds implements ShouldQueue
                         return $timeBetweenFlight <= $maxTransitTimeSettings->minutes;
                     });
                 });
+                $logger->info('After max waiting time filter: '.$outbound_flight_max_wait->count());
 
                 if ($outbound_flight_max_wait->isNotEmpty()) {
                     $outbound_flight = $outbound_flight_max_wait;
@@ -197,6 +202,7 @@ class FilterHolidayAds implements ShouldQueue
                 return true;
             });
         });
+        $logger->info('After morning flights filter: '.$outbound_flight_morning->count());
 
         if ($outbound_flight_morning->isNotEmpty()) {
             $flights = $outbound_flight_morning;
@@ -206,6 +212,7 @@ class FilterHolidayAds implements ShouldQueue
             ['stopCount', 'asc'],
             ['price', 'asc'],
         ]);
+        $logger->info('After sorting, flights left: '.$flights->count());
 
         if ($flights->isEmpty()) {
             $logger->warning("No flight for batch {$this->baseBatchId}");
@@ -215,9 +222,10 @@ class FilterHolidayAds implements ShouldQueue
             $flights = $flights->reject(null);
             $first_outbound_flight = $flights[0] ?? $flights->first();
 
-            //$logger->error("FLIGHT PRICE:::::::::::::::::::: $first_outbound_flight->price");
-            $logger->warning("origin: $first_outbound_flight->origin");
-            $logger->warning("destination: $first_outbound_flight->destination");
+            $logger->info("Selected outbound flight price: {$first_outbound_flight->price}");
+            $logger->info("Outbound origin: {$first_outbound_flight->origin}");
+            $logger->info("Outbound destination: {$first_outbound_flight->destination}");
+
             $outbound_flight_hydrated = FlightData::create([
                 'price' => $first_outbound_flight->price,
                 'departure' => $first_outbound_flight->departure,
@@ -338,19 +346,28 @@ class FilterHolidayAds implements ShouldQueue
         $logger = Log::channel('holiday');
 
         $logger->warning('FILTERING ...');
-        $logger->warning("Ad config $adConfig->id");
-        $logger->warning("Batch id: $batchId");
+        $logger->warning("Ad config: {$adConfig->id}");
+        $logger->warning("Batch id: {$batchId}");
 
         $ads = Ad::query()
             ->where('ad_config_id', $adConfig->id)
             ->where('batch_id', $batchId)
-            ->orderBy('total_price')
             ->get();
 
-        if ($ads->count() > 1) {
-            $ads->slice(1)->each->delete();
-        }
+        $adsByHoliday = $ads->groupBy(function ($ad) {
+            $req = json_decode($ad->request_data, true);
+            $holidayKey = ($req['date'] ?? 'missing').'|'.($req['return_date'] ?? 'missing');
 
-        $logger->warning($ads->count());
+            return $holidayKey;
+        });
+
+        foreach ($adsByHoliday as $holidayKey => $holidayAds) {
+            $sorted = $holidayAds->sortBy('total_price');
+            $toDelete = $sorted->slice(1);
+
+            $toDelete->each(function ($ad) {
+                $ad->delete();
+            });
+        }
     }
 }
