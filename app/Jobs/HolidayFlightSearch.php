@@ -13,7 +13,7 @@ use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 
-class EconomicFlightSearch implements ShouldQueue
+class HolidayFlightSearch implements ShouldQueue
 {
     use Batchable, Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
@@ -35,12 +35,9 @@ class EconomicFlightSearch implements ShouldQueue
 
     public $adConfigId;
 
-    public $yearMonth;
+    public $request;
 
-    /**
-     * Create a new job instance.
-     */
-    public function __construct($yearMonth, $origin_airport, $destination_airport, $adults, $children, $infants, $batchId, $adConfigId)
+    public function __construct($request, $origin_airport, $destination_airport, $adults, $children, $infants, $batchId, $adConfigId)
     {
         $this->origin = $origin_airport;
         $this->destination = $destination_airport;
@@ -49,7 +46,7 @@ class EconomicFlightSearch implements ShouldQueue
         $this->infants = $infants;
         $this->baseBatchId = $batchId;
         $this->adConfigId = $adConfigId;
-        $this->yearMonth = $yearMonth;
+        $this->request = $request;
     }
 
     /**
@@ -57,29 +54,15 @@ class EconomicFlightSearch implements ShouldQueue
      */
     public function handle(): void
     {
-        $logger = Log::channel('economic');
+        $logger = Log::channel('holiday');
 
         $request = new RetrieveFlightsRequest;
-
-        //        $logger->info("third job $this->baseBatchId");
-
-        $cheapest = Cache::get("$this->adConfigId:$this->baseBatchId:cheapest_combination");
-        //        $logger->warning($cheapest);
-
-        if (! $cheapest) {
-            $logger->info("Cancelling flight job since there was no cheapest combination found for batch: $this->baseBatchId");
-
-            return;
-        }
-        $date = $this->yearMonth.'-'.$cheapest['outbound']['date'];
-        $returnDate = $this->yearMonth.'-'.$cheapest['return']['date'];
-        $logger->warning("Processing batch: $this->baseBatchId");
 
         $request->query()->merge([
             'fromEntityId' => $this->origin->rapidapi_id,
             'toEntityId' => $this->destination->rapidapi_id,
-            'departDate' => $date,
-            'returnDate' => $returnDate,
+            'departDate' => $this->request['date'],
+            'returnDate' => $this->request['return_date'],
             'adults' => $this->adults,
             'children' => $this->children,
             'infants' => $this->infants,
@@ -108,12 +91,13 @@ class EconomicFlightSearch implements ShouldQueue
                 return;
             } else {
                 $logger->warning("DONE================================: $this->baseBatchId");
+                $logger->warning('Itineraries count: '.count($itineraries));
 
                 Cache::put("batch:{$this->baseBatchId}:flights", $itineraries, now()->addMinutes(180));
 
-                $csvCache = Cache::get("$this->adConfigId:economic_create_csv", []);
+                $csvCache = Cache::get("$this->adConfigId:holiday_create_csv", []);
                 $csvCache[] = (string) $this->baseBatchId;
-                Cache::put("$this->adConfigId:economic_create_csv", $csvCache, now()->addMinutes(180));
+                Cache::put("$this->adConfigId:holiday_create_csv", $csvCache, now()->addMinutes(180));
             }
         } catch (\Exception $e) {
             $logger->info($e->getMessage());
@@ -127,7 +111,7 @@ class EconomicFlightSearch implements ShouldQueue
 
     private function getIncompleteResults($session)
     {
-        $logger = Log::channel('economic');
+        $logger = Log::channel('holiday');
 
         $request = new RetrieveIncompleteFlights($this->adults, $this->children, $this->infants);
         $logger->warning("Retrieving incomplete results for batch: $this->baseBatchId");

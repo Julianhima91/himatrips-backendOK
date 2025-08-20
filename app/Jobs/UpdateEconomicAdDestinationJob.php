@@ -100,10 +100,12 @@ class UpdateEconomicAdDestinationJob implements ShouldQueue
                 AppendDestinationToCSVJob::dispatch($adConfig, $batchIds, $destinationId);
             })
             ->catch(function (Batch $batch, Throwable $e) {
-                Log::error('Economic batch failed: '.$e->getMessage());
+                $logger = Log::channel('economic');
+                $logger->info('Economic batch finished');
             })
             ->finally(function (Batch $batch) {
-                Log::info('Economic batch finished');
+                $logger = Log::channel('economic');
+                $logger->info('Economic batch finished');
             })
             ->onQueue('economic')
             ->dispatch();
