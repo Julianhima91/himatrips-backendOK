@@ -145,6 +145,7 @@ class DestinationResource extends Resource
                     ->schema([
                         FileUpload::make('Images')
                             ->maxSize(30480)
+                            ->disk('public')
                             ->multiple()
                             ->panelLayout('square'),
                     ]),

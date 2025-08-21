@@ -29,6 +29,7 @@ class DestinationPhotosResource extends Resource
                 Section::make('Destination Photo')
                     ->schema([
                         FileUpload::make('file_path')
+                            ->disk('public')
                             ->disabled()
                             ->panelLayout('square'),
                     ]),

@@ -78,6 +78,7 @@ class HotelResource extends Resource
                     ->schema([
                         FileUpload::make('Images')
                             ->image()
+                            ->disk('public')
                             ->panelLayout('compact')
                             ->reorderable()
                             ->imagePreviewHeight('220')
