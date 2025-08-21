@@ -4,6 +4,7 @@ namespace App\Jobs;
 
 use App\Http\Integrations\GoFlightIntegration\Requests\RetrieveFlightsRequest;
 use App\Http\Integrations\GoFlightIntegration\Requests\RetrieveIncompleteFlights;
+use Exception;
 use Illuminate\Bus\Batchable;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -69,8 +70,8 @@ class LiveSearchFlights implements ShouldQueue
 
         try {
             $response = $request->send();
-        } catch (\Exception $e) {
-            //if its the first attempt, retry
+        } catch (Exception $e) {
+            // if its the first attempt, retry
             if ($this->attempts() == 1) {
                 $this->release(1);
             }
@@ -78,7 +79,7 @@ class LiveSearchFlights implements ShouldQueue
             $this->fail($e);
         }
 
-        //check if context is set, and if it is incomplete, then we have to hit another endpoint
+        // check if context is set, and if it is incomplete, then we have to hit another endpoint
         if (isset($response->json()['data']['context']['status']) && $response->json()['data']['context']['status'] == 'incomplete') {
             $response = $this->getIncompleteResults($response->json()['data']['context']['sessionId']);
         }
@@ -102,8 +103,8 @@ class LiveSearchFlights implements ShouldQueue
                     Cache::put("job_completed_{$this->batchId}", true);
                 }
             }
-        } catch (\Exception $e) {
-            //if its the first attempt, retry
+        } catch (Exception $e) {
+            // if its the first attempt, retry
             if ($this->attempts() == 1) {
                 $this->release(1);
             }

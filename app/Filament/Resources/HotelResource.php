@@ -2,14 +2,27 @@
 
 namespace App\Filament\Resources;
 
-use App\Filament\Resources\HotelResource\Pages;
+use App\Filament\Resources\HotelResource\Pages\CreateHotel;
+use App\Filament\Resources\HotelResource\Pages\EditHotel;
+use App\Filament\Resources\HotelResource\Pages\ListHotels;
 use App\Filament\Resources\HotelResource\RelationManagers\DestinationsRelationManager;
 use App\Filament\Resources\HotelResource\RelationManagers\TransfersRelationManager;
 use App\Models\Hotel;
-use Filament\Forms;
-use Filament\Forms\Form;
+use Filament\Actions\BulkActionGroup;
+use Filament\Actions\CreateAction;
+use Filament\Actions\DeleteBulkAction;
+use Filament\Actions\EditAction;
+use Filament\Forms\Components\FileUpload;
+use Filament\Forms\Components\RichEditor;
+use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Toggle;
 use Filament\Resources\Resource;
+use Filament\Schemas\Components\Section;
+use Filament\Schemas\Schema;
 use Filament\Tables;
+use Filament\Tables\Columns\IconColumn;
+use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
@@ -18,52 +31,52 @@ class HotelResource extends Resource
 {
     protected static ?string $model = Hotel::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-rectangle-stack';
+    protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-rectangle-stack';
 
-    public static function form(Form $form): Form
+    public static function form(Schema $schema): Schema
     {
-        return $form
-            ->schema([
-                Forms\Components\Section::make('Hotel Information')
+        return $schema
+            ->components([
+                Section::make('Hotel Information')
                     ->schema([
-                        Forms\Components\TextInput::make('hotel_id')
+                        TextInput::make('hotel_id')
                             ->hiddenOn('edit')
                             ->tel()
                             ->numeric(),
-                        Forms\Components\TextInput::make('name')
+                        TextInput::make('name')
                             ->maxLength(255),
-                        Forms\Components\TextInput::make('address')
+                        TextInput::make('address')
                             ->maxLength(255),
-                        Forms\Components\TextInput::make('phone')
+                        TextInput::make('phone')
                             ->tel()
                             ->maxLength(255),
-                        Forms\Components\TextInput::make('fax')
+                        TextInput::make('fax')
                             ->hiddenOn('edit')
                             ->maxLength(255),
-                        Forms\Components\TextInput::make('stars')
+                        TextInput::make('stars')
                             ->numeric(),
-                        Forms\Components\TextInput::make('longitude')
+                        TextInput::make('longitude')
                             ->maxLength(255),
-                        Forms\Components\TextInput::make('latitude')
+                        TextInput::make('latitude')
                             ->maxLength(255),
-                        Forms\Components\Toggle::make('is_apartment')
+                        Toggle::make('is_apartment')
                             ->hiddenOn('edit'),
-                        Forms\Components\TextInput::make('city')
+                        TextInput::make('city')
                             ->maxLength(255),
-                        Forms\Components\TextInput::make('country')
+                        TextInput::make('country')
                             ->maxLength(255),
-                        Forms\Components\TextInput::make('review_score')
+                        TextInput::make('review_score')
                             ->numeric(),
-                        Forms\Components\TextInput::make('review_count')
+                        TextInput::make('review_count')
                             ->numeric(),
-                        Forms\Components\RichEditor::make('description')
+                        RichEditor::make('description')
                             ->maxLength(65535)
                             ->columnSpanFull(),
                     ])
                     ->columns(2),
-                Forms\Components\Section::make('Hotel Photos')
+                Section::make('Hotel Photos')
                     ->schema([
-                        Forms\Components\FileUpload::make('Images')
+                        FileUpload::make('Images')
                             ->image()
                             ->panelLayout('compact')
                             ->reorderable()
@@ -81,49 +94,49 @@ class HotelResource extends Resource
                 //                    ->label('Destination')
                 //                    ->searchable()
                 //                    ->sortable(),
-                Tables\Columns\TextColumn::make('name')
+                TextColumn::make('name')
                     ->wrap()
                     ->searchable(),
-                Tables\Columns\TextColumn::make('address')
+                TextColumn::make('address')
                     ->wrap()
                     ->searchable(),
-                Tables\Columns\TextColumn::make('phone')
+                TextColumn::make('phone')
                     ->searchable(),
-                Tables\Columns\TextColumn::make('stars')
+                TextColumn::make('stars')
                     ->numeric()
                     ->sortable(),
-                Tables\Columns\IconColumn::make('is_apartment')
+                IconColumn::make('is_apartment')
                     ->boolean(),
-                Tables\Columns\TextColumn::make('city')
+                TextColumn::make('city')
                     ->searchable(),
-                Tables\Columns\TextColumn::make('country')
+                TextColumn::make('country')
                     ->searchable(),
-                Tables\Columns\TextColumn::make('created_at')
+                TextColumn::make('created_at')
                     ->dateTime()
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
-                Tables\Columns\TextColumn::make('updated_at')
+                TextColumn::make('updated_at')
                     ->dateTime()
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
-                Tables\Filters\Filter::make('has_destination')
+                Filter::make('has_destination')
                     ->query(
                         fn (Builder $query) => $query->whereHas('destinations')
                     ),
                 SelectFilter::make('destinations')->relationship('destinations', 'name'),
             ])
-            ->actions([
-                Tables\Actions\EditAction::make(),
+            ->recordActions([
+                EditAction::make(),
             ])
-            ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
+            ->toolbarActions([
+                BulkActionGroup::make([
+                    DeleteBulkAction::make(),
                 ]),
             ])
             ->emptyStateActions([
-                Tables\Actions\CreateAction::make(),
+                CreateAction::make(),
             ]);
     }
 
@@ -138,9 +151,9 @@ class HotelResource extends Resource
     public static function getPages(): array
     {
         return [
-            'index' => Pages\ListHotels::route('/'),
-            'create' => Pages\CreateHotel::route('/create'),
-            'edit' => Pages\EditHotel::route('/{record}/edit'),
+            'index' => ListHotels::route('/'),
+            'create' => CreateHotel::route('/create'),
+            'edit' => EditHotel::route('/{record}/edit'),
         ];
     }
 }

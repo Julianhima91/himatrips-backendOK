@@ -8,6 +8,7 @@ use App\Models\HotelOffer;
 use App\Models\Package;
 use App\Models\PackageConfig;
 use DateTime;
+use DB;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -71,7 +72,7 @@ class ImportPackagesJob implements ShouldQueue
         $csv = Storage::disk('public')->get($this->filePath);
         $rows = preg_split('/\r\n|\n|\r/', trim($csv));
 
-        \DB::beginTransaction();
+        DB::beginTransaction();
 
         $currentFlightData = null;
         $currentHotelData = null;
@@ -258,7 +259,7 @@ class ImportPackagesJob implements ShouldQueue
         $packageConfig->update([
             'manual_date_combination' => $dateCombinations,
         ]);
-        \DB::commit();
+        DB::commit();
 
         Log::info('Successfully imported packages for package config ID: '.$this->packageConfigId);
         Storage::disk('public')->delete($this->filePath);

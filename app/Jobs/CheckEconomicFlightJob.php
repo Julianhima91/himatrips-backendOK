@@ -3,6 +3,7 @@
 namespace App\Jobs;
 
 use App\Http\Integrations\GoFlightIntegration\Requests\OneWayDirectFlightCalendarRequest;
+use Exception;
 use Illuminate\Bus\Batchable;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -104,7 +105,7 @@ class CheckEconomicFlightJob implements ShouldQueue
                 Cache::put("$this->adConfigId:$this->baseBatchId:cheap_flights_return", $outboundCheapMonthlyFlights, now()->addMinutes(180));
             }
 
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             $logger = Log::channel('economic');
 
             $logger->error('!!!ERROR!!!');

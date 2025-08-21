@@ -2,19 +2,27 @@
 
 namespace App\Filament\Resources;
 
-use App\Filament\Resources\PackageResource\Pages;
+use App\Filament\Resources\PackageResource\Pages\CreatePackage;
+use App\Filament\Resources\PackageResource\Pages\EditPackage;
+use App\Filament\Resources\PackageResource\Pages\ListPackages;
+use App\Filament\Resources\PackageResource\Pages\ViewPackage;
 use App\Models\FlightData;
 use App\Models\Hotel;
 use App\Models\Package;
-use Filament\Forms;
-use Filament\Forms\Form;
-use Filament\Infolists\Components\Grid;
+use Filament\Actions\BulkActionGroup;
+use Filament\Actions\DeleteBulkAction;
+use Filament\Actions\ViewAction;
+use Filament\Forms\Components\Select;
+use Filament\Forms\Components\TextInput;
 use Filament\Infolists\Components\RepeatableEntry;
-use Filament\Infolists\Components\Section;
 use Filament\Infolists\Components\TextEntry;
-use Filament\Infolists\Infolist;
 use Filament\Resources\Resource;
-use Filament\Tables;
+use Filament\Schemas\Components\Grid;
+use Filament\Schemas\Components\Section;
+use Filament\Schemas\Schema;
+use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Filters\Filter;
+use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Model;
 
@@ -22,20 +30,20 @@ class PackageResource extends Resource
 {
     protected static ?string $model = Package::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-rectangle-stack';
+    protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-rectangle-stack';
 
-    public static function form(Form $form): Form
+    public static function form(Schema $schema): Schema
     {
-        return $form
-            ->schema([
-                Forms\Components\TextInput::make('commission'),
+        return $schema
+            ->components([
+                TextInput::make('commission'),
             ]);
     }
 
-    public static function infolist(Infolist $infolist): Infolist
+    public static function infolist(Schema $schema): Schema
     {
-        return $infolist
-            ->schema([
+        return $schema
+            ->components([
                 Section::make('Outbound Flight')
                     ->description('Details for the outbound flight')
                     ->schema([
@@ -171,34 +179,34 @@ class PackageResource extends Resource
         return $table
             ->poll('10s')
             ->columns([
-                //create the following columns: Origin, Destination, Departure, Arrival, Hotel, Hotel Price, Flight Price, Commission, Total Price
-                Tables\Columns\TextColumn::make('id')
+                // create the following columns: Origin, Destination, Departure, Arrival, Hotel, Hotel Price, Flight Price, Commission, Total Price
+                TextColumn::make('id')
                     ->label('ID')
                     ->sortable(),
-                Tables\Columns\TextColumn::make('outboundFlight.origin')
+                TextColumn::make('outboundFlight.origin')
                     ->label('Origin')
                     ->searchable()
                     ->sortable(),
-                Tables\Columns\TextColumn::make('outboundFlight.destination')
+                TextColumn::make('outboundFlight.destination')
                     ->label('Destination')
                     ->searchable()
                     ->sortable(),
-                Tables\Columns\TextColumn::make('hotelData.hotel.name')
+                TextColumn::make('hotelData.hotel.name')
                     ->label('Hotel')
                     ->sortable(),
-                Tables\Columns\TextColumn::make('hotelData.check_in_date')
+                TextColumn::make('hotelData.check_in_date')
                     ->label('Check In')
                     ->sortable(),
-                Tables\Columns\TextColumn::make('hotelData.number_of_nights')
+                TextColumn::make('hotelData.number_of_nights')
                     ->label('Number of Nights'),
-                Tables\Columns\TextColumn::make('hotelData.cheapest_offer_price')
+                TextColumn::make('hotelData.cheapest_offer_price')
                     ->label('Hotel Price'),
-                Tables\Columns\TextColumn::make('outbound_flight_id')
+                TextColumn::make('outbound_flight_id')
                     ->label('Flight Price')
                     ->formatStateUsing(function (Model $record) {
                         return FlightData::where('id', $record->outbound_flight_id)->first()->price;
                     }),
-                Tables\Columns\TextColumn::make('commission')
+                TextColumn::make('commission')
                     ->formatStateUsing(function (Model $record) {
                         $flightPrice = FlightData::where('id', $record->outbound_flight_id)->first()->price;
 
@@ -216,18 +224,18 @@ class PackageResource extends Resource
 
                         return $record->total_price - $flightPrice - $transferPrice - $record->hotelData->cheapest_offer_price;
                     }),
-                Tables\Columns\TextColumn::make('total_price'),
+                TextColumn::make('total_price'),
             ])
             ->filters([
-                //we need a filter for destination
-                //we need a filter for origin
-                Tables\Filters\SelectFilter::make('destination')
+                // we need a filter for destination
+                // we need a filter for origin
+                SelectFilter::make('destination')
                     ->label('Destination')
                     ->relationship('packageConfig.destination_origin.destination', 'name'),
-                Tables\Filters\Filter::make('hotel')
+                Filter::make('hotel')
                     ->label('Hotel')
-                    ->form([
-                        Forms\Components\Select::make('hotel_id')
+                    ->schema([
+                        Select::make('hotel_id')
                             ->label('Hotel')
                             ->searchable()
                             ->getSearchResultsUsing(function (string $search) {
@@ -246,12 +254,12 @@ class PackageResource extends Resource
                         }
                     }),
             ])
-            ->actions([
-                Tables\Actions\ViewAction::make(),
+            ->recordActions([
+                ViewAction::make(),
             ])
-            ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
+            ->toolbarActions([
+                BulkActionGroup::make([
+                    DeleteBulkAction::make(),
                 ]),
             ])
             ->emptyStateActions([
@@ -269,10 +277,10 @@ class PackageResource extends Resource
     public static function getPages(): array
     {
         return [
-            'index' => Pages\ListPackages::route('/'),
-            'create' => Pages\CreatePackage::route('/create'),
-            'view' => Pages\ViewPackage::route('/{record}'),
-            'edit' => Pages\EditPackage::route('/{record}/edit'),
+            'index' => ListPackages::route('/'),
+            'create' => CreatePackage::route('/create'),
+            'view' => ViewPackage::route('/{record}'),
+            'edit' => EditPackage::route('/{record}/edit'),
         ];
     }
 

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Origin;
+use Cache;
 use DateTime;
 use Spatie\QueryBuilder\QueryBuilder;
 
@@ -26,7 +27,7 @@ class OriginController extends Controller
             ], 404);
         }
 
-        //make resource for filtering if needed
+        // make resource for filtering if needed
 
         return response()->json([
             'data' => $origins,
@@ -35,7 +36,7 @@ class OriginController extends Controller
 
     public function availableOrigins()
     {
-        $uniqueOrigins = \Cache::remember('available_origins', 180, function () {
+        $uniqueOrigins = Cache::remember('available_origins', 180, function () {
             return Origin::query()
                 ->select(['id', 'name', 'description', 'city', 'country'])
                 ->with(['destinationOrigin.packages.outboundFlight', 'destinationOrigin.packages.inboundFlight', 'destinationOrigin.packages.packageConfig'])

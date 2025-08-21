@@ -2,19 +2,23 @@
 
 namespace App\Filament\Resources\HotelResource\RelationManagers;
 
-use Filament\Forms\Form;
+use Filament\Actions\Action;
+use Filament\Actions\AttachAction;
+use Filament\Actions\DetachAction;
 use Filament\Resources\RelationManagers\RelationManager;
+use Filament\Schemas\Schema;
 use Filament\Tables;
+use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 
 class DestinationsRelationManager extends RelationManager
 {
     protected static string $relationship = 'destinations';
 
-    public function form(Form $form): Form
+    public function form(Schema $schema): Schema
     {
-        return $form
-            ->schema([
+        return $schema
+            ->components([
             ]);
     }
 
@@ -23,27 +27,27 @@ class DestinationsRelationManager extends RelationManager
         return $table
             ->recordTitleAttribute('city')
             ->columns([
-                Tables\Columns\TextColumn::make('city'),
+                TextColumn::make('city'),
             ])
             ->filters([
                 //
             ])
             ->headerActions([
-                Tables\Actions\AttachAction::make(),
+                AttachAction::make(),
             ])
-            ->actions([
-                Tables\Actions\Action::make('redirect')
+            ->recordActions([
+                Action::make('redirect')
                     ->label('View')
                     ->url(fn ($record) => route('filament.admin.resources.destinations.edit', $record)),
-                Tables\Actions\DetachAction::make(),
+                DetachAction::make(),
             ])
-            ->bulkActions([
+            ->toolbarActions([
                 //                Tables\Actions\BulkActionGroup::make([
                 //                    Tables\Actions\DetachBulkAction::make(),
                 //                ]),
             ])
             ->emptyStateActions([
-                Tables\Actions\AttachAction::make(),
+                AttachAction::make(),
             ]);
     }
 }

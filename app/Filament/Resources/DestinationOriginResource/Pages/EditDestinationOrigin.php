@@ -4,9 +4,11 @@ namespace App\Filament\Resources\DestinationOriginResource\Pages;
 
 use App\Filament\Resources\DestinationOriginResource;
 use App\Models\Tag;
-use Filament\Actions;
+use Filament\Actions\DeleteAction;
 use Filament\Resources\Pages\EditRecord;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Storage;
+use Log;
 
 class EditDestinationOrigin extends EditRecord
 {
@@ -15,14 +17,14 @@ class EditDestinationOrigin extends EditRecord
     protected function getHeaderActions(): array
     {
         return [
-            Actions\DeleteAction::make(),
+            DeleteAction::make(),
         ];
     }
 
     protected function handleRecordUpdate(Model $record, array $data): Model
     {
-        \Log::info('Request Data:', $data);
-        \Log::info('Request Data:', request()->input('photos', []));
+        Log::info('Request Data:', $data);
+        Log::info('Request Data:', request()->input('photos', []));
         $images = $data['photos'] ?? [];
         unset($data['photos']);
 
@@ -31,14 +33,11 @@ class EditDestinationOrigin extends EditRecord
         $record->photos()->delete();
 
         foreach ($images as $image) {
-            \Log::info('INSIDE IMAGES');
             $photo = $record->photos()->create([
                 'file_path' => $image['file_path'] ?? null,
             ]);
 
             if (! empty($image['tags'])) {
-                \Log::info('INSIDE tags');
-                \Log::info($image);
                 $tagIds = collect($image['tags'])->map(function ($tagName) {
                     return Tag::whereJsonContains('name->en', $tagName)->value('id');
                 });

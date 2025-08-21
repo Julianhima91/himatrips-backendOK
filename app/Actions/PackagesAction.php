@@ -3,6 +3,7 @@
 namespace App\Actions;
 
 use App\Models\Package;
+use Illuminate\Pagination\LengthAwarePaginator;
 
 class PackagesAction
 {
@@ -41,7 +42,7 @@ class PackagesAction
         $page = request()->get('page', 1);
         $perPage = 10;
 
-        $paginated = new \Illuminate\Pagination\LengthAwarePaginator(
+        $paginated = new LengthAwarePaginator(
             $packages->forPage($page, $perPage),
             $packages->count(),
             $perPage,

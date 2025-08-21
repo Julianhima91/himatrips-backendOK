@@ -6,23 +6,23 @@ use App\Settings\MaxTransitTime;
 use App\Settings\MonthlyWeekendAds;
 use App\Settings\PackageHourly;
 use Filament\Forms\Components\TextInput;
-use Filament\Forms\Form;
 use Filament\Pages\SettingsPage;
+use Filament\Schemas\Schema;
 
 class Settings extends SettingsPage
 {
-    protected static ?string $navigationIcon = 'heroicon-o-cog-6-tooth';
+    protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-cog-6-tooth';
 
     protected static string $settings = PackageHourly::class;
 
-    public function form(Form $form): Form
+    public function form(Schema $schema): Schema
     {
         $packageHourlySettings = app(PackageHourly::class);
         $maxTransitTimeSettings = app(MaxTransitTime::class);
         $monthlyWeekendAds = app(MonthlyWeekendAds::class);
 
-        return $form
-            ->schema([
+        return $schema
+            ->components([
                 TextInput::make('hourly')
                     ->minValue(1)
                     ->numeric()

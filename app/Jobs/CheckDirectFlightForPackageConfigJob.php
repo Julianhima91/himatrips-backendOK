@@ -7,6 +7,7 @@ use App\Models\Airport;
 use App\Models\DirectFlightAvailability;
 use App\Models\PackageConfig;
 use DateTime;
+use Exception;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -144,7 +145,7 @@ class CheckDirectFlightForPackageConfigJob implements ShouldQueue
                     Log::info("Added ID: {$directFlightAvailability->id}");
                 }
             }
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             Log::error('!!!ERROR!!!');
             Log::error($e->getMessage());
         }

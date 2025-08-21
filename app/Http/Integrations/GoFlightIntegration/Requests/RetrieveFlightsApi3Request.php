@@ -3,6 +3,7 @@
 namespace App\Http\Integrations\GoFlightIntegration\Requests;
 
 use App\Data\FlightDataDTO;
+use DateTime;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Saloon\Enums\Method;
@@ -20,7 +21,7 @@ class RetrieveFlightsApi3Request extends SoloRequest
      */
     protected Method $method = Method::GET;
 
-    //public ?int $tries = 2;
+    // public ?int $tries = 2;
 
     public function __construct(
         public string $departure_airport_code,
@@ -88,10 +89,10 @@ class RetrieveFlightsApi3Request extends SoloRequest
                 origin_back: $places[$legBack['origin_place_id']]['display_code'] ?? 'Unknown',
                 destination: $places[$legOut['destination_place_id']]['display_code'] ?? 'Unknown',
                 destination_back: $places[$legBack['destination_place_id']]['display_code'] ?? 'Unknown',
-                departure: new \DateTime($legOut['departure']),
-                arrival: new \DateTime($legOut['arrival']),
-                departure_flight_back: new \DateTime($legBack['departure']),
-                arrival_flight_back: new \DateTime($legBack['arrival']),
+                departure: new DateTime($legOut['departure']),
+                arrival: new DateTime($legOut['arrival']),
+                departure_flight_back: new DateTime($legBack['departure']),
+                arrival_flight_back: new DateTime($legBack['arrival']),
                 airline: $carriersOut[0] ?? 'Unknown',
                 airline_back: $carriersBack[0] ?? 'Unknown',
                 stopCount: $legOut['stop_count'],

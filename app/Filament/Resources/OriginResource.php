@@ -2,37 +2,47 @@
 
 namespace App\Filament\Resources;
 
-use App\Filament\Resources\OriginResource\Pages;
-use App\Filament\Resources\OriginResource\RelationManagers;
+use App\Filament\Resources\OriginResource\Pages\CreateOrigin;
+use App\Filament\Resources\OriginResource\Pages\EditOrigin;
+use App\Filament\Resources\OriginResource\Pages\ListOrigins;
+use App\Filament\Resources\OriginResource\RelationManagers\AirportsRelationManager;
+use App\Filament\Resources\OriginResource\RelationManagers\DestinationsRelationManager;
 use App\Jobs\OriginPackageConfigJob;
 use App\Models\Origin;
-use Filament\Forms;
-use Filament\Forms\Form;
+use Filament\Actions\Action;
+use Filament\Actions\BulkActionGroup;
+use Filament\Actions\CreateAction;
+use Filament\Actions\DeleteBulkAction;
+use Filament\Actions\EditAction;
+use Filament\Forms\Components\Select;
+use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\TextInput;
 use Filament\Resources\Resource;
-use Filament\Tables;
+use Filament\Schemas\Schema;
+use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 
 class OriginResource extends Resource
 {
     protected static ?string $model = Origin::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-rectangle-stack';
+    protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-rectangle-stack';
 
-    public static function form(Form $form): Form
+    public static function form(Schema $schema): Schema
     {
-        return $form
-            ->schema([
-                Forms\Components\TextInput::make('name')
+        return $schema
+            ->components([
+                TextInput::make('name')
                     ->required()
                     ->maxLength(255),
-                Forms\Components\Textarea::make('description')
+                Textarea::make('description')
                     ->required()
                     ->maxLength(255)
                     ->columnSpanFull(),
-                Forms\Components\TextInput::make('city')
+                TextInput::make('city')
                     ->required()
                     ->maxLength(255),
-                Forms\Components\Select::make('country_id')
+                Select::make('country_id')
                     ->relationship('country', 'name')
                     ->required(),
             ]);
@@ -42,17 +52,17 @@ class OriginResource extends Resource
     {
         return $table
             ->columns([
-                Tables\Columns\TextColumn::make('name')
+                TextColumn::make('name')
                     ->searchable(),
-                Tables\Columns\TextColumn::make('city')
+                TextColumn::make('city')
                     ->searchable(),
-                Tables\Columns\TextColumn::make('country')
+                TextColumn::make('country')
                     ->searchable(),
-                Tables\Columns\TextColumn::make('created_at')
+                TextColumn::make('created_at')
                     ->dateTime()
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
-                Tables\Columns\TextColumn::make('updated_at')
+                TextColumn::make('updated_at')
                     ->dateTime()
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
@@ -60,9 +70,9 @@ class OriginResource extends Resource
             ->filters([
                 //
             ])
-            ->actions([
-                Tables\Actions\EditAction::make(),
-                Tables\Actions\Action::make('Create Connections')
+            ->recordActions([
+                EditAction::make(),
+                Action::make('Create Connections')
                     ->label('Create Connections')
                     ->action(function ($record) {
                         OriginPackageConfigJob::dispatch($record->id);
@@ -70,30 +80,30 @@ class OriginResource extends Resource
                     ->color('primary')
                     ->icon('heroicon-o-bolt'),
             ])
-            ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
+            ->toolbarActions([
+                BulkActionGroup::make([
+                    DeleteBulkAction::make(),
                 ]),
             ])
             ->emptyStateActions([
-                Tables\Actions\CreateAction::make(),
+                CreateAction::make(),
             ]);
     }
 
     public static function getRelations(): array
     {
         return [
-            RelationManagers\AirportsRelationManager::class,
-            RelationManagers\DestinationsRelationManager::class,
+            AirportsRelationManager::class,
+            DestinationsRelationManager::class,
         ];
     }
 
     public static function getPages(): array
     {
         return [
-            'index' => Pages\ListOrigins::route('/'),
-            'create' => Pages\CreateOrigin::route('/create'),
-            'edit' => Pages\EditOrigin::route('/{record}/edit'),
+            'index' => ListOrigins::route('/'),
+            'create' => CreateOrigin::route('/create'),
+            'edit' => EditOrigin::route('/{record}/edit'),
         ];
     }
 }

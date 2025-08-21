@@ -3,7 +3,7 @@
 namespace App\Filament\Resources\HolidayResource\Pages;
 
 use App\Filament\Resources\HolidayResource;
-use Filament\Actions;
+use Filament\Actions\DeleteAction;
 use Filament\Resources\Pages\EditRecord;
 
 class EditHoliday extends EditRecord
@@ -13,7 +13,7 @@ class EditHoliday extends EditRecord
     protected function getHeaderActions(): array
     {
         return [
-            Actions\DeleteAction::make(),
+            DeleteAction::make(),
         ];
     }
 }

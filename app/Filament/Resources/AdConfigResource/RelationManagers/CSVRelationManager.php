@@ -2,10 +2,14 @@
 
 namespace App\Filament\Resources\AdConfigResource\RelationManagers;
 
-use Filament\Forms;
-use Filament\Forms\Form;
+use Filament\Actions\Action;
+use Filament\Actions\BulkActionGroup;
+use Filament\Actions\DeleteAction;
+use Filament\Actions\DeleteBulkAction;
+use Filament\Forms\Components\TextInput;
 use Filament\Resources\RelationManagers\RelationManager;
-use Filament\Tables;
+use Filament\Schemas\Schema;
+use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Illuminate\Support\Facades\Storage;
 
@@ -13,11 +17,11 @@ class CSVRelationManager extends RelationManager
 {
     protected static string $relationship = 'csvs';
 
-    public function form(Form $form): Form
+    public function form(Schema $schema): Schema
     {
-        return $form
-            ->schema([
-                Forms\Components\TextInput::make('file_path')
+        return $schema
+            ->components([
+                TextInput::make('file_path')
                     ->required()
                     ->maxLength(255),
             ]);
@@ -28,7 +32,7 @@ class CSVRelationManager extends RelationManager
         return $table
             ->recordTitleAttribute('file_path')
             ->columns([
-                Tables\Columns\TextColumn::make('file_path')
+                TextColumn::make('file_path')
                     ->label('CSV File')
                     ->url(fn ($record) => Storage::url('offers/'.$record->file_path)),
             ])
@@ -37,14 +41,14 @@ class CSVRelationManager extends RelationManager
             ])
             ->headerActions([
             ])
-            ->actions([
-                Tables\Actions\Action::make('download')
+            ->recordActions([
+                Action::make('download')
                     ->label('Download')
                     ->icon('heroicon-o-arrow-down-tray')
                     ->url(fn ($record) => Storage::url('offers/'.$record->file_path))
                     ->openUrlInNewTab()
                     ->color('primary'),
-                Tables\Actions\DeleteAction::make()
+                DeleteAction::make()
                     ->action(function ($record) {
                         $filePath = 'public/offers/'.$record->file_path;
                         if (Storage::exists($filePath)) {
@@ -55,9 +59,9 @@ class CSVRelationManager extends RelationManager
                     })
                     ->color('danger'),
             ])
-            ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
+            ->toolbarActions([
+                BulkActionGroup::make([
+                    DeleteBulkAction::make(),
                 ]),
             ]);
     }

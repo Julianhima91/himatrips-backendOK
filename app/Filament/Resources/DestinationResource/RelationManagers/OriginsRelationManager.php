@@ -2,19 +2,24 @@
 
 namespace App\Filament\Resources\DestinationResource\RelationManagers;
 
-use Filament\Forms\Form;
+use Filament\Actions\Action;
+use Filament\Actions\AttachAction;
+use Filament\Actions\BulkActionGroup;
+use Filament\Actions\DetachAction;
 use Filament\Resources\RelationManagers\RelationManager;
+use Filament\Schemas\Schema;
 use Filament\Tables;
+use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 
 class OriginsRelationManager extends RelationManager
 {
     protected static string $relationship = 'origins';
 
-    public function form(Form $form): Form
+    public function form(Schema $schema): Schema
     {
-        return $form
-            ->schema([
+        return $schema
+            ->components([
             ]);
     }
 
@@ -23,28 +28,28 @@ class OriginsRelationManager extends RelationManager
         return $table
             ->recordTitleAttribute('city')
             ->columns([
-                Tables\Columns\TextColumn::make('city'),
+                TextColumn::make('city'),
             ])
             ->filters([
                 //
             ])
             ->headerActions([
-                Tables\Actions\AttachAction::make(),
+                AttachAction::make(),
             ])
-            ->actions([
-                Tables\Actions\Action::make('redirect')
+            ->recordActions([
+                Action::make('redirect')
                     ->label('View')
                     ->url(fn ($record) => route('filament.admin.resources.origins.edit', $record)),
-                Tables\Actions\DetachAction::make(),
+                DetachAction::make(),
             ])
-            ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
+            ->toolbarActions([
+                BulkActionGroup::make([
                     //                    Tables\Actions\DetachBulkAction::make(),
                     //                    Tables\Actions\DeleteBulkAction::make(),
                 ]),
             ])
             ->emptyStateActions([
-                Tables\Actions\AttachAction::make(),
+                AttachAction::make(),
             ]);
     }
 }

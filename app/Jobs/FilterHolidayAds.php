@@ -12,6 +12,7 @@ use App\Models\HotelData;
 use App\Models\HotelOffer;
 use App\Models\PackageConfig;
 use App\Settings\MaxTransitTime;
+use DateTime;
 use Illuminate\Bus\Batchable;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -27,7 +28,7 @@ class FilterHolidayAds implements ShouldQueue
 {
     use Batchable, Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    //todo: check the retry logic using the flights and itineraries to find the issue
+    // todo: check the retry logic using the flights and itineraries to find the issue
     public int $tries = 3;
 
     private $baseBatchId;
@@ -77,7 +78,7 @@ class FilterHolidayAds implements ShouldQueue
             'origin_airport' => $this->airport,
             'destination_airport' => $this->destinationAirport,
             'date' => $this->date,
-            'nights' => (new \DateTime($this->returnDate))->diff(new \DateTime($this->date))->days,
+            'nights' => (new DateTime($this->returnDate))->diff(new DateTime($this->date))->days,
             'return_date' => $this->returnDate,
             'origin_id' => $this->adConfig->origin_id,
             'destination_id' => $this->destinationId,

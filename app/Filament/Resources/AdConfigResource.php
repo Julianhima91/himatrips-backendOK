@@ -3,7 +3,9 @@
 namespace App\Filament\Resources;
 
 use App\Enums\BoardOptionEnum;
-use App\Filament\Resources\AdConfigResource\Pages;
+use App\Filament\Resources\AdConfigResource\Pages\CreateAdConfig;
+use App\Filament\Resources\AdConfigResource\Pages\EditAdConfig;
+use App\Filament\Resources\AdConfigResource\Pages\ListAdConfigs;
 use App\Filament\Resources\AdConfigResource\RelationManagers\CSVRelationManager;
 use App\Jobs\EconomicAdJob;
 use App\Jobs\GenerateOffersForAdConfigs;
@@ -13,36 +15,42 @@ use App\Models\AdConfig;
 use App\Models\Airport;
 use App\Models\Destination;
 use App\Models\Origin;
-use Filament\Forms;
-use Filament\Forms\Form;
+use Filament\Actions\Action;
+use Filament\Actions\BulkActionGroup;
+use Filament\Actions\DeleteBulkAction;
+use Filament\Actions\EditAction;
+use Filament\Forms\Components\Select;
+use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Toggle;
 use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
-use Filament\Tables;
+use Filament\Schemas\Schema;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Columns\ToggleColumn;
 use Filament\Tables\Table;
 
 class AdConfigResource extends Resource
 {
     protected static ?string $model = AdConfig::class;
 
-    protected static ?string $navigationGroup = 'Advertising';
+    protected static string|\UnitEnum|null $navigationGroup = 'Advertising';
 
     protected static ?string $navigationLabel = 'Ad Configs';
 
-    protected static ?string $navigationIcon = 'heroicon-o-cog';
+    protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-cog';
 
-    public static function form(Form $form): Form
+    public static function form(Schema $schema): Schema
     {
-        return $form
-            ->schema([
-                Forms\Components\Select::make('origin_id')
+        return $schema
+            ->components([
+                Select::make('origin_id')
                     ->label('Origin')
                     ->relationship('origin', 'name')
                     ->searchable()
                     ->reactive()
                     ->required(),
 
-                Forms\Components\Select::make('airports')
+                Select::make('airports')
                     ->label('Airports')
                     ->relationship('airports', 'nameAirport')
                     ->multiple()
@@ -63,7 +71,7 @@ class AdConfigResource extends Resource
                     })
                     ->required(),
 
-                Forms\Components\Select::make('destinations')
+                Select::make('destinations')
                     ->label('Destinations')
                     ->relationship('destinations', 'name')
                     ->multiple()
@@ -84,16 +92,16 @@ class AdConfigResource extends Resource
                     })
                     ->required(),
 
-                Forms\Components\TextInput::make('refresh_hours')
+                TextInput::make('refresh_hours')
                     ->label('Refresh Hours')
                     ->numeric()
                     ->required(),
 
-                Forms\Components\TextInput::make('description')
+                TextInput::make('description')
                     ->label('Description')
                     ->required(),
 
-                Forms\Components\Select::make('extra_options')
+                Select::make('extra_options')
                     ->label('Extra Options')
                     ->multiple()
                     ->options([
@@ -105,11 +113,11 @@ class AdConfigResource extends Resource
                     ->required()
                     ->reactive(),
 
-                Forms\Components\Toggle::make('autoupdate')
+                Toggle::make('autoupdate')
                     ->label('Autoupdate')
                     ->required(),
 
-                Forms\Components\Select::make('boarding_options')
+                Select::make('boarding_options')
                     ->label('Boarding Options')
                     ->multiple()
                     ->options(
@@ -127,7 +135,7 @@ class AdConfigResource extends Resource
     {
         return $table
             ->columns([
-                Tables\Columns\ToggleColumn::make('autoupdate')
+                ToggleColumn::make('autoupdate')
                     ->label('Auto Update')
                     ->disabled(),
                 TextColumn::make('description')
@@ -159,9 +167,9 @@ class AdConfigResource extends Resource
                 //
             ])
             ->headerActions([])
-            ->actions([
-                Tables\Actions\EditAction::make(),
-                Tables\Actions\Action::make('generateWeekendOffers')
+            ->recordActions([
+                EditAction::make(),
+                Action::make('generateWeekendOffers')
                     ->label('Weekend')
                     ->icon('heroicon-o-sparkles')
                     ->color('success')
@@ -179,7 +187,7 @@ class AdConfigResource extends Resource
                             ->success()
                             ->send();
                     }),
-                Tables\Actions\Action::make('generateHolidayOffers')
+                Action::make('generateHolidayOffers')
                     ->label('Holiday')
                     ->icon('heroicon-o-sparkles')
                     ->color('success')
@@ -197,8 +205,8 @@ class AdConfigResource extends Resource
                             ->success()
                             ->send();
                     }),
-                //todo: add later
-                Tables\Actions\Action::make('generateEconomicOffers')
+                // todo: add later
+                Action::make('generateEconomicOffers')
                     ->label('Economic')
                     ->icon('heroicon-o-sparkles')
                     ->color('success')
@@ -213,9 +221,9 @@ class AdConfigResource extends Resource
                             ->send();
                     }),
             ])
-            ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
+            ->toolbarActions([
+                BulkActionGroup::make([
+                    DeleteBulkAction::make(),
                 ]),
             ]);
     }
@@ -230,9 +238,9 @@ class AdConfigResource extends Resource
     public static function getPages(): array
     {
         return [
-            'index' => Pages\ListAdConfigs::route('/'),
-            'create' => Pages\CreateAdConfig::route('/create'),
-            'edit' => Pages\EditAdConfig::route('/{record}/edit'),
+            'index' => ListAdConfigs::route('/'),
+            'create' => CreateAdConfig::route('/create'),
+            'edit' => EditAdConfig::route('/{record}/edit'),
         ];
     }
 }

@@ -3,6 +3,7 @@
 namespace App\Http\Integrations\GoFlightIntegration\Requests;
 
 use App\Data\FlightDataDTO;
+use DateTime;
 use Illuminate\Support\Carbon;
 use Saloon\Enums\Method;
 use Saloon\Http\Request;
@@ -51,9 +52,9 @@ class RetrieveIncompleteFlights extends SoloRequest
     protected function defaultQuery(): array
     {
         return [
-            //'access_key' => config('goflight.access_key'),
+            // 'access_key' => config('goflight.access_key'),
             'currency' => 'EUR',
-            //'adults' => 2,
+            // 'adults' => 2,
         ];
     }
 
@@ -61,12 +62,12 @@ class RetrieveIncompleteFlights extends SoloRequest
     {
         $data = $response->json();
 
-        //go through data itineraries and create DTOs
+        // go through data itineraries and create DTOs
         return $flightItineraryDTOs = collect($data['data']['itineraries'])->map(function ($itinerary) {
 
             $carriers = $this->getCarriers($itinerary);
 
-            //check that every element in the array is the same
+            // check that every element in the array is the same
             if (count(array_unique($carriers)) != 1) {
                 return null;
             }
@@ -78,10 +79,10 @@ class RetrieveIncompleteFlights extends SoloRequest
                 origin_back: $itinerary['legs'][1]['origin']['id'],
                 destination: $itinerary['legs'][0]['destination']['id'],
                 destination_back: $itinerary['legs'][1]['destination']['id'],
-                departure: new \DateTime($itinerary['legs'][0]['departure']),
-                arrival: new \DateTime($itinerary['legs'][0]['arrival']),
-                departure_flight_back: new \DateTime($itinerary['legs'][1]['departure']),
-                arrival_flight_back: new \DateTime($itinerary['legs'][1]['arrival']),
+                departure: new DateTime($itinerary['legs'][0]['departure']),
+                arrival: new DateTime($itinerary['legs'][0]['arrival']),
+                departure_flight_back: new DateTime($itinerary['legs'][1]['departure']),
+                arrival_flight_back: new DateTime($itinerary['legs'][1]['arrival']),
                 airline: $itinerary['legs'][0]['carriers']['marketing'][0]['name'],
                 airline_back: $itinerary['legs'][1]['carriers']['marketing'][0]['name'],
                 stopCount: $itinerary['legs'][0]['stopCount'],
@@ -112,9 +113,9 @@ class RetrieveIncompleteFlights extends SoloRequest
             $segments = $leg['segments'];
             for ($i = 0; $i < count($segments) - 1; $i++) {
                 $arrivalTime = $segments[$i]['arrival'];
-                //get the departure time for the next segment
+                // get the departure time for the next segment
                 $departureTime = $segments[$i + 1]['departure'];
-                //get the difference in minutes; example value is 2023-12-02T15:40:00
+                // get the difference in minutes; example value is 2023-12-02T15:40:00
                 $diffInMinutes = Carbon::parse($departureTime)->diffInMinutes(Carbon::parse($arrivalTime));
                 $timeBetweenFlights[] = $diffInMinutes;
             }

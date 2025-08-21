@@ -4,6 +4,7 @@ namespace App\Jobs;
 
 use App\Http\Integrations\GoFlightIntegration\Requests\RetrieveFlightsRequest;
 use App\Http\Integrations\GoFlightIntegration\Requests\RetrieveIncompleteFlights;
+use Exception;
 use Illuminate\Bus\Batchable;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -115,7 +116,7 @@ class EconomicFlightSearch implements ShouldQueue
                 $csvCache[] = (string) $this->baseBatchId;
                 Cache::put("$this->adConfigId:economic_create_csv", $csvCache, now()->addMinutes(180));
             }
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             $logger->info($e->getMessage());
             if ($this->attempts() < $this->tries) {
                 $this->release(5);

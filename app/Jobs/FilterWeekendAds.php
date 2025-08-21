@@ -12,6 +12,7 @@ use App\Models\HotelData;
 use App\Models\HotelOffer;
 use App\Models\PackageConfig;
 use App\Settings\MaxTransitTime;
+use DateTime;
 use Illuminate\Bus\Batchable;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -76,7 +77,7 @@ class FilterWeekendAds implements ShouldQueue
             'origin_airport' => $this->airport,
             'destination_airport' => $this->destinationAirport,
             'date' => $this->date,
-            'nights' => (new \DateTime($this->returnDate))->diff(new \DateTime($this->date))->days,
+            'nights' => (new DateTime($this->returnDate))->diff(new DateTime($this->date))->days,
             'return_date' => $this->returnDate,
             'origin_id' => $this->adConfig->origin_id,
             'destination_id' => $this->destinationId,
@@ -214,9 +215,9 @@ class FilterWeekendAds implements ShouldQueue
             $flights = $flights->reject(null);
             $first_outbound_flight = $flights[0] ?? $flights->first();
 
-            //todo: Let's add logs so we can see where flights reach 0
-            //example: if there is no direct flight or no morning flight
-            //case: ZRH - JMK. ID: 12. Zvicer-Basel - Santorini
+            // todo: Let's add logs so we can see where flights reach 0
+            // example: if there is no direct flight or no morning flight
+            // case: ZRH - JMK. ID: 12. Zvicer-Basel - Santorini
 
             $logger->info("Selected outbound flight price: {$first_outbound_flight->price}");
             $logger->info("Outbound origin: {$first_outbound_flight->origin}");

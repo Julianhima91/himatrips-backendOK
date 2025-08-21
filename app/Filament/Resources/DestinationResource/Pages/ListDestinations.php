@@ -3,7 +3,7 @@
 namespace App\Filament\Resources\DestinationResource\Pages;
 
 use App\Filament\Resources\DestinationResource;
-use Filament\Actions;
+use Filament\Actions\CreateAction;
 use Filament\Resources\Pages\ListRecords;
 
 class ListDestinations extends ListRecords
@@ -13,7 +13,7 @@ class ListDestinations extends ListRecords
     protected function getHeaderActions(): array
     {
         return [
-            Actions\CreateAction::make(),
+            CreateAction::make(),
         ];
     }
 }

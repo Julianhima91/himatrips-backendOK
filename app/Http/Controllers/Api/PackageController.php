@@ -29,6 +29,7 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
+use Throwable;
 
 class PackageController extends Controller
 {
@@ -77,7 +78,7 @@ class PackageController extends Controller
 
         $date = $request->date;
 
-        //get the airports here
+        // get the airports here
         $origin_airport = Airport::query()->where('origin_id', $request->origin_id)->first();
         $destination_airport = Airport::query()->whereHas('destinations', function ($query) use ($request) {
             $query->where('destination_id', $request->destination_id);
@@ -117,7 +118,7 @@ class PackageController extends Controller
             }
 
             $jobs = [
-                //new LiveSearchFlightsApi2($origin_airport, $destination_airport, $date, $return_date, $origin_airport, $destination_airport, $totalAdults, $totalChildren, $totalInfants, $batchId),
+                // new LiveSearchFlightsApi2($origin_airport, $destination_airport, $date, $return_date, $origin_airport, $destination_airport, $totalAdults, $totalChildren, $totalInfants, $batchId),
                 new LiveSearchFlights($date, $return_date, $origin_airport, $destination_airport, $totalAdults, $totalChildren, $totalInfants, $batchId),
                 new LiveSearchFlightsApi3($date, $return_date, $origin_airport, $destination_airport, $totalAdults, $totalChildren, $totalInfants, $batchId),
                 new LiveSearchHotels($hotelStartDate, $request->nights, $request->destination_id, $totalAdults, $totalChildren, $totalInfants, $request->rooms, $batchId, $origin->country_code ?? 'AL'),
@@ -169,7 +170,7 @@ class PackageController extends Controller
                     $firstBoardOption = $destination->board_options ?? null;
                     [$packages, $minTotalPrice, $maxTotalPrice, $packageConfigId] = $packagesAction->handle($package_ids, $firstBoardOption);
 
-                    //fire off event
+                    // fire off event
                     broadcast(new LiveSearchCompleted($packages, $batchId, $minTotalPrice, $maxTotalPrice, $packageConfigId, $firstBoardOption));
                     $logger->info('======================================');
                     $logger->info('Broadcasting sent. SUCCESS');
@@ -186,7 +187,7 @@ class PackageController extends Controller
             //            $endTime = microtime(true);
             //            $totalElapsed = $endTime - $startTime;
             //            Log::info("Total elapsed time: {$totalElapsed} seconds");
-        } catch (\Throwable $e) {
+        } catch (Throwable $e) {
             $logger->error($e->getMessage());
 
             return response()->json(['message' => $e->getMessage()], 500);
@@ -201,8 +202,8 @@ class PackageController extends Controller
 
     public function show(Package $package)
     {
-        //we need to return the whole package here
-        //this will include the hotel data, hotel photos, flight data
+        // we need to return the whole package here
+        // this will include the hotel data, hotel photos, flight data
 
         $package->load(['hotelData', 'hotelData.hotel', 'hotelData.hotel.hotelPhotos', 'outboundFlight', 'inboundFlight', 'hotelData.offers']);
 
@@ -307,8 +308,8 @@ class PackageController extends Controller
             ], 200);
         }
 
-        //lets modify this so we automatically get the first month and year
-        //if the user has not selected a month and year
+        // lets modify this so we automatically get the first month and year
+        // if the user has not selected a month and year
         if (! $request->month || ! $request->year) {
             $first_available_date = Package::whereHas('packageConfig', function ($query) use ($destination_origin) {
                 $query->where('destination_origin_id', $destination_origin->id);

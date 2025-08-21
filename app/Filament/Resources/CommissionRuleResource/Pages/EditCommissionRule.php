@@ -3,7 +3,7 @@
 namespace App\Filament\Resources\CommissionRuleResource\Pages;
 
 use App\Filament\Resources\CommissionRuleResource;
-use Filament\Actions;
+use Filament\Actions\DeleteAction;
 use Filament\Resources\Pages\EditRecord;
 
 class EditCommissionRule extends EditRecord
@@ -13,7 +13,7 @@ class EditCommissionRule extends EditRecord
     protected function getHeaderActions(): array
     {
         return [
-            Actions\DeleteAction::make(),
+            DeleteAction::make(),
         ];
     }
 }

@@ -2,16 +2,20 @@
 
 namespace App\Filament\Resources;
 
-use App\Filament\Resources\CountryResource\Pages;
+use App\Filament\Resources\CountryResource\Pages\CreateCountry;
+use App\Filament\Resources\CountryResource\Pages\EditCountry;
+use App\Filament\Resources\CountryResource\Pages\ListCountries;
 use App\Filament\Resources\CountryResource\RelationManagers\AirportsRelationManager;
 use App\Filament\Resources\CountryResource\RelationManagers\DestinationsRelationManager;
 use App\Filament\Resources\CountryResource\RelationManagers\HolidaysRelationManager;
 use App\Filament\Resources\CountryResource\RelationManagers\OriginsRelationManager;
 use App\Models\Country;
-use Filament\Forms;
-use Filament\Forms\Form;
+use Filament\Actions\BulkActionGroup;
+use Filament\Actions\DeleteBulkAction;
+use Filament\Actions\EditAction;
+use Filament\Forms\Components\TextInput;
 use Filament\Resources\Resource;
-use Filament\Tables;
+use Filament\Schemas\Schema;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 
@@ -19,15 +23,15 @@ class CountryResource extends Resource
 {
     protected static ?string $model = Country::class;
 
-    protected static ?string $navigationGroup = 'Advertising';
+    protected static string|\UnitEnum|null $navigationGroup = 'Advertising';
 
-    protected static ?string $navigationIcon = 'heroicon-o-rectangle-stack';
+    protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-rectangle-stack';
 
-    public static function form(Form $form): Form
+    public static function form(Schema $schema): Schema
     {
-        return $form
-            ->schema([
-                Forms\Components\TextInput::make('name')
+        return $schema
+            ->components([
+                TextInput::make('name')
                     ->required()
                     ->maxLength(255),
             ]);
@@ -48,12 +52,12 @@ class CountryResource extends Resource
             ->filters([
                 //
             ])
-            ->actions([
-                Tables\Actions\EditAction::make(),
+            ->recordActions([
+                EditAction::make(),
             ])
-            ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
+            ->toolbarActions([
+                BulkActionGroup::make([
+                    DeleteBulkAction::make(),
                 ]),
             ]);
     }
@@ -71,9 +75,9 @@ class CountryResource extends Resource
     public static function getPages(): array
     {
         return [
-            'index' => Pages\ListCountries::route('/'),
-            'create' => Pages\CreateCountry::route('/create'),
-            'edit' => Pages\EditCountry::route('/{record}/edit'),
+            'index' => ListCountries::route('/'),
+            'create' => CreateCountry::route('/create'),
+            'edit' => EditCountry::route('/{record}/edit'),
         ];
     }
 }

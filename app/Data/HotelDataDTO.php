@@ -9,7 +9,7 @@ use Spatie\LaravelData\Optional;
 class HotelDataDTO extends Data
 {
     public function __construct(
-        //id, hotel_id, check_in_date, number_of_nights, room_count, adults, children, (collection) hotel_offers
+        // id, hotel_id, check_in_date, number_of_nights, room_count, adults, children, (collection) hotel_offers
         public int|null|Optional $id,
         public int $hotel_id,
         public Carbon $check_in_date,
@@ -18,7 +18,7 @@ class HotelDataDTO extends Data
         public int $adults,
         public int $children,
         public int $infants,
-        /** @var \App\Data\HotelOfferDTO[] */
+        /** @var HotelOfferDTO[] */
         public array $hotel_offers
     ) {}
 }

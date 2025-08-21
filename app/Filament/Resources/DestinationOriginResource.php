@@ -3,37 +3,43 @@
 namespace App\Filament\Resources;
 
 use App\Enums\BoardOptionEnum;
-use App\Filament\Resources\DestinationOriginResource\Pages;
+use App\Filament\Resources\DestinationOriginResource\Pages\CreateDestinationOrigin;
+use App\Filament\Resources\DestinationOriginResource\Pages\EditDestinationOrigin;
+use App\Filament\Resources\DestinationOriginResource\Pages\ListDestinationOrigins;
 use App\Models\DestinationOrigin;
 use App\Models\Tag;
-use Filament\Forms;
+use Filament\Actions\BulkActionGroup;
+use Filament\Actions\DeleteBulkAction;
+use Filament\Actions\EditAction;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
-use Filament\Forms\Form;
+use Filament\Forms\Components\TextInput;
 use Filament\Resources\Resource;
-use Filament\Tables;
+use Filament\Schemas\Components\Section;
+use Filament\Schemas\Schema;
+use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 
 class DestinationOriginResource extends Resource
 {
     protected static ?string $model = DestinationOrigin::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-rectangle-stack';
+    protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-rectangle-stack';
 
-    public static function form(Form $form): Form
+    public static function form(Schema $schema): Schema
     {
-        return $form
-            ->schema([
-                Forms\Components\Select::make('origin_id')
+        return $schema
+            ->components([
+                Select::make('origin_id')
                     ->relationship('origin', 'name')
                     ->disabled()
                     ->required(),
-                Forms\Components\Select::make('destination_id')
+                Select::make('destination_id')
                     ->relationship('destination', 'name')
                     ->disabled()
                     ->required(),
-                Forms\Components\Select::make('boarding_options')
+                Select::make('boarding_options')
                     ->label('Boarding Options')
                     ->multiple()
                     ->options(
@@ -44,25 +50,26 @@ class DestinationOriginResource extends Resource
                     ->searchable()
                     ->preload()
                     ->columnSpanFull(),
-                Forms\Components\TextInput::make('min_nights')
+                TextInput::make('min_nights')
                     ->numeric()
                     ->label('Minimum Nights')
                     ->required(),
 
-                Forms\Components\TextInput::make('max_nights')
+                TextInput::make('max_nights')
                     ->numeric()
                     ->label('Maximum Nights')
                     ->required(),
 
-                Forms\Components\TextInput::make('stops')
+                TextInput::make('stops')
                     ->numeric()
                     ->label('Stops')
                     ->required(),
-                Forms\Components\Section::make('Destination Origin Photos')
+                Section::make('Destination Origin Photos')
                     ->schema([
                         Repeater::make('photos')
                             ->schema([
                                 FileUpload::make('file_path')
+                                    ->disk('public')
                                     ->label('Image')
                                     ->image()
                                     ->required(),
@@ -85,20 +92,20 @@ class DestinationOriginResource extends Resource
     {
         return $table
             ->columns([
-                Tables\Columns\TextColumn::make('origin.name')
+                TextColumn::make('origin.name')
                     ->searchable(),
-                Tables\Columns\TextColumn::make('destination.name')
+                TextColumn::make('destination.name')
                     ->searchable(),
             ])
             ->filters([
                 //
             ])
-            ->actions([
-                Tables\Actions\EditAction::make(),
+            ->recordActions([
+                EditAction::make(),
             ])
-            ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
+            ->toolbarActions([
+                BulkActionGroup::make([
+                    DeleteBulkAction::make(),
                 ]),
             ]);
     }
@@ -113,9 +120,9 @@ class DestinationOriginResource extends Resource
     public static function getPages(): array
     {
         return [
-            'index' => Pages\ListDestinationOrigins::route('/'),
-            'create' => Pages\CreateDestinationOrigin::route('/create'),
-            'edit' => Pages\EditDestinationOrigin::route('/{record}/edit'),
+            'index' => ListDestinationOrigins::route('/'),
+            'create' => CreateDestinationOrigin::route('/create'),
+            'edit' => EditDestinationOrigin::route('/{record}/edit'),
         ];
     }
 }

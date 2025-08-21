@@ -6,6 +6,7 @@ use App\Data\HotelDataDTO;
 use App\Data\HotelOfferDTO;
 use App\Models\DestinationOrigin;
 use App\Models\Hotel;
+use Exception;
 use Illuminate\Bus\Batchable;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -68,7 +69,7 @@ class WeekendHotelJob implements ShouldQueue
             $query->where('destination_id', $this->destination);
         })->pluck('hotel_id');
 
-        //implode the array to form strings like this   <HotelId>226</HotelId>
+        // implode the array to form strings like this   <HotelId>226</HotelId>
         $hotelIds = implode('', array_map(function ($hotelId) {
             return "<HotelId>{$hotelId}</HotelId>";
         }, $hotelIds->toArray()));
@@ -81,8 +82,8 @@ class WeekendHotelJob implements ShouldQueue
 
         try {
             $response = $this->getHotelData($hotelIds, $this->date, $this->nights, $this->adults, $this->children, $this->infants, $this->rooms, $boardOptions);
-        } catch (\Exception $e) {
-            //if it's the first time, we retry
+        } catch (Exception $e) {
+            // if it's the first time, we retry
             if ($this->attempts() == 1) {
                 addBreadcrumb('message', 'Hotel Attempts', ['attempts' => $this->attempts()]);
                 $this->release(1);
@@ -119,12 +120,12 @@ class WeekendHotelJob implements ShouldQueue
 
                 $offers = [];
 
-                //save all offers
+                // save all offers
                 foreach ($hotelOffer->Offers as $offer) {
 
                     $reservation_deadline = Carbon::createFromFormat('d/M/Y', $offer->CxlDeadLine);
 
-                    //if price is 0, we skip this offer
+                    // if price is 0, we skip this offer
                     if ($offer->TotalPrice == 0 || $offer->TotalPrice > 1000000) {
                         continue;
                     }
@@ -145,8 +146,8 @@ class WeekendHotelJob implements ShouldQueue
                 $hotel_results[] = $hotel;
 
             }
-        } catch (\Exception $e) {
-            //if its the first time, we retry
+        } catch (Exception $e) {
+            // if its the first time, we retry
             if ($this->attempts() == 1) {
                 addBreadcrumb('message', 'Hotel Attempts', ['attempts' => $this->attempts()]);
                 $this->release(1);
@@ -159,7 +160,7 @@ class WeekendHotelJob implements ShouldQueue
 
     public function getHotelData(string $hotelIds, mixed $arrivalDate, mixed $nights, $adults, $children, $infants, $rooms, $boardOptions): mixed
     {
-        //todo: Add All possible variations
+        // todo: Add All possible variations
         $oneRoom = [
             [1, 0],  // 1 adult, 0 children
             [1, 1],  // 1 adult, 1 child

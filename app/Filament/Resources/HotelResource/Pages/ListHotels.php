@@ -3,7 +3,7 @@
 namespace App\Filament\Resources\HotelResource\Pages;
 
 use App\Filament\Resources\HotelResource;
-use Filament\Actions;
+use Filament\Actions\CreateAction;
 use Filament\Resources\Pages\ListRecords;
 
 class ListHotels extends ListRecords
@@ -13,7 +13,7 @@ class ListHotels extends ListRecords
     protected function getHeaderActions(): array
     {
         return [
-            Actions\CreateAction::make(),
+            CreateAction::make(),
         ];
     }
 }

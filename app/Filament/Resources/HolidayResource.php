@@ -2,15 +2,22 @@
 
 namespace App\Filament\Resources;
 
-use App\Filament\Resources\HolidayResource\Pages;
+use App\Filament\Resources\HolidayResource\Pages\CreateHoliday;
+use App\Filament\Resources\HolidayResource\Pages\EditHoliday;
+use App\Filament\Resources\HolidayResource\Pages\ListHolidays;
 use App\Models\Country;
 use App\Models\Holiday;
-use Filament\Forms;
+use Filament\Actions\Action;
+use Filament\Actions\BulkActionGroup;
+use Filament\Actions\DeleteBulkAction;
+use Filament\Actions\EditAction;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Select;
-use Filament\Forms\Form;
+use Filament\Forms\Components\TextInput;
 use Filament\Resources\Resource;
-use Filament\Tables;
+use Filament\Schemas\Schema;
+use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
@@ -19,26 +26,26 @@ class HolidayResource extends Resource
 {
     protected static ?string $model = Holiday::class;
 
-    protected static ?string $navigationGroup = 'Advertising';
+    protected static string|\UnitEnum|null $navigationGroup = 'Advertising';
 
-    protected static ?string $navigationIcon = 'heroicon-o-calendar';
+    protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-calendar';
 
-    public static function form(Form $form): Form
+    public static function form(Schema $schema): Schema
     {
-        return $form
-            ->schema([
-                Forms\Components\Select::make('country_id')
+        return $schema
+            ->components([
+                Select::make('country_id')
                     ->label('Country')
                     ->options(
                         Country::query()
                             ->pluck('name', 'id')
                     )
                     ->required(),
-                Forms\Components\TextInput::make('name')
+                TextInput::make('name')
                     ->label('Holiday Name')
                     ->required()
                     ->maxLength(255),
-                Forms\Components\TextInput::make('day')
+                TextInput::make('day')
                     ->label('Day (DD-MM)')
                     ->required()
                     ->maxLength(5)
@@ -52,32 +59,32 @@ class HolidayResource extends Resource
     {
         return $table
             ->columns([
-                Tables\Columns\TextColumn::make('country.name')
+                TextColumn::make('country.name')
                     ->label('Country')
                     ->sortable()
                     ->searchable(),
-                Tables\Columns\TextColumn::make('name')
+                TextColumn::make('name')
                     ->label('Holiday Name')
                     ->sortable()
                     ->searchable(),
-                Tables\Columns\TextColumn::make('day')
+                TextColumn::make('day')
                     ->label('Date')
                     ->sortable(),
             ])
             ->filters([
-                Tables\Filters\SelectFilter::make('origin_id')
+                SelectFilter::make('origin_id')
                     ->label('Origin')
                     ->searchable()
                     ->relationship('origin', 'name')
                     ->placeholder('All Origins'),
             ])
-            ->actions([
-                Tables\Actions\EditAction::make(),
+            ->recordActions([
+                EditAction::make(),
             ])
             ->headerActions([
-                Tables\Actions\Action::make('Import')
+                Action::make('Import')
                     ->modalHeading('Import Data via CSV')
-                    ->form([
+                    ->schema([
                         Select::make('country_id')
                             ->label('Country')
                             ->options(
@@ -119,9 +126,9 @@ class HolidayResource extends Resource
                         Storage::delete('public/'.$fileName);
                     }),
             ])
-            ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
+            ->toolbarActions([
+                BulkActionGroup::make([
+                    DeleteBulkAction::make(),
                 ]),
             ]);
     }
@@ -136,9 +143,9 @@ class HolidayResource extends Resource
     public static function getPages(): array
     {
         return [
-            'index' => Pages\ListHolidays::route('/'),
-            'create' => Pages\CreateHoliday::route('/create'),
-            'edit' => Pages\EditHoliday::route('/{record}/edit'),
+            'index' => ListHolidays::route('/'),
+            'create' => CreateHoliday::route('/create'),
+            'edit' => EditHoliday::route('/{record}/edit'),
         ];
     }
 }

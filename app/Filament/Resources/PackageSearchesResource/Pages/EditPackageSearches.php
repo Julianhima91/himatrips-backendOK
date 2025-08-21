@@ -3,7 +3,7 @@
 namespace App\Filament\Resources\PackageSearchesResource\Pages;
 
 use App\Filament\Resources\ClientSearchesResource;
-use Filament\Actions;
+use Filament\Actions\DeleteAction;
 use Filament\Resources\Pages\EditRecord;
 
 class EditPackageSearches extends EditRecord
@@ -13,7 +13,7 @@ class EditPackageSearches extends EditRecord
     protected function getHeaderActions(): array
     {
         return [
-            Actions\DeleteAction::make(),
+            DeleteAction::make(),
         ];
     }
 }

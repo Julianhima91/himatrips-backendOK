@@ -2,38 +2,45 @@
 
 namespace App\Filament\Resources;
 
-use App\Filament\Resources\AirportResource\Pages;
+use App\Filament\Resources\AirportResource\Pages\CreateAirport;
+use App\Filament\Resources\AirportResource\Pages\EditAirport;
+use App\Filament\Resources\AirportResource\Pages\ListAirports;
 use App\Models\Airport;
-use Filament\Forms;
-use Filament\Forms\Form;
+use Filament\Actions\BulkActionGroup;
+use Filament\Actions\CreateAction;
+use Filament\Actions\DeleteBulkAction;
+use Filament\Actions\EditAction;
+use Filament\Forms\Components\Select;
+use Filament\Forms\Components\TextInput;
 use Filament\Resources\Resource;
-use Filament\Tables;
+use Filament\Schemas\Schema;
+use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 
 class AirportResource extends Resource
 {
     protected static ?string $model = Airport::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-rectangle-stack';
+    protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-rectangle-stack';
 
-    public static function form(Form $form): Form
+    public static function form(Schema $schema): Schema
     {
-        return $form
-            ->schema([
-                Forms\Components\TextInput::make('nameAirport')
+        return $schema
+            ->components([
+                TextInput::make('nameAirport')
                     ->autofocus()
                     ->required()
                     ->label('Name'),
-                Forms\Components\TextInput::make('sky_id')
+                TextInput::make('sky_id')
                     ->required(),
-                Forms\Components\TextInput::make('entity_id')
+                TextInput::make('entity_id')
                     ->required(),
-                Forms\Components\TextInput::make('codeIataAirport')
+                TextInput::make('codeIataAirport')
                     ->label('IATA Code')
                     ->required(),
-                Forms\Components\TextInput::make('rapidapi_id')
+                TextInput::make('rapidapi_id')
                     ->label('Rapid API ID'),
-                Forms\Components\Select::make('country_id')
+                Select::make('country_id')
                     ->relationship('country', 'name')
                     ->required(),
             ]);
@@ -43,32 +50,32 @@ class AirportResource extends Resource
     {
         return $table
             ->columns([
-                Tables\Columns\TextColumn::make('nameAirport')
+                TextColumn::make('nameAirport')
                     ->label('Name')
                     ->searchable()
                     ->sortable(),
-                Tables\Columns\TextColumn::make('country.name')
+                TextColumn::make('country.name')
                     ->label('Country')
                     ->searchable()
                     ->sortable(),
-                Tables\Columns\TextColumn::make('sky_id')
+                TextColumn::make('sky_id')
                     ->label('Sky ID'),
-                Tables\Columns\TextColumn::make('entity_id')
+                TextColumn::make('entity_id')
                     ->label('Entity ID'),
             ])
             ->filters([
                 //
             ])
-            ->actions([
-                Tables\Actions\EditAction::make(),
+            ->recordActions([
+                EditAction::make(),
             ])
-            ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
+            ->toolbarActions([
+                BulkActionGroup::make([
+                    DeleteBulkAction::make(),
                 ]),
             ])
             ->emptyStateActions([
-                Tables\Actions\CreateAction::make(),
+                CreateAction::make(),
             ]);
     }
 
@@ -82,9 +89,9 @@ class AirportResource extends Resource
     public static function getPages(): array
     {
         return [
-            'index' => Pages\ListAirports::route('/'),
-            'create' => Pages\CreateAirport::route('/create'),
-            'edit' => Pages\EditAirport::route('/{record}/edit'),
+            'index' => ListAirports::route('/'),
+            'create' => CreateAirport::route('/create'),
+            'edit' => EditAirport::route('/{record}/edit'),
         ];
     }
 }
