@@ -923,4 +923,88 @@ class PackageController extends Controller
             'data' => $ad,
         ]);
     }
+
+    public function mapHotels(Request $request)
+    {
+        // Handle both regular search and live search scenarios
+        $query = Package::query();
+        
+        // If batch_id is provided (live search scenario)
+        if ($request->has('batch_id')) {
+            $query->withTrashed()->where('batch_id', $request->batch_id);
+        } 
+        // Regular search scenario
+        else {
+            $request->validate([
+                'nights' => 'required|integer',
+                'checkin_date' => 'required|date|date_format:Y-m-d',
+                'origin_id' => 'required|exists:origins,id',
+                'destination_id' => 'required|exists:destinations,id',
+            ]);
+
+            $destination_origin = DestinationOrigin::where('destination_id', $request->destination_id)
+                ->where('origin_id', $request->origin_id)
+                ->first();
+
+            $query->whereHas('packageConfig', function ($q) use ($destination_origin) {
+                $q->where('destination_origin_id', $destination_origin->id);
+            })->whereHas('hotelData', function ($q) use ($request) {
+                $q->where('check_in_date', $request->checkin_date)
+                    ->where('number_of_nights', $request->nights);
+            });
+        }
+
+        // Apply filters if provided
+        $query->when($request->price_range, function ($q) use ($request) {
+            $q->whereBetween('total_price', [$request->price_range[0], $request->price_range[1]]);
+        })
+        ->when($request->review_scores, function ($q) use ($request) {
+            $q->whereHas('hotelData.hotel', function ($query) use ($request) {
+                $query->where('review_score', '>=', $request->review_scores);
+            });
+        })
+        ->when($request->stars, function ($q) use ($request) {
+            $q->whereHas('hotelData.hotel', function ($query) use ($request) {
+                $query->whereIn('stars', $request->stars);
+            });
+        })
+        ->when($request->room_basis, function ($q) use ($request) {
+            $q->whereHas('hotelData.offers', function ($query) use ($request) {
+                $query->whereIn('room_basis', $request->room_basis);
+            });
+        });
+
+        // Get all matching packages with hotel data
+        $packages = $query->with(['hotelData.hotel'])->get();
+
+        // Extract unique hotels with their map data
+        $hotels = $packages->map(function ($package) {
+            $hotel = $package->hotelData->hotel;
+            
+            // Only return hotels with valid coordinates
+            if (!$hotel || !$hotel->latitude || !$hotel->longitude || 
+                !is_numeric($hotel->latitude) || !is_numeric($hotel->longitude)) {
+                return null;
+            }
+
+            return [
+                'id' => $hotel->id,
+                'name' => $hotel->name,
+                'address' => $hotel->address,
+                'latitude' => $hotel->latitude,
+                'longitude' => $hotel->longitude,
+                'stars' => $hotel->stars,
+                'review_score' => $hotel->review_score,
+                'review_count' => $hotel->review_count,
+            ];
+        })
+        ->filter() // Remove null values
+        ->unique('id') // Remove duplicate hotels
+        ->values(); // Reset keys
+
+        return response()->json([
+            'data' => $hotels,
+            'total' => $hotels->count(),
+        ], 200);
+    }
 }
