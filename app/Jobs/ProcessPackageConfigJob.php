@@ -12,7 +12,6 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
-use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -42,29 +41,27 @@ class ProcessPackageConfigJob implements ShouldQueue
         $startDate = new DateTime('first day of this month');
         $endDate = (new DateTime('first day of next year'))->modify('first day of this month');
 
+        $processedMonths = DirectFlightAvailability::where('destination_origin_id', $this->packageConfig->destination_origin_id)
+            ->whereBetween('date', [$startDate->format('Y-m-01'), $endDate->format('Y-m-t')])
+            ->selectRaw('DATE_FORMAT(date, "%Y-%m") as `year_month`')
+            ->distinct()
+            ->pluck('year_month')
+            ->toArray();
+
         while ($startDate < $endDate) {
             $yearMonth = $startDate->format('Y-m');
-            $lastProcessedMonth = $this->packageConfig->last_processed_month;
 
-            if ($lastProcessedMonth) {
-                $yearMonthDate = Carbon::createFromFormat('Y-m', $yearMonth);
-                $lastProcessedMonthDate = Carbon::createFromFormat('Y-m', $lastProcessedMonth);
+            if (in_array($yearMonth, $processedMonths)) {
+                $logger->info("Skipping month $yearMonth for PackageConfig ID {$this->packageConfig->id} (Already has data)");
+                $startDate->modify('first day of next month');
 
-                if ($yearMonthDate->lessThanOrEqualTo($lastProcessedMonthDate)) {
-                    $logger->info("Skipping month $yearMonth for PackageConfig ID {$this->packageConfig->id} (Already processed)");
-                    $startDate->modify('first day of next month');
-
-                    continue;
-                }
+                continue;
             }
 
             $logger->info("Checking flights for PackageConfig ID {$this->packageConfig->id} - Month $yearMonth");
 
             $this->checkFlights($originAirport, $destinationAirport, $yearMonth, $this->packageConfig->destination_origin_id, false);
             $this->checkFlights($destinationAirport, $originAirport, $yearMonth, $this->packageConfig->destination_origin_id, true);
-
-            $this->packageConfig->last_processed_month = $yearMonth;
-            $this->packageConfig->save();
 
             $startDate->modify('first day of next month');
         }
