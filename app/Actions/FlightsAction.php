@@ -16,7 +16,7 @@ class FlightsAction
     public function handle($date, $destination, $batchId, $return_date, $origin_id, $destination_id)
     {
         $logger = Log::channel('livesearch');
-        $outbound_flight = Cache::get('flight_'.$date);
+        $outbound_flight = Cache::get("flight:{$batchId}:{$date}");
 
         //filter the flights as per the destination configuration
         //if destination has is_direct_flight set to true, we need to return only direct flights
@@ -28,20 +28,14 @@ class FlightsAction
         $logger->info('TOTAL FLIGHTS START ===========================');
         $logger->info('Count: '.count($outbound_flight));
 
-
-        $logger->info('++++++++++++++++++++++++++++++++++++++');
-
         //filter for direct flights
-        $outbound_flight_direct = $outbound_flight->filter(function ($flight) use ($logger) {
+        $outbound_flight_direct = $outbound_flight->filter(function ($flight) {
             if ($flight == null) {
                 return false;
             }
-            $logger->info("Stop $flight->stopCount");
-            $logger->info("Stop Back $flight->stopCount_back");
 
             return $flight->stopCount === 0 && $flight->stopCount_back === 0;
         });
-        $logger->info('++++++++++++++++++++++++++++++++++++++');
 
         $packageConfig = PackageConfig::query()
             ->whereHas('destination_origin', function ($query) use ($destination_id, $origin_id) {
@@ -175,7 +169,7 @@ class FlightsAction
             'all_flights' => json_encode($outbound_flight),
         ]);
 
-        $inbound_flight = Cache::get('flight_'.$return_date);
+        $inbound_flight = Cache::get("flight:{$batchId}:{$return_date}");
 
         $logger->warning('==============================================');
         $logger->warning('==============================================');

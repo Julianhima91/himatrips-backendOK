@@ -13,7 +13,7 @@ class HotelsAction
     public function handle($destination, $outbound_flight_hydrated, $inbound_flight_hydrated, $batchId, $origin_id, $destination_id, $roomObject)
     {
         //array of hotel data DTOs
-        $hotel_results = Cache::get('hotels');
+        $hotel_results = Cache::get("hotels:{$batchId}");
 
         $packageConfig = PackageConfig::query()
             ->whereHas('destination_origin', function ($query) use ($origin_id, $destination_id) {
