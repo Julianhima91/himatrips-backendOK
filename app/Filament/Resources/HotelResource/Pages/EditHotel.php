@@ -48,7 +48,7 @@ class EditHotel extends EditRecord
                     $recordId = $this->record->id;
 
                     $apiUrl = 'https://booking-com18.p.rapidapi.com/web/stays/details-by-url';
-                    
+
                     try {
                         $response = Http::withHeaders([
                             'x-rapidapi-host' => 'booking-com18.p.rapidapi.com',
@@ -62,14 +62,14 @@ class EditHotel extends EditRecord
                         }
 
                         $data = $response->json()['data'];
-                        
+
                         DB::beginTransaction();
                         try {
                             // 1. Process Photos (existing functionality)
                             if (isset($data['hotelPhotos'])) {
                                 $photos = $data['hotelPhotos'];
                                 $highresUrls = collect($photos)->pluck('highres_url', 'id');
-                                
+
                                 HotelPhoto::where('hotel_id', $recordId)->delete();
 
                                 foreach ($highresUrls as $index => $url) {
@@ -93,19 +93,19 @@ class EditHotel extends EditRecord
 
                             // 2. Process Facilities
                             HotelFacility::where('hotel_id', $recordId)->delete();
-                            
+
                             if (isset($data['baseFacility']) && is_array($data['baseFacility'])) {
                                 foreach ($data['baseFacility'] as $facility) {
                                     if (isset($facility['instances'][0])) {
                                         $instance = $facility['instances'][0];
                                         $chargeMode = 'UNKNOWN';
-                                        
+
                                         if (isset($instance['attributes']['paymentInfo']['chargeMode'])) {
                                             $mode = $instance['attributes']['paymentInfo']['chargeMode'];
                                             if ($mode === 'FREE') $chargeMode = 'FREE';
                                             elseif ($mode === 'PAID') $chargeMode = 'PAID';
                                         }
-                                        
+
                                         HotelFacility::create([
                                             'hotel_id' => $recordId,
                                             'facility_id' => $facility['id'],
@@ -121,7 +121,7 @@ class EditHotel extends EditRecord
                                     }
                                 }
                             }
-                            
+
                             // Also process facility highlights
                             if (isset($data['genericFacilityHighlight']) && is_array($data['genericFacilityHighlight'])) {
                                 foreach ($data['genericFacilityHighlight'] as $highlight) {
@@ -129,7 +129,7 @@ class EditHotel extends EditRecord
                                     $exists = HotelFacility::where('hotel_id', $recordId)
                                         ->where('facility_id', $highlight['id'])
                                         ->exists();
-                                        
+
                                     if (!$exists) {
                                         HotelFacility::create([
                                             'hotel_id' => $recordId,
@@ -144,9 +144,22 @@ class EditHotel extends EditRecord
 
                             // 3. Process Reviews
                             HotelReview::where('hotel_id', $recordId)->delete();
-                            
+
                             if (isset($data['featuredReview']) && is_array($data['featuredReview'])) {
                                 foreach ($data['featuredReview'] as $review) {
+                                    $customerTypeMap = [
+                                        'WITH_FRIENDS' => 'GROUP',
+                                        'YOUNG_COUPLE' => 'YOUNG_COUPLE',
+                                        'FAMILY_WITH_YOUNG_CHILDREN' => 'FAMILY_WITH_YOUNG_CHILDREN',
+                                        'FAMILY_WITH_OLDER_CHILDREN' => 'FAMILY_WITH_OLDER_CHILDREN',
+                                        'SOLO_TRAVELLER' => 'SOLO_TRAVELLER',
+                                        'BUSINESS' => 'BUSINESS',
+                                        'GROUP' => 'GROUP',
+                                        'MATURE_COUPLE' => 'MATURE_COUPLE',
+                                    ];
+
+                                    $customerType = $customerTypeMap[$review['customerType']] ?? 'OTHER';
+
                                     HotelReview::create([
                                         'hotel_id' => $recordId,
                                         'booking_review_id' => $review['id'],
@@ -157,7 +170,7 @@ class EditHotel extends EditRecord
                                         'positive_text' => $review['positiveText'] ?? null,
                                         'negative_text' => $review['negativeText'] ?? null,
                                         'title' => $review['title'] ?? null,
-                                        'customer_type' => $review['customerType'] ?? 'OTHER',
+                                        'customer_type' => $customerType,
                                         'purpose_type' => $review['purposeType'] ?? 'OTHER',
                                         'review_date' => isset($review['completed']) ? date('Y-m-d H:i:s', $review['completed']) : now(),
                                         'language' => $review['language'] ?? 'en',
@@ -170,7 +183,7 @@ class EditHotel extends EditRecord
                             // 4. Process Review Summary
                             if (isset($data['propertyReview'][0]['totalScore'])) {
                                 $reviewData = $data['propertyReview'][0]['totalScore'];
-                                
+
                                 HotelReviewSummary::updateOrCreate(
                                     ['hotel_id' => $recordId],
                                     [
@@ -186,26 +199,26 @@ class EditHotel extends EditRecord
                             $hotel = Hotel::find($recordId);
                             $hotel->booking_url = $bookingUrl;
                             $hotel->save();
-                            
+
                             DB::commit();
-                            
+
                             $facilityCount = HotelFacility::where('hotel_id', $recordId)->count();
                             $reviewCount = HotelReview::where('hotel_id', $recordId)->count();
-                            
+
                             Notification::make()
                                 ->title('Success')
                                 ->body("Successfully synced: {$facilityCount} facilities and {$reviewCount} reviews")
                                 ->success()
                                 ->send();
-                                
+
                         } catch (\Exception $e) {
                             DB::rollback();
                             throw $e;
                         }
-                        
+
                     } catch (\Exception $e) {
                         Log::error('Failed to sync booking data', ['error' => $e->getMessage()]);
-                        
+
                         Notification::make()
                             ->title('Error')
                             ->body('Failed to sync data: ' . $e->getMessage())
