@@ -25,17 +25,23 @@ class FlightsAction
         //if max_stop_count is not 0, we need to return only flights with stop count less than or equal to max_stop_count
         // and with max_wait_time less than or equal to max_wait_time
 
-        $logger->info('TOTAL FLIGHTS START ===========================>');
+        $logger->info('TOTAL FLIGHTS START ===========================');
         $logger->info('Count: '.count($outbound_flight));
 
+
+        $logger->info('++++++++++++++++++++++++++++++++++++++');
+
         //filter for direct flights
-        $outbound_flight_direct = $outbound_flight->filter(function ($flight) {
+        $outbound_flight_direct = $outbound_flight->filter(function ($flight) use ($logger) {
             if ($flight == null) {
                 return false;
             }
+            $logger->info("Stop $flight->stopCount");
+            $logger->info("Stop Back $flight->stopCount_back");
 
             return $flight->stopCount === 0 && $flight->stopCount_back === 0;
         });
+        $logger->info('++++++++++++++++++++++++++++++++++++++');
 
         $packageConfig = PackageConfig::query()
             ->whereHas('destination_origin', function ($query) use ($destination_id, $origin_id) {
