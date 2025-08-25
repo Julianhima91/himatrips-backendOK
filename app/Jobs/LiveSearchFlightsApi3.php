@@ -103,8 +103,8 @@ class LiveSearchFlightsApi3 implements ShouldQueue
                 $this->release(1);
             } else {
                 ray('SUCCESS')->purple();
-                cache()->put('flight_'.$this->date, $itineraries, now()->addMinutes(5));
-                cache()->put('flight_'.$this->return_date, $itineraries, now()->addMinutes(5));
+                cache()->put("flight:{$this->batchId}:{$this->date}", $itineraries, now()->addMinutes(5));
+                cache()->put("flight:{$this->batchId}:{$this->return_date}", $itineraries, now()->addMinutes(5));
                 Cache::put("batch:{$this->batchId}:flights", $itineraries, now()->addMinutes(180));
 
                 if (! Cache::get("job_completed_{$this->batchId}")) {
