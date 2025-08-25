@@ -55,6 +55,12 @@ class LiveSearchFlightsApi3 implements ShouldQueue
      */
     public function handle(): void
     {
+        if (Cache::get("job_completed_{$this->batchId}")) {
+            $this->delete();
+
+            return;
+        }
+
         $request = new RetrieveFlightsApi3Request(
             departure_airport_code: $this->origin->codeIataAirport,
             arrival_airport_code: $this->destination->codeIataAirport,
@@ -90,10 +96,10 @@ class LiveSearchFlightsApi3 implements ShouldQueue
         try {
             $itineraries = $response->dtoOrFail();
 
-            $logger->info("$this->batchId API 1 ITINERARIES COUNT:");
+            $logger->info("$this->batchId API 3 ITINERARIES COUNT:");
             $logger->info(count($itineraries));
             if ($itineraries->isEmpty()) {
-                ray('empty itineraries 1111');
+                ray('empty itineraries');
                 $this->release(1);
             } else {
                 ray('SUCCESS')->purple();
