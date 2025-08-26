@@ -4,6 +4,8 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\HotelResource\Pages;
 use App\Filament\Resources\HotelResource\RelationManagers\DestinationsRelationManager;
+use App\Filament\Resources\HotelResource\RelationManagers\FacilitiesRelationManager;
+use App\Filament\Resources\HotelResource\RelationManagers\ReviewsRelationManager;
 use App\Filament\Resources\HotelResource\RelationManagers\TransfersRelationManager;
 use App\Models\Hotel;
 use Filament\Forms;
@@ -11,6 +13,7 @@ use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Filters\SelectFilter;
+use Filament\Tables\Filters\TernaryFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 
@@ -52,13 +55,32 @@ class HotelResource extends Resource
                             ->maxLength(255),
                         Forms\Components\TextInput::make('country')
                             ->maxLength(255),
-                        Forms\Components\TextInput::make('review_score')
-                            ->numeric(),
-                        Forms\Components\TextInput::make('review_count')
-                            ->numeric(),
+                        // keeping them commented in case we actually need them, and we can add the migration later on
+                        //                        Forms\Components\TextInput::make('review_score')
+                        //                            ->numeric(),
+                        //                        Forms\Components\TextInput::make('review_count')
+                        //                            ->numeric(),
                         Forms\Components\RichEditor::make('description')
                             ->maxLength(65535)
                             ->columnSpanFull(),
+                        Forms\Components\TextInput::make('booking_url')
+                            ->label('Booking URL')
+                            ->url()
+                            ->placeholder('https://www.booking.com/hotel/...')
+                            ->maxLength(255)
+                            ->columnSpanFull(),
+                    ])
+                    ->columns(2),
+                Forms\Components\Section::make('Review Summary')
+                    ->schema([
+                        Forms\Components\TextInput::make('reviewSummary.total_score')
+                            ->label('Review Score')
+                            ->disabled()
+                            ->dehydrated(false),
+                        Forms\Components\TextInput::make('reviewSummary.review_count')
+                            ->label('Total Reviews')
+                            ->disabled()
+                            ->dehydrated(false),
                     ])
                     ->columns(2),
                 Forms\Components\Section::make('Hotel Photos')
@@ -98,6 +120,20 @@ class HotelResource extends Resource
                     ->searchable(),
                 Tables\Columns\TextColumn::make('country')
                     ->searchable(),
+                Tables\Columns\TextColumn::make('reviewSummary.total_score')
+                    ->label('Review Score')
+                    ->badge()
+                    ->color(fn ($state) => match (true) {
+                        $state >= 9 => 'success',
+                        $state >= 7 => 'info',
+                        $state >= 5 => 'warning',
+                        default => 'gray',
+                    })
+                    ->sortable(),
+                Tables\Columns\TextColumn::make('facilities_count')
+                    ->label('Facilities')
+                    ->counts('facilities')
+                    ->badge(),
                 Tables\Columns\TextColumn::make('created_at')
                     ->dateTime()
                     ->sortable()
@@ -113,6 +149,16 @@ class HotelResource extends Resource
                         fn (Builder $query) => $query->whereHas('destinations')
                     ),
                 SelectFilter::make('destinations')->relationship('destinations', 'name'),
+                TernaryFilter::make('has_booking_url')
+                    ->label('Has Booking URL')
+                    ->placeholder('All Hotels')
+                    ->trueLabel('With Booking URL')
+                    ->falseLabel('Without Booking URL')
+                    ->queries(
+                        true: fn (Builder $query) => $query->whereNotNull('booking_url'),
+                        false: fn (Builder $query) => $query->whereNull('booking_url'),
+                        blank: fn (Builder $query) => $query,
+                    ),
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),
@@ -132,6 +178,8 @@ class HotelResource extends Resource
         return [
             DestinationsRelationManager::class,
             TransfersRelationManager::class,
+            FacilitiesRelationManager::class,
+            ReviewsRelationManager::class,
         ];
     }
 
