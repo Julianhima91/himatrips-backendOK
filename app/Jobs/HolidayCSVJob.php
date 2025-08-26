@@ -12,11 +12,10 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Log;
 
-class AppendDestinationToCSVJob implements ShouldQueue
+class HolidayCSVJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
@@ -24,13 +23,10 @@ class AppendDestinationToCSVJob implements ShouldQueue
 
     private $batchIds;
 
-    private $destinationId;
-
-    public function __construct($adConfig, $batchIds, $destinationId)
+    public function __construct($adConfig, $batchIds)
     {
         $this->adConfig = $adConfig;
         $this->batchIds = $batchIds;
-        $this->destinationId = $destinationId;
     }
 
     /**
@@ -38,132 +34,101 @@ class AppendDestinationToCSVJob implements ShouldQueue
      */
     public function handle(): void
     {
-        $logger = Log::channel('economic');
+        $logger = Log::channel('holiday');
 
-        $logger->warning('APPENDING ...');
+        $logger->warning('===========================================');
+        $logger->warning('===========================================');
+        $logger->warning('===========================================');
+        $logger->warning('EXPORTING ...');
+        $logger->warning('===========================================');
+        $logger->warning('===========================================');
+        $logger->warning('===========================================');
 
-        $cheapestAds = Ad::select('destination_id', DB::raw('MIN(total_price) as min_price'))
-            ->where([
-                ['ad_config_id', $this->adConfig->id],
-                ['offer_category', 'economic'],
-                ['destination_id', $this->destinationId],
-            ])
-            ->whereIn('batch_id', $this->batchIds)
-            ->groupBy('destination_id')
-            ->get();
-
-        foreach ($cheapestAds as $cheapestAd) {
-            $ad = Ad::where([
-                ['ad_config_id', $this->adConfig->id],
-                ['offer_category', 'economic'],
-                ['destination_id', $cheapestAd->destination_id],
-                ['total_price', $cheapestAd->min_price],
-            ])
-                ->whereIn('batch_id', $this->batchIds)
-                ->first();
-
-            $logger->warning("Ad ID: $ad->id");
-
-            Ad::where([
-                ['ad_config_id', $this->adConfig->id],
-                ['offer_category', 'economic'],
-                ['destination_id', $cheapestAd->destination_id],
-            ])
-                ->whereIn('batch_id', $this->batchIds)
-                ->where('id', '!=', $ad->id)
-                ->delete();
-        }
+        $logger->info('Batch Id Count: '.count($this->batchIds));
 
         $ads = Ad::query()
+            ->where('ad_config_id', $this->adConfig->id)
+            ->where('offer_category', 'holiday')
             ->whereIn('batch_id', $this->batchIds)
-            ->orderBy('total_price', 'asc')
             ->get();
 
-        $csv = AdConfigCsv::query()
-            ->where('ad_config_id', $this->adConfig->id)
-            ->where('file_path', 'like', '%economic%')
-            ->first();
+        $logger->info("Total ads fetched: {$ads->count()}");
 
-        if (count($ads) == 0) {
-            $logger->warning('==========================');
-            $logger->warning('No Ads available to append');
-            $logger->warning('==========================');
+        $adsByHoliday = $ads->groupBy(function ($ad) {
+            $req = json_decode($ad->request_data, true);
+            $date = $req['date'] ?? 'unknown';
+            $returnDate = $req['return_date'] ?? 'unknown';
+
+            return $ad->destination_id.'|'.$date.'|'.$returnDate;
+        });
+
+        $logger->info('Unique holiday groups: '.$adsByHoliday->count());
+
+        $keptAds = collect();
+
+        foreach ($adsByHoliday as $holidayKey => $holidayAds) {
+            $logger->info("Processing group: {$holidayKey} (ads: {$holidayAds->count()})");
+
+            $sorted = $holidayAds->sortBy('total_price');
+            $cheapest = $sorted->first();
+
+            if ($cheapest) {
+                $logger->warning("Keeping Ad ID {$cheapest->id} with price {$cheapest->total_price}");
+                $keptAds->push($cheapest);
+
+                $toDelete = $sorted->slice(1);
+                if ($toDelete->isNotEmpty()) {
+                    Ad::whereIn('id', $toDelete->pluck('id'))->delete();
+                }
+            }
         }
 
-        $this->appendToCSV($ads, $csv);
+        [$csvPath, $adConfigId] = $this->exportAdsToCsv($keptAds);
+
+        if ($csvPath !== null) {
+            AdConfigCsv::updateOrCreate([
+                'ad_config_id' => $adConfigId,
+                'file_path' => $csvPath,
+            ]);
+        } else {
+            $logger->info('NOTHING TO EXPORT');
+        }
     }
 
-    public function appendToCSV($ads, $csv): void
+    public function exportAdsToCsv($ads)
     {
-        $logger = Log::channel('economic');
+        $logger = Log::channel('holiday');
 
         $totalAds = count($ads);
-        $adConfig = $ads[0]->ad_config_id;
-        $logger->info("Appending $totalAds ads for economic... Ad config id: $adConfig");
+        $firstAd = $ads->first();
+
+        if (! $firstAd) {
+            $logger->warning('No ads found to export. Total: '.$totalAds);
+
+            return [null, null];
+        }
+
+        $adConfig = $firstAd->ad_config_id;
+        $adConfigDescription = preg_replace('/\s+/', '_', $ads[0]->adConfig->description ?? 'no_description');
+        $logger->info("Exporting $totalAds ads for holiday... Ad config id: $adConfig");
+
+        $filename = 'ads_holiday_export_'.$adConfigDescription.'.csv';
 
         $directory = storage_path('app/public/offers');
         if (! File::exists($directory)) {
             File::makeDirectory($directory, 0755, true);
         }
 
-        $filepath = $directory.'/'.$csv->file_path;
+        $filepath = $directory.'/'.$filename;
 
-        $existingHeaders = null;
-        $fileForRead = fopen($filepath, 'r');
-        $existingHeaders = fgetcsv($fileForRead);
-        fclose($fileForRead);
-
-        $file = fopen($filepath, 'a');
+        $file = fopen($filepath, 'w');
 
         $maxImages = 0;
         $maxTagsPerImage = [];
+
         $maxVideos = 0;
         $maxTagsPerVideo = [];
         $maxDestinationTags = 0;
-
-        foreach ($existingHeaders as $header) {
-            // Match image[n].url
-            if (preg_match('/^image\[(\d+)\]\.url$/', $header, $matches)) {
-                $index = (int) $matches[1];
-                $maxImages = max($maxImages, $index + 1);
-                $maxTagsPerImage[$index] = $maxTagsPerImage[$index] ?? 0;
-            }
-
-            // Match image[n].tag[m]
-            elseif (preg_match('/^image\[(\d+)\]\.tag\[(\d+)\]$/', $header, $matches)) {
-                $imgIndex = (int) $matches[1];
-                $tagIndex = (int) $matches[2];
-                $maxImages = max($maxImages, $imgIndex + 1);
-                $maxTagsPerImage[$imgIndex] = max($maxTagsPerImage[$imgIndex] ?? 0, $tagIndex + 1);
-            }
-
-            // Match video[n].url
-            elseif (preg_match('/^video\[(\d+)\]\.url$/', $header, $matches)) {
-                $index = (int) $matches[1];
-                $maxVideos = max($maxVideos, $index + 1);
-                $maxTagsPerVideo[$index] = $maxTagsPerVideo[$index] ?? 0;
-            }
-
-            // Match video[n].tag[m]
-            elseif (preg_match('/^video\[(\d+)\]\.tag\[(\d+)\]$/', $header, $matches)) {
-                $vidIndex = (int) $matches[1];
-                $tagIndex = (int) $matches[2];
-                $maxVideos = max($maxVideos, $vidIndex + 1);
-                $maxTagsPerVideo[$vidIndex] = max($maxTagsPerVideo[$vidIndex] ?? 0, $tagIndex + 1);
-            }
-
-            // Match type[n]
-            elseif (preg_match('/^type\[(\d+)\]$/', $header, $matches)) {
-                $tagIndex = (int) $matches[1];
-                $maxDestinationTags = max($maxDestinationTags, $tagIndex + 1);
-            }
-        }
-
-        $logger->error($maxDestinationTags);
-        $logger->error($maxImages);
-        $logger->error($maxTagsPerImage);
-        $logger->error($maxVideos);
-        $logger->error($maxTagsPerVideo);
 
         foreach ($ads as $ad) {
             $destinationOrigin = DestinationOrigin::where([
@@ -181,9 +146,9 @@ class AppendDestinationToCSVJob implements ShouldQueue
 
             $destinationTags = $ad->destination->tags;
 
-            //            $maxImages = max($maxImages, $photos->count());
-            //            $maxVideos = max($maxVideos, $videos->count());
-            //            $maxDestinationTags = min(3, max($maxDestinationTags, $destinationTags->count()));
+            $maxImages = max($maxImages, $photos->count());
+            $maxVideos = max($maxVideos, $videos->count());
+            $maxDestinationTags = min(3, max($maxDestinationTags, $destinationTags->count()));
 
             foreach ($photos as $index => $photo) {
                 $tagsCount = count($photo->tags);
@@ -242,6 +207,8 @@ class AppendDestinationToCSVJob implements ShouldQueue
             'url',
         ]);
 
+        fputcsv($file, $headers);
+
         $months = [
             'January' => 'Janar', 'February' => 'Shkurt', 'March' => 'Mars',
             'April' => 'Prill', 'May' => 'Maj', 'June' => 'Qershor',
@@ -274,7 +241,8 @@ class AppendDestinationToCSVJob implements ShouldQueue
                 $temp = $labelMap[$enum->name] ?? '';
             }
 
-            $message = "❣️ Oferta Ekonomike ne $destination->name Nga $origin ❣️
+            $message = "🌍️ Pushimet e tua me nisje nga $origin ! - Zgjidh midis ofertave me te mira sot!
+💡 Rezervo tani!📞 Ofertat janë të limituara!
 ✈️ ".$formatDate($ad->outboundFlight->departure).' - '.$formatDate($ad->inboundFlight->departure).' ➥ '.(floor($ad->total_price / 2)).' €/P '.$ad->hotelData->number_of_nights.' Nete
 ✅ Bilete Vajtje - Ardhje nga '.$ad->adConfig->origin->name.'
 ✅ Cante 10 Kg
@@ -292,7 +260,7 @@ class AppendDestinationToCSVJob implements ShouldQueue
                 //                $ad->id,
                 $ad->package_config_id,
                 floor($ad->total_price / 2),
-                "❣️ Oferta Ekonomike ne $destination->name Nga $origin ❣️",
+                "❣️ Pushime ne $destination->name Nga $origin ❣️",
                 $message,
                 $customLabel,
             ];
@@ -375,5 +343,7 @@ class AppendDestinationToCSVJob implements ShouldQueue
         }
 
         fclose($file);
+
+        return [$filename, $adConfig];
     }
 }

@@ -16,7 +16,7 @@ class FlightsAction
     public function handle($date, $destination, $batchId, $return_date, $origin_id, $destination_id)
     {
         $logger = Log::channel('livesearch');
-        $outbound_flight = Cache::get('flight_'.$date);
+        $outbound_flight = Cache::get("flight:{$batchId}:{$date}");
 
         //filter the flights as per the destination configuration
         //if destination has is_direct_flight set to true, we need to return only direct flights
@@ -25,7 +25,7 @@ class FlightsAction
         //if max_stop_count is not 0, we need to return only flights with stop count less than or equal to max_stop_count
         // and with max_wait_time less than or equal to max_wait_time
 
-        $logger->info('TOTAL FLIGHTS START ===========================>');
+        $logger->info('TOTAL FLIGHTS START ===========================');
         $logger->info('Count: '.count($outbound_flight));
 
         //filter for direct flights
@@ -169,7 +169,7 @@ class FlightsAction
             'all_flights' => json_encode($outbound_flight),
         ]);
 
-        $inbound_flight = Cache::get('flight_'.$return_date);
+        $inbound_flight = Cache::get("flight:{$batchId}:{$return_date}");
 
         $logger->warning('==============================================');
         $logger->warning('==============================================');

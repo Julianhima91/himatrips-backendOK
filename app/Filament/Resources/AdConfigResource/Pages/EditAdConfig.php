@@ -4,6 +4,8 @@ namespace App\Filament\Resources\AdConfigResource\Pages;
 
 use App\Filament\Resources\AdConfigResource;
 use App\Jobs\UpdateEconomicAdDestinationJob;
+use App\Jobs\UpdateHolidayAdDestinationJob;
+use App\Jobs\UpdateWeekendAdDestinationJob;
 use App\Models\AdConfig;
 use Filament\Actions;
 use Filament\Actions\Action;
@@ -18,8 +20,9 @@ class EditAdConfig extends EditRecord
     {
         return [
             Actions\DeleteAction::make(),
+
             Action::make('openModal')
-                ->label('Choose Destination to update')
+                ->label('Update Economic')
                 ->modalHeading('Select an Option')
                 ->form([
                     Select::make('temp_destination_id')
@@ -30,8 +33,35 @@ class EditAdConfig extends EditRecord
                 ->action(function (array $data) {
                     UpdateEconomicAdDestinationJob::dispatch($data['temp_destination_id'], $this->record);
                 })
-                ->modalSubmitActionLabel('Confirm')
-                ->icon('heroicon-o-adjustments-vertical'),
+                ->modalSubmitActionLabel('Confirm'),
+
+            Action::make('openModal')
+                ->label('Update Holidays')
+                ->modalHeading('Select an Option')
+                ->form([
+                    Select::make('holiday_destination_id')
+                        ->label('Destination')
+                        ->options(fn () => $this->record->destinations()->pluck('name', 'destinations.id'))
+                        ->required(),
+                ])
+                ->action(function (array $data) {
+                    UpdateHolidayAdDestinationJob::dispatch($data['holiday_destination_id'], $this->record)->onQueue('holiday');
+                })
+                ->modalSubmitActionLabel('Confirm'),
+
+            Action::make('openModal')
+                ->label('Update Weekends')
+                ->modalHeading('Select an Option')
+                ->form([
+                    Select::make('holiday_destination_id')
+                        ->label('Destination')
+                        ->options(fn () => $this->record->destinations()->pluck('name', 'destinations.id'))
+                        ->required(),
+                ])
+                ->action(function (array $data) {
+                    UpdateWeekendAdDestinationJob::dispatch($data['holiday_destination_id'], $this->record)->onQueue('weekend');
+                })
+                ->modalSubmitActionLabel('Confirm'),
         ];
     }
 

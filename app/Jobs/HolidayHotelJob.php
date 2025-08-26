@@ -4,7 +4,7 @@ namespace App\Jobs;
 
 use App\Data\HotelDataDTO;
 use App\Data\HotelOfferDTO;
-use App\Models\Destination;
+use App\Models\DestinationOrigin;
 use App\Models\Hotel;
 use Illuminate\Bus\Batchable;
 use Illuminate\Bus\Queueable;
@@ -20,53 +20,46 @@ use Spatie\LaravelData\Optional;
 
 use function Sentry\addBreadcrumb;
 
-class LiveSearchHotels implements ShouldQueue
+class HolidayHotelJob implements ShouldQueue
 {
     use Batchable, Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public int $tries = 2;
 
-    private $checkin_date;
-
     private $nights;
+
+    private $adults = 2;
+
+    private $children = 0;
+
+    private $infants = 0;
 
     private $destination;
 
-    private $adults;
-
-    private $children;
-
-    private $infants;
-
     private $rooms;
 
-    public $batchId;
+    public $baseBatchId;
 
-    private $countryCode;
+    public $date;
 
-    /**
-     * Create a new job instance.
-     */
-    public function __construct($checkin_date, $nights, $destination, $adults, $children, $infants, $rooms, $batchId, $countryCode)
+    private $adConfigId;
+
+    private $adConfig;
+
+    public function __construct($nights, $destination, $rooms, $batchId, $date, $adConfigId, $adConfig)
     {
-        $this->checkin_date = $checkin_date;
         $this->nights = $nights;
         $this->destination = $destination;
-        $this->adults = $adults;
-        $this->children = $children;
-        $this->infants = $infants;
         $this->rooms = $rooms;
-        $this->batchId = $batchId;
-        $this->countryCode = $countryCode;
+        $this->baseBatchId = $batchId;
+        $this->date = $date;
+        $this->adConfigId = $adConfigId;
+        $this->adConfig = $adConfig;
     }
 
-    /**
-     * Execute the job.
-     */
     public function handle(): void
     {
-        //get the hotel IDs
-        //        $hotelIds = Hotel::where('destination_id', $this->destination)->pluck('hotel_id');
+        $logger = Log::channel('holiday');
 
         $hotelIds = Hotel::whereHas('destinations', function ($query) {
             $query->where('destination_id', $this->destination);
@@ -77,11 +70,14 @@ class LiveSearchHotels implements ShouldQueue
             return "<HotelId>{$hotelId}</HotelId>";
         }, $hotelIds->toArray()));
 
-        // We will use board options more like a filter in the front end rather than a filter in hotel api
-        //$boardOptions = Destination::find($this->destination)->board_options;
+        $destinationOrigin = DestinationOrigin::where([
+            ['destination_id', $this->destination],
+            ['origin_id', $this->adConfig->origin_id],
+        ])->first();
+        $boardOptions = $destinationOrigin->boarding_options;
 
         try {
-            $response = $this->getHotelData($hotelIds, $this->checkin_date, $this->nights, $this->adults, $this->children, $this->infants, $this->rooms, null, $this->countryCode);
+            $response = $this->getHotelData($hotelIds, $this->date, $this->nights, $this->adults, $this->children, $this->infants, $this->rooms, $boardOptions);
         } catch (\Exception $e) {
             //if it's the first time, we retry
             if ($this->attempts() == 1) {
@@ -109,7 +105,7 @@ class LiveSearchHotels implements ShouldQueue
                 $hotel = new HotelDataDTO(
                     id: new Optional,
                     hotel_id: $hotel,
-                    check_in_date: Carbon::createFromFormat('Y-m-d', $this->checkin_date),
+                    check_in_date: Carbon::createFromFormat('Y-m-d', $this->date),
                     number_of_nights: $this->nights,
                     room_count: count($this->rooms),
                     adults: $this->adults,
@@ -154,13 +150,11 @@ class LiveSearchHotels implements ShouldQueue
             }
         }
 
-        //save the hotel results in cache
-        Cache::put("hotels:{$this->batchId}", $hotel_results, now()->addMinutes(5));
-        Cache::put("batch:{$this->batchId}:hotels", $hotel_results, now()->addMinutes(180));
-        Cache::put("hotel_job_completed_{$this->batchId}", true, now()->addMinutes(2));
+        Cache::put("batch:{$this->baseBatchId}:hotels", $hotel_results, now()->addMinutes(180));
+
     }
 
-    public function getHotelData(string $hotelIds, mixed $arrivalDate, mixed $nights, $adults, $children, $infants, $rooms, $boardOptions, $countryCode): mixed
+    public function getHotelData(string $hotelIds, mixed $arrivalDate, mixed $nights, $adults, $children, $infants, $rooms, $boardOptions): mixed
     {
         //todo: Add All possible variations
         $oneRoom = [
@@ -246,9 +240,9 @@ class LiveSearchHotels implements ShouldQueue
         }
 
         if (in_array('doubleSearch', $combinationType)) {
-            $normalSearch = $this->sendXmlRequest($boardOptions, $hotelIds, $arrivalDate, $nights, $roomsXml, $countryCode);
+            $normalSearch = $this->sendXmlRequest($boardOptions, $hotelIds, $arrivalDate, $nights, $roomsXml);
 
-            $splitSearch = $this->sendXmlRequest($boardOptions, $hotelIds, $arrivalDate, $nights, $roomsTwoXml, $countryCode);
+            $splitSearch = $this->sendXmlRequest($boardOptions, $hotelIds, $arrivalDate, $nights, $roomsTwoXml);
 
             $normalSearchHotels = json_decode($normalSearch->MakeRequestResult)->Hotels;
             $splitSearchHotels = json_decode($splitSearch->MakeRequestResult)->Hotels;
@@ -280,7 +274,7 @@ class LiveSearchHotels implements ShouldQueue
 
             return $normalSearch;
         } else {
-            return $this->sendXmlRequest($boardOptions, $hotelIds, $arrivalDate, $nights, $roomsXml, $countryCode);
+            return $this->sendXmlRequest($boardOptions, $hotelIds, $arrivalDate, $nights, $roomsXml);
         }
     }
 
@@ -305,7 +299,7 @@ class LiveSearchHotels implements ShouldQueue
         return $roomsXml;
     }
 
-    private function sendXmlRequest($boardOptions, $hotelIds, $arrivalDate, $nights, $roomsXml, $countryCode)
+    private function sendXmlRequest($boardOptions, $hotelIds, $arrivalDate, $nights, $roomsXml)
     {
         $filterRoomBasisesXml = '<FilterRoomBasises>';
 
@@ -331,7 +325,7 @@ class LiveSearchHotels implements ShouldQueue
         </Hotels>
         <MaximumWaitTime>1500</MaximumWaitTime>
         {$filterRoomBasisesXml}
-        <Nationality>{$countryCode}</Nationality>
+        <Nationality>AL</Nationality>
         <ArrivalDate>{$arrivalDate}</ArrivalDate>
         <Nights>{$nights}</Nights>
         <Rooms>
@@ -360,15 +354,6 @@ XML;
                 'cache_wsdl' => WSDL_CACHE_NONE,
             ])
             ->withHeaders($header)
-            ->afterRequesting(function ($request, $response) {
-                // Log the response
-                //\Log::info('HOTEL SEARCH REQUEST');
-                //ray($request->getBody());
-                //ray($response);
-                //\Log::info("HOTEL SEARCH REQUEST END\n");
-                //\Log::info("RESPONSE START\n");
-                //\Log::info(json_encode($response));
-            })
             ->call('MakeRequest', [
                 'requestType' => 11,
                 'xmlRequest' => $xmlRequestBody,

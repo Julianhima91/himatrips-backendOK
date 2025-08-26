@@ -3,7 +3,6 @@
 namespace App\Jobs;
 
 use App\Enums\OfferCategoryEnum;
-use App\Events\CheckEconomicJobCompletedEvent;
 use App\Models\Ad;
 use App\Models\AdConfig;
 use App\Models\Destination;
@@ -24,7 +23,7 @@ use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 
-class FilterEconomicAds implements ShouldQueue
+class FilterWeekendAds implements ShouldQueue
 {
     use Batchable, Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
@@ -32,7 +31,7 @@ class FilterEconomicAds implements ShouldQueue
 
     private AdConfig $adConfig;
 
-    private $yearMonth;
+    private $date;
 
     private $originId;
 
@@ -46,11 +45,14 @@ class FilterEconomicAds implements ShouldQueue
 
     private $batchIds;
 
-    public function __construct($batchId, $adConfig, $yearMonth, $originId, $destinationId, $airport, $destinationAirport, $batchIds)
+    private $returnDate;
+
+    public function __construct($batchId, $adConfig, $date, $returnDate, $originId, $destinationId, $airport, $destinationAirport, $batchIds)
     {
         $this->baseBatchId = $batchId;
         $this->adConfig = $adConfig;
-        $this->yearMonth = $yearMonth;
+        $this->date = $date;
+        $this->returnDate = $returnDate;
         $this->originId = $originId;
         $this->destinationId = $destinationId;
         $this->airport = $airport;
@@ -58,35 +60,24 @@ class FilterEconomicAds implements ShouldQueue
         $this->batchIds = $batchIds;
     }
 
-    /**
-     * Execute the job.
-     */
     public function handle(): void
     {
-        $logger = Log::channel('economic');
+        $logger = Log::channel('weekend');
 
         $flights = Cache::get("batch:{$this->baseBatchId}:flights");
         $hotels = Cache::get("batch:{$this->baseBatchId}:hotels");
+
         $adConfigId = $this->adConfig->id;
-        $combination = Cache::get("$adConfigId:$this->baseBatchId:cheapest_combination");
 
         $logger->warning('INSIDE LAST STEP');
         $logger->warning($this->baseBatchId);
-        if (! $combination) {
-            $logger->info("Cancelling final job since there was no cheapest combination found for batch: $this->baseBatchId");
-
-            return;
-        }
-
-        $date = $this->yearMonth.'-'.$combination['outbound']['date'];
-        $returnDate = $this->yearMonth.'-'.$combination['return']['date'];
 
         $this->request = [
             'origin_airport' => $this->airport,
             'destination_airport' => $this->destinationAirport,
-            'date' => $date,
-            'nights' => (new \DateTime($returnDate))->diff(new \DateTime($date))->days,
-            'return_date' => $returnDate,
+            'date' => $this->date,
+            'nights' => (new \DateTime($this->returnDate))->diff(new \DateTime($this->date))->days,
+            'return_date' => $this->returnDate,
             'origin_id' => $this->adConfig->origin_id,
             'destination_id' => $this->destinationId,
             'rooms' => [
@@ -97,17 +88,15 @@ class FilterEconomicAds implements ShouldQueue
                 ],
             ],
             'batch_id' => $this->baseBatchId,
-            'category' => OfferCategoryEnum::ECONOMIC->value,
+            'category' => OfferCategoryEnum::WEEKEND->value,
         ];
 
         if ($flights && $hotels) {
-            [$outbound_flight_hydrated, $inbound_flight_hydrated] = $this->handleFlights($flights, $date, $this->baseBatchId, $returnDate, $this->originId, $this->destinationId);
+            [$outbound_flight_hydrated, $inbound_flight_hydrated] = $this->handleFlights($flights, $this->date, $this->baseBatchId, $this->returnDate, $this->originId, $this->destinationId);
             if (is_null($outbound_flight_hydrated) && is_null($inbound_flight_hydrated)) {
                 $logger->warning('Both outbound and inbound flights are null. Terminating job.', [
                     'batch_id' => $this->baseBatchId,
                 ]);
-
-                //                event(new CheckEconomicJobCompletedEvent(null, $this->batchIds, $this->adConfig->id));
 
                 return;
             }
@@ -121,15 +110,13 @@ class FilterEconomicAds implements ShouldQueue
             ]);
 
             $this->handleCheapestAd($this->adConfig, $this->baseBatchId);
-
-            //            event(new CheckEconomicJobCompletedEvent($this->request['batch_id'], $this->batchIds, $this->adConfig->id));
         }
 
     }
 
     private function handleFlights($flights, $date, $batchId, $return_date, $origin_id, $destination_id): array
     {
-        $logger = Log::channel('economic');
+        $logger = Log::channel('weekend');
 
         $logger->info('Starting flights count: '.$flights->count());
 
@@ -222,22 +209,14 @@ class FilterEconomicAds implements ShouldQueue
         if ($flights->isEmpty()) {
             $logger->warning("No flight for batch {$this->baseBatchId}");
 
-            $adConfig = $this->adConfig;
-            //in case we go back to the old logic =D
-            //            if (in_array('cheapest_date', $this->adConfig->extra_options)) {
-            //                $batchIds = Cache::get("$adConfig->id:economic_create_csv");
-            //                unset($batchIds[array_search($this->baseBatchId, $batchIds)]);
-            //                Cache::put("$adConfig->id:economic_create_csv", $batchIds, now()->addMinutes(180));
-            //            }
-
-            //            $batchIds = Cache::get("$adConfig->id:economic_create_csv");
-            //            unset($batchIds[array_search($this->baseBatchId, $batchIds)]);
-            //            Cache::put("$adConfig->id:economic_create_csv", $batchIds, now()->addMinutes(180));
-
             return [null, null];
         } else {
             $flights = $flights->reject(null);
             $first_outbound_flight = $flights[0] ?? $flights->first();
+
+            //todo: Let's add logs so we can see where flights reach 0
+            //example: if there is no direct flight or no morning flight
+            //case: ZRH - JMK. ID: 12. Zvicer-Basel - Santorini
 
             $logger->info("Selected outbound flight price: {$first_outbound_flight->price}");
             $logger->info("Outbound origin: {$first_outbound_flight->origin}");
@@ -285,7 +264,7 @@ class FilterEconomicAds implements ShouldQueue
 
     private function handleHotelsAndPackages($hotels, mixed $outbound_flight_hydrated, mixed $inbound_flight_hydrated, $batchId, $origin_id, $destination_id, $roomObject): void
     {
-        $logger = Log::channel('economic');
+        $logger = Log::channel('weekend');
 
         $packageConfig = PackageConfig::query()
             ->whereHas('destination_origin', function ($query) use ($origin_id, $destination_id) {
@@ -360,10 +339,10 @@ class FilterEconomicAds implements ShouldQueue
 
     private function handleCheapestAd($adConfig, $batchId)
     {
-        $logger = Log::channel('economic');
+        $logger = Log::channel('weekend');
 
         $logger->warning('FILTERING ...');
-        $logger->warning("Ad config $adConfig");
+        $logger->warning("Ad config $adConfig->id");
         $logger->warning("Batch id: $batchId");
 
         $ads = Ad::query()
@@ -376,6 +355,6 @@ class FilterEconomicAds implements ShouldQueue
             $ads->slice(1)->each->delete();
         }
 
-        $logger->warning($ads);
+        $logger->warning($ads->count());
     }
 }

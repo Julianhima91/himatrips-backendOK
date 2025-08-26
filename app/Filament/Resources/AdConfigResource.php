@@ -7,6 +7,8 @@ use App\Filament\Resources\AdConfigResource\Pages;
 use App\Filament\Resources\AdConfigResource\RelationManagers\CSVRelationManager;
 use App\Jobs\EconomicAdJob;
 use App\Jobs\GenerateOffersForAdConfigs;
+use App\Jobs\HolidayAdJob;
+use App\Jobs\WeekendAdJob;
 use App\Models\AdConfig;
 use App\Models\Airport;
 use App\Models\Destination;
@@ -103,6 +105,10 @@ class AdConfigResource extends Resource
                     ->required()
                     ->reactive(),
 
+                Forms\Components\Toggle::make('autoupdate')
+                    ->label('Autoupdate')
+                    ->required(),
+
                 Forms\Components\Select::make('boarding_options')
                     ->label('Boarding Options')
                     ->multiple()
@@ -121,22 +127,31 @@ class AdConfigResource extends Resource
     {
         return $table
             ->columns([
-                TextColumn::make('origin.country')
-                    ->label('Origin')
-                    ->sortable()
-                    ->searchable(),
+                Tables\Columns\ToggleColumn::make('autoupdate')
+                    ->label('Auto Update')
+                    ->disabled(),
                 TextColumn::make('description')
                     ->label('Description')
-                    ->sortable(),
+                    ->sortable()
+                    ->wrap(),
                 TextColumn::make('refresh_hours')
                     ->label('Refresh Hours')
-                    ->sortable(),
+                    ->sortable()
+                    ->suffix(' hrs'),
                 TextColumn::make('extra_options')
                     ->label('Extra Options')
                     ->badge()
                     ->sortable(),
-                TextColumn::make('job_updated_at')
-                    ->label('Job Updated At')
+                TextColumn::make('economic_last_run')
+                    ->label('Economic Last Run')
+                    ->dateTime()
+                    ->sortable(),
+                TextColumn::make('holiday_last_run')
+                    ->label('Holiday Last Run')
+                    ->dateTime()
+                    ->sortable(),
+                TextColumn::make('weekend_last_run')
+                    ->label('Weekend Last Run')
                     ->dateTime()
                     ->sortable(),
             ])
@@ -151,7 +166,11 @@ class AdConfigResource extends Resource
                     ->icon('heroicon-o-sparkles')
                     ->color('success')
                     ->action(function ($record) {
-                        GenerateOffersForAdConfigs::dispatch(type: 'weekend', adConfigId: $record->id)
+                        //                        Old Version 1.0
+                        //                        GenerateOffersForAdConfigs::dispatch(type: 'weekend', adConfigId: $record->id)
+                        //                            ->onQueue('weekend');
+
+                        WeekendAdJob::dispatch(adConfigId: $record->id)
                             ->onQueue('weekend');
 
                         Notification::make()
@@ -165,7 +184,11 @@ class AdConfigResource extends Resource
                     ->icon('heroicon-o-sparkles')
                     ->color('success')
                     ->action(function ($record) {
-                        GenerateOffersForAdConfigs::dispatch(type: 'holiday', adConfigId: $record->id)
+                        //                        Old Version 1.0
+                        //                        GenerateOffersForAdConfigs::dispatch(type: 'holiday', adConfigId: $record->id)
+                        //                            ->onQueue('holiday');
+
+                        HolidayAdJob::dispatch(adConfigId: $record->id)
                             ->onQueue('holiday');
 
                         Notification::make()

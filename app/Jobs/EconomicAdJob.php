@@ -36,7 +36,7 @@ class EconomicAdJob implements ShouldQueue
 
         $adConfigId = $this->adConfigId;
 
-        $adConfig->job_updated_at = Carbon::now();
+        $adConfig->economic_last_run = Carbon::now();
         $adConfig->save();
 
         $allJobs = [];
@@ -92,53 +92,31 @@ class EconomicAdJob implements ShouldQueue
                         $currentBatchIds
                     );
                 }
-                //                $allJobs = collect($batches)->flatten()->toArray();
-
-                //                foreach ($months as $batchId => $month) {
-                //                    Bus::chain([
-                //                        (new CheckEconomicFlightJob($airport, $destinationAirport, $month, $this->adConfigId, $batchId, false))->onQueue('economic'),
-                //                        (new CheckEconomicFlightJob($airport, $destinationAirport, $month, $this->adConfigId, $batchId, true))->onQueue('economic'),
-                //                        (new ProcessEconomicResponsesJob($batchId, $this->adConfigId, $destination->ad_min_nights))->onQueue('economic'),
-                //                        (new EconomicFlightSearch($month, $airport, $destinationAirport, 2, 0, 0, $batchId, $this->adConfigId))->onQueue('economic'),
-                //                        (new EconomicHotelJob(
-                //                            $destination->ad_min_nights,
-                //                            $destination->id,
-                //                            [
-                //                                [
-                //                                    'adults' => 2,
-                //                                    'children' => 0,
-                //                                    'infants' => 0,
-                //                                ],
-                //                            ],
-                //                            $batchId,
-                //                            $month,
-                //                            $this->adConfigId,
-                //                            $adConfig,
-                //                        ))->onQueue('economic'),
-                //                        (new FilterEconomicAds($batchId, $adConfig, $month, $adConfig->origin_id, $destination->id, $airport, $destinationAirport, $batchIds))->onQueue('economic'),
-                //
-                //                    ])->dispatch();
-                //                }
             }
         }
 
         Bus::batch($allJobs)
-            ->then(function (Batch $batch) use ($adConfig, $batchIds) {
-                EconomicCSVJob::dispatch($adConfig, $batchIds);
+            ->then(function (Batch $batch) {
+                //                $logger = Log::channel('economic');
+                //                $logger->error('INSIDE THE CSV SECTION');
+                //
+                //                EconomicCSVJob::dispatch($adConfig, $batchIds)->onQueue('economic');
             })
             ->catch(function (Batch $batch, Throwable $e) use ($adConfigId) {
                 $logger = Log::channel('economic');
                 $logger->error('Economic batch failed: '.$e->getMessage());
                 Log::info($adConfigId);
                 $adConfig1 = AdConfig::find($adConfigId);
-                $adConfig1->update(['job_status' => 'failed']);
+                $adConfig1->update(['economic_status' => 'failed']);
             })
-            ->finally(function (Batch $batch) use ($adConfigId) {
+            ->finally(function (Batch $batch) use ($adConfigId, $adConfig, $batchIds) {
                 $logger = Log::channel('economic');
                 $logger->info('Economic batch finished');
-                Log::info($adConfigId);
+
                 $adConfig1 = AdConfig::find($adConfigId);
-                $adConfig1->update(['job_status' => 'completed']);
+                $adConfig1->update(['economic_status' => 'completed']);
+
+                EconomicCSVJob::dispatch($adConfig, $batchIds)->onQueue('economic');
             })
             ->onQueue('economic')
             ->dispatch();

@@ -16,7 +16,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Log;
 
-class AppendDestinationToCSVJob implements ShouldQueue
+class WeekendAppendDestinationToCSVJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
@@ -38,14 +38,14 @@ class AppendDestinationToCSVJob implements ShouldQueue
      */
     public function handle(): void
     {
-        $logger = Log::channel('economic');
+        $logger = Log::channel('weekend');
 
         $logger->warning('APPENDING ...');
 
         $cheapestAds = Ad::select('destination_id', DB::raw('MIN(total_price) as min_price'))
             ->where([
                 ['ad_config_id', $this->adConfig->id],
-                ['offer_category', 'economic'],
+                ['offer_category', 'weekend'],
                 ['destination_id', $this->destinationId],
             ])
             ->whereIn('batch_id', $this->batchIds)
@@ -55,7 +55,7 @@ class AppendDestinationToCSVJob implements ShouldQueue
         foreach ($cheapestAds as $cheapestAd) {
             $ad = Ad::where([
                 ['ad_config_id', $this->adConfig->id],
-                ['offer_category', 'economic'],
+                ['offer_category', 'weekend'],
                 ['destination_id', $cheapestAd->destination_id],
                 ['total_price', $cheapestAd->min_price],
             ])
@@ -66,7 +66,7 @@ class AppendDestinationToCSVJob implements ShouldQueue
 
             Ad::where([
                 ['ad_config_id', $this->adConfig->id],
-                ['offer_category', 'economic'],
+                ['offer_category', 'weekend'],
                 ['destination_id', $cheapestAd->destination_id],
             ])
                 ->whereIn('batch_id', $this->batchIds)
@@ -81,7 +81,7 @@ class AppendDestinationToCSVJob implements ShouldQueue
 
         $csv = AdConfigCsv::query()
             ->where('ad_config_id', $this->adConfig->id)
-            ->where('file_path', 'like', '%economic%')
+            ->where('file_path', 'like', '%weekend%')
             ->first();
 
         if (count($ads) == 0) {
@@ -95,11 +95,11 @@ class AppendDestinationToCSVJob implements ShouldQueue
 
     public function appendToCSV($ads, $csv): void
     {
-        $logger = Log::channel('economic');
+        $logger = Log::channel('weekend');
 
         $totalAds = count($ads);
         $adConfig = $ads[0]->ad_config_id;
-        $logger->info("Appending $totalAds ads for economic... Ad config id: $adConfig");
+        $logger->info("Appending $totalAds ads for weekend... Ad config id: $adConfig");
 
         $directory = storage_path('app/public/offers');
         if (! File::exists($directory)) {
