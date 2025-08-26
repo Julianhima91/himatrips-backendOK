@@ -55,10 +55,11 @@ class HotelResource extends Resource
                             ->maxLength(255),
                         Forms\Components\TextInput::make('country')
                             ->maxLength(255),
-                        Forms\Components\TextInput::make('review_score')
-                            ->numeric(),
-                        Forms\Components\TextInput::make('review_count')
-                            ->numeric(),
+                        // keeping them commented in case we actually need them, and we can add the migration later on
+                        //                        Forms\Components\TextInput::make('review_score')
+                        //                            ->numeric(),
+                        //                        Forms\Components\TextInput::make('review_count')
+                        //                            ->numeric(),
                         Forms\Components\RichEditor::make('description')
                             ->maxLength(65535)
                             ->columnSpanFull(),
@@ -122,7 +123,7 @@ class HotelResource extends Resource
                 Tables\Columns\TextColumn::make('reviewSummary.total_score')
                     ->label('Review Score')
                     ->badge()
-                    ->color(fn ($state) => match(true) {
+                    ->color(fn ($state) => match (true) {
                         $state >= 9 => 'success',
                         $state >= 7 => 'info',
                         $state >= 5 => 'warning',

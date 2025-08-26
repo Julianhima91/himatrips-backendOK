@@ -57,7 +57,7 @@ class EditHotel extends EditRecord
                             'url' => $bookingUrl,
                         ]);
 
-                        if (!$response->successful()) {
+                        if (! $response->successful()) {
                             throw new \Exception('Failed to fetch data from Booking.com');
                         }
 
@@ -102,8 +102,11 @@ class EditHotel extends EditRecord
 
                                         if (isset($instance['attributes']['paymentInfo']['chargeMode'])) {
                                             $mode = $instance['attributes']['paymentInfo']['chargeMode'];
-                                            if ($mode === 'FREE') $chargeMode = 'FREE';
-                                            elseif ($mode === 'PAID') $chargeMode = 'PAID';
+                                            if ($mode === 'FREE') {
+                                                $chargeMode = 'FREE';
+                                            } elseif ($mode === 'PAID') {
+                                                $chargeMode = 'PAID';
+                                            }
                                         }
 
                                         HotelFacility::create([
@@ -130,7 +133,7 @@ class EditHotel extends EditRecord
                                         ->where('facility_id', $highlight['id'])
                                         ->exists();
 
-                                    if (!$exists) {
+                                    if (! $exists) {
                                         HotelFacility::create([
                                             'hotel_id' => $recordId,
                                             'facility_id' => $highlight['id'],
@@ -221,7 +224,7 @@ class EditHotel extends EditRecord
 
                         Notification::make()
                             ->title('Error')
-                            ->body('Failed to sync data: ' . $e->getMessage())
+                            ->body('Failed to sync data: '.$e->getMessage())
                             ->danger()
                             ->send();
                     }
@@ -305,6 +308,7 @@ XML;
 
     protected function handleRecordUpdate(Model $record, array $data): Model
     {
+        unset($data['reviewSummary']);
         //get the images from the data
         $images = $data['Images'];
         unset($data['Images']);
@@ -330,6 +334,7 @@ XML;
 
         $data['Images'] = $model::find($data['id'])->hotelPhotos->pluck('file_path')->toArray();
         $data['destination_id'] = $model::find($data['id'])->destination?->id;
+        $data['reviewSummary'] = $this->record->reviewSummary;
 
         return $data;
     }
