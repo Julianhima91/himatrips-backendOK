@@ -27,8 +27,9 @@ Route::get('/available-origins', [OriginController::class, 'availableOrigins']);
 
 Route::post('/packages/search', [PackageController::class, 'search']);
 Route::get('/packages/{package}', [PackageController::class, 'show']);
-//Route::post('/packages/available-dates', [PackageController::class, 'getAvailableDates']);
+// Route::post('/packages/available-dates', [PackageController::class, 'getAvailableDates']);
 Route::post('/packages/available-nights', [PackageController::class, 'getAvailableNights']);
+Route::post('/packages/map-hotels', [PackageController::class, 'mapHotels']);
 
 Route::post('/live-search', [PackageController::class, 'liveSearch']);
 Route::post('/live-search-paginated', [PackageController::class, 'paginateLiveSearch']);

@@ -16,19 +16,19 @@ class FlightsAction
     public function handle($date, $destination, $batchId, $return_date, $origin_id, $destination_id)
     {
         $logger = Log::channel('livesearch');
-        $outbound_flight = Cache::get('flight_'.$date);
+        $outbound_flight = Cache::get("flight:{$batchId}:{$date}");
 
-        //filter the flights as per the destination configuration
-        //if destination has is_direct_flight set to true, we need to return only direct flights
-        //if prioritize_morning_flights is set to true, we need to check if the flight is between the morning_flight_start_time and morning_flight_end_time
-        //if we can find such flights we need to return them, but if we don't we still need to return the flights
-        //if max_stop_count is not 0, we need to return only flights with stop count less than or equal to max_stop_count
+        // filter the flights as per the destination configuration
+        // if destination has is_direct_flight set to true, we need to return only direct flights
+        // if prioritize_morning_flights is set to true, we need to check if the flight is between the morning_flight_start_time and morning_flight_end_time
+        // if we can find such flights we need to return them, but if we don't we still need to return the flights
+        // if max_stop_count is not 0, we need to return only flights with stop count less than or equal to max_stop_count
         // and with max_wait_time less than or equal to max_wait_time
 
-        $logger->info('TOTAL FLIGHTS START ===========================>');
+        $logger->info('TOTAL FLIGHTS START ===========================');
         $logger->info('Count: '.count($outbound_flight));
 
-        //filter for direct flights
+        // filter for direct flights
         $outbound_flight_direct = $outbound_flight->filter(function ($flight) {
             if ($flight == null) {
                 return false;
@@ -45,7 +45,7 @@ class FlightsAction
                 ]);
             })->first();
 
-        //if we have direct flights, keep only direct flights
+        // if we have direct flights, keep only direct flights
         if ($outbound_flight_direct->isNotEmpty()) {
             $logger->info('Direct Flight Found');
             $logger->info('Count: '.count($outbound_flight_direct));
@@ -114,7 +114,7 @@ class FlightsAction
             });
         });
 
-        //if we have morning flights, find the cheapest one
+        // if we have morning flights, find the cheapest one
         if ($outbound_flight_morning->isNotEmpty()) {
             $logger->info('Morning Flights found');
             $logger->info('Count: '.count($outbound_flight_morning));
@@ -142,14 +142,14 @@ class FlightsAction
         $logger->info('Count: '.count($outbound_flight));
         $logger->warning('==============================================');
 
-        //if collection is empty return early and broadcast failure
+        // if collection is empty return early and broadcast failure
         if ($outbound_flight->isEmpty()) {
             //            broadcast(new LiveSearchFailed('No flights found', $batchId));
 
             return;
         }
 
-        //if morning flights are not empty get first otherwise get the first from the filtered flights
+        // if morning flights are not empty get first otherwise get the first from the filtered flights
         $first_outbound_flight = $outbound_flight->first();
 
         $outbound_flight_hydrated = FlightData::create([
@@ -169,7 +169,7 @@ class FlightsAction
             'all_flights' => json_encode($outbound_flight),
         ]);
 
-        $inbound_flight = Cache::get('flight_'.$return_date);
+        $inbound_flight = Cache::get("flight:{$batchId}:{$return_date}");
 
         $logger->warning('==============================================');
         $logger->warning('==============================================');
@@ -190,7 +190,7 @@ class FlightsAction
             return $flight->stopCount === 0 && $flight->stopCount_back === 0;
         });
 
-        //if we have direct flights, keep only direct flights
+        // if we have direct flights, keep only direct flights
         if ($inbound_flight_direct->isNotEmpty()) {
             $logger->info('Direct Flight Found');
             $logger->info('Count: '.count($inbound_flight_direct));
@@ -260,7 +260,7 @@ class FlightsAction
             });
         });
 
-        //if we have morning flights, find the cheapest one
+        // if we have morning flights, find the cheapest one
         if ($inbound_flight_evening->isNotEmpty()) {
             $logger->info('Evening Flights found');
             $logger->info('Count: '.count($inbound_flight_evening));
@@ -288,7 +288,7 @@ class FlightsAction
         $logger->info('Count: '.count($inbound_flight));
         $logger->warning('==============================================');
 
-        //if collection is empty return early and broadcast failure
+        // if collection is empty return early and broadcast failure
         if ($inbound_flight->isEmpty()) {
             //            broadcast(new LiveSearchFailed('No flights found', $batchId));
 

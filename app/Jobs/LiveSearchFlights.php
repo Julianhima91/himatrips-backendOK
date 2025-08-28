@@ -56,6 +56,12 @@ class LiveSearchFlights implements ShouldQueue
      */
     public function handle(): void
     {
+        if (Cache::get("job_completed_{$this->batchId}")) {
+            $this->delete();
+
+            return;
+        }
+
         $request = new RetrieveFlightsRequest;
 
         $request->query()->merge([
@@ -92,7 +98,7 @@ class LiveSearchFlights implements ShouldQueue
             $logger->info("$this->batchId API 1 ITINERARIES COUNT:");
             $logger->info(count($itineraries));
             if ($itineraries->isEmpty()) {
-                ray('empty itineraries 1111');
+                ray('empty itineraries');
                 $this->release(1);
             } else {
                 cache()->put('flight_'.$this->date, $itineraries, now()->addMinutes(5));

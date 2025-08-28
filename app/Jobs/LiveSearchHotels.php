@@ -156,7 +156,7 @@ class LiveSearchHotels implements ShouldQueue
         }
 
         // save the hotel results in cache
-        Cache::put('hotels', $hotel_results, now()->addMinutes(5));
+        Cache::put("hotels:{$this->batchId}", $hotel_results, now()->addMinutes(5));
         Cache::put("batch:{$this->batchId}:hotels", $hotel_results, now()->addMinutes(180));
         Cache::put("hotel_job_completed_{$this->batchId}", true, now()->addMinutes(2));
     }
