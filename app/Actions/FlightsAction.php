@@ -26,7 +26,7 @@ class FlightsAction
         // and with max_wait_time less than or equal to max_wait_time
 
         $logger->info('TOTAL FLIGHTS START ===========================');
-        $logger->info('Count: '.count($outbound_flight));
+        $logger->info('Count: '.count($outbound_flight ?? []));
 
         //filter for direct flights
         $outbound_flight_direct = $outbound_flight->filter(function ($flight) {
@@ -48,11 +48,11 @@ class FlightsAction
         //if we have direct flights, keep only direct flights
         if ($outbound_flight_direct->isNotEmpty()) {
             $logger->info('Direct Flight Found');
-            $logger->info('Count: '.count($outbound_flight_direct));
+            $logger->info('Count: '.count($outbound_flight_direct ?? []));
             $outbound_flight = $outbound_flight_direct;
         } else {
             $logger->warning('No Direct Flight Found');
-            $logger->warning('Count: '.count($outbound_flight));
+            $logger->warning('Count: '.count($outbound_flight ?? []));
 
             $outboundStops = [];
             $outbound_flight_max_stops = $outbound_flight->filter(function ($flight) use ($packageConfig, &$outboundStops) {
@@ -68,7 +68,7 @@ class FlightsAction
             $minOutboundStops = ! empty($outboundStops) ? min($outboundStops) : null;
             $logger->info('Minimum outbound stopCount: '.($minOutboundStops ?? 'N/A'));
             $logger->info("Flights after filtering based on ($packageConfig->max_stop_count) max stops");
-            $logger->info('Count: '.count($outbound_flight_max_stops));
+            $logger->info('Count: '.count($outbound_flight_max_stops ?? []));
 
             $outbound_flight = $outbound_flight_max_stops;
             $maxTransitTimeSettings = app(MaxTransitTime::class);
@@ -88,7 +88,7 @@ class FlightsAction
                     $outbound_flight = $outbound_flight_max_wait;
 
                     $logger->info('Flights after filtering based on max transit time settings');
-                    $logger->info('Count: '.count($outbound_flight_max_wait));
+                    $logger->info('Count: '.count($outbound_flight_max_wait ?? []));
                 }
             }
 
@@ -117,7 +117,7 @@ class FlightsAction
         //if we have morning flights, find the cheapest one
         if ($outbound_flight_morning->isNotEmpty()) {
             $logger->info('Morning Flights found');
-            $logger->info('Count: '.count($outbound_flight_morning));
+            $logger->info('Count: '.count($outbound_flight_morning ?? []));
             $outbound_flight = $outbound_flight_morning;
         }
 
@@ -139,7 +139,7 @@ class FlightsAction
 
         $logger->warning('==============================================');
         $logger->info('Final Flights Array');
-        $logger->info('Count: '.count($outbound_flight));
+        $logger->info('Count: '.count($outbound_flight ?? []));
         $logger->warning('==============================================');
 
         //if collection is empty return early and broadcast failure
