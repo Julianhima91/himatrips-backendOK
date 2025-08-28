@@ -18,6 +18,9 @@ class FlightsAction
         $logger = Log::channel('livesearch');
         $outbound_flight = Cache::get("flight:{$batchId}:{$date}");
 
+        $logger->info("Batch ID: {$batchId}");
+        $logger->info("Date: {$date}");
+
         //filter the flights as per the destination configuration
         //if destination has is_direct_flight set to true, we need to return only direct flights
         //if prioritize_morning_flights is set to true, we need to check if the flight is between the morning_flight_start_time and morning_flight_end_time

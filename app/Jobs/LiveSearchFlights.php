@@ -55,6 +55,11 @@ class LiveSearchFlights implements ShouldQueue
      */
     public function handle(): void
     {
+        $logger = Log::channel('livesearch');
+
+        $logger->info("Batch ID: {$this->batchId}");
+        $logger->info("Date: {$this->date}");
+
         if (Cache::get("job_completed_{$this->batchId}")) {
             $this->delete();
 
@@ -89,8 +94,6 @@ class LiveSearchFlights implements ShouldQueue
             $response = $this->getIncompleteResults($response->json()['data']['context']['sessionId']);
         }
 
-        $logger = Log::channel('livesearch');
-
         try {
             $itineraries = $response->dtoOrFail();
 
@@ -100,8 +103,8 @@ class LiveSearchFlights implements ShouldQueue
                 ray('empty itineraries');
                 $this->release(1);
             } else {
-                cache()->put('flight_'.$this->date, $itineraries, now()->addMinutes(5));
-                cache()->put('flight_'.$this->return_date, $itineraries, now()->addMinutes(5));
+                cache()->put("flight:{$this->batchId}:{$this->date}", $itineraries, now()->addMinutes(5));
+                cache()->put("flight:{$this->batchId}:{$this->return_date}", $itineraries, now()->addMinutes(5));
                 Cache::put("batch:{$this->batchId}:flights", $itineraries, now()->addMinutes(180));
 
                 if (! Cache::get("job_completed_{$this->batchId}")) {
