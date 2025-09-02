@@ -124,17 +124,6 @@ class FlightsAction
             $outbound_flight = $outbound_flight_morning;
         }
 
-        //        $outbound_flight = $outbound_flight->when($packageConfig->max_stop_count !== 0, function (Collection $collection) use ($packageConfig) {
-        //            return $collection->filter(function ($flight) use ($packageConfig) {
-        //                if ($flight == null) {
-        //                    return false;
-        //                }
-        //
-        //                return ! ($flight->stopCount <= $packageConfig->max_stop_count &&
-        //                        $flight->stopCount > 0) || $flight->timeBetweenFlights[0] <= $packageConfig->max_wait_time;
-        //            });
-        //        });
-
         $outbound_flight = $outbound_flight->sortBy([
             ['stopCount', 'asc'],
             ['price', 'asc'],
@@ -170,6 +159,7 @@ class FlightsAction
             'segments' => $first_outbound_flight->segments,
             'package_config_id' => $packageConfig->id,
             'all_flights' => json_encode($outbound_flight),
+            'return_flight' => false,
         ]);
 
         $inbound_flight = Cache::get("flight:{$batchId}:{$return_date}");
@@ -315,6 +305,7 @@ class FlightsAction
             'segments' => $first_inbound_flight->segments_back,
             'package_config_id' => $packageConfig->id,
             'all_flights' => json_encode($inbound_flight),
+            'return_flight' => true,
         ]);
 
         return [$outbound_flight_hydrated, $inbound_flight_hydrated];

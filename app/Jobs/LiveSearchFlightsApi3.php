@@ -73,12 +73,12 @@ class LiveSearchFlightsApi3 implements ShouldQueue
 
         try {
             $response = $request->send();
-            ray('trying')->purple();
-            ray($response->json())->purple();
-            ray($response->json()['places'])->purple();
+            //            ray('trying')->purple();
+            //            ray($response->json())->purple();
+            //            ray($response->json()['places'])->purple();
         } catch (\Exception $e) {
-            ray('Exception caught')->purple();
-            ray($e->getMessage())->purple();
+            //            ray('Exception caught')->purple();
+            //            ray($e->getMessage())->purple();
             if ($this->attempts() == 1) {
                 $this->release(1);
             }
@@ -108,7 +108,15 @@ class LiveSearchFlightsApi3 implements ShouldQueue
                 Cache::put("batch:{$this->batchId}:flights", $itineraries, now()->addMinutes(180));
 
                 if (! Cache::get("job_completed_{$this->batchId}")) {
+                    ray('inside')->purple();
+
                     Cache::put("job_completed_{$this->batchId}", true);
+                } else {
+                    ray('outside')->purple();
+                    cache()->put("flight3:{$this->batchId}:{$this->date}", $itineraries, now()->addMinutes(5));
+                    cache()->put("flight3:{$this->batchId}:{$this->return_date}", $itineraries, now()->addMinutes(5));
+                    Cache::put("flight:{$this->batchId}:latest", 'api3');
+                    $this->broadcastFlightResults($itineraries);
                 }
             }
         } catch (\Exception $e) {
@@ -137,5 +145,12 @@ class LiveSearchFlightsApi3 implements ShouldQueue
         }
 
         return $response;
+    }
+
+    private function broadcastFlightResults(mixed $itineraries): void
+    {
+        $syncFlightsAction = app(\App\Actions\SyncFlightsAction::class);
+
+        $syncFlightsAction->handle($itineraries, $this->batchId, $this->date, $this->return_date, $this->destination, $this->origin->id);
     }
 }
