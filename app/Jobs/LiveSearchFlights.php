@@ -61,11 +61,12 @@ class LiveSearchFlights implements ShouldQueue
         $logger->info("Batch ID: {$this->batchId}");
         $logger->info("Date: {$this->date}");
 
-        if (Cache::get("job_completed_{$this->batchId}")) {
-            $this->delete();
-
-            return;
-        }
+        // in case we go back to the old logic
+        //        if (Cache::get("job_completed_{$this->batchId}")) {
+        //            $this->delete();
+        //
+        //            return;
+        //        }
 
         $request = new RetrieveFlightsRequest;
 
@@ -110,6 +111,12 @@ class LiveSearchFlights implements ShouldQueue
 
                 if (! Cache::get("job_completed_{$this->batchId}")) {
                     Cache::put("job_completed_{$this->batchId}", true);
+                } else {
+                    cache()->put("flight1:{$this->batchId}:{$this->date}", $itineraries, now()->addMinutes(5));
+                    cache()->put("flight1:{$this->batchId}:{$this->return_date}", $itineraries, now()->addMinutes(5));
+                    Cache::put("flight:{$this->batchId}:latest", 'api1');
+
+                    $this->broadcastFlightResults($itineraries);
                 }
             }
         } catch (Exception $e) {
@@ -138,5 +145,12 @@ class LiveSearchFlights implements ShouldQueue
         }
 
         return $response;
+    }
+
+    private function broadcastFlightResults(mixed $itineraries): void
+    {
+        $syncFlightsAction = app(\App\Actions\SyncFlightsAction::class);
+
+        $syncFlightsAction->handle($itineraries, $this->batchId, $this->date, $this->return_date, $this->destination, $this->origin->id);
     }
 }

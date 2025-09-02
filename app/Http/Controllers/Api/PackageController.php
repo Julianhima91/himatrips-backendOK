@@ -74,7 +74,7 @@ class PackageController extends Controller
         $totalInfants = collect($request->input('rooms'))->pluck('infants')->sum();
         ray()->newScreen();
 
-        $return_date = Carbon::parse($request->date)->addDays($request->nights)->format('Y-m-d');
+        $return_date = Carbon::parse($request->date)->addDays((int) $request->nights)->format('Y-m-d');
 
         $date = $request->date;
 
