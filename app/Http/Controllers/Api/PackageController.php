@@ -697,16 +697,20 @@ class PackageController extends Controller
     {
         $package = Package::where('batch_id', $batchId)->first();
 
-        $currentPrice = $package->outboundFlight->price;
-
         if (! $package) {
             return response()->json(['message' => 'Incorrect batch id.'], 400);
         }
+        $currentPrice = $package->outboundFlight->price;
 
         $flights = json_decode($package->outboundFlight->all_flights, true);
 
         if (! $flights) {
             return response()->json(['message' => 'No flights available for this package.'], 404);
+        }
+
+        if (isset($flights['otherApiFlights'])) {
+            $flights = array_merge($flights, $flights['otherApiFlights']);
+            unset($flights['otherApiFlights']);
         }
 
         $stops = $request->input('stops');
