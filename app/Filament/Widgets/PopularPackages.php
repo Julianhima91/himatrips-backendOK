@@ -12,6 +12,7 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\Filter;
 use Filament\Tables\Table;
 use Filament\Widgets\TableWidget as BaseWidget;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 
 class PopularPackages extends BaseWidget
@@ -81,7 +82,7 @@ class PopularPackages extends BaseWidget
                         DatePicker::make('end_date')->label('End Date'),
                     ])
                     ->query(function ($query, array $data) {
-                        $startDate = $data['start_date'] ?? '2024-01-01';
+                        $startDate = $data['start_date'] ?? now()->subMonths(3)->toDateString();
                         $endDate = $data['end_date'] ?? now();
 
                         return $query->whereDate('packages.created_at', '>=', $startDate)
@@ -92,9 +93,7 @@ class PopularPackages extends BaseWidget
                     ->label('Origin Country')
                     ->schema([
                         Select::make('origin_country')
-                            ->label('Select Origin Country')
-                            ->relationship('country', 'name')
-                            ->reactive()
+                            ->options(fn () => DB::table('countries')->pluck('name', 'id'))
                             ->searchable(),
                     ])
                     ->query(function ($query, array $data) {
@@ -110,7 +109,8 @@ class PopularPackages extends BaseWidget
                     ->schema([
                         Select::make('origin_id')
                             ->label('Select Origin')
-                            ->options(Origin::all()->pluck('name', 'id'))
+                            ->options(fn () => Cache::remember('origins-list', 3600, fn () => Origin::query()->pluck('name', 'id')
+                            ))
                             ->reactive()
                             ->searchable(),
                     ])
@@ -151,9 +151,7 @@ class PopularPackages extends BaseWidget
                     ->label('Destination Country')
                     ->schema([
                         Select::make('destination_country')
-                            ->label('Select Destination Country')
-                            ->relationship('country', 'name')
-                            ->reactive()
+                            ->options(fn () => DB::table('countries')->pluck('name', 'id'))
                             ->searchable(),
                     ])
                     ->query(function ($query, array $data) {
@@ -169,7 +167,8 @@ class PopularPackages extends BaseWidget
                     ->schema([
                         Select::make('destination_id')
                             ->label('Select Destination')
-                            ->options(Destination::all()->pluck('name', 'id'))
+                            ->options(fn () => Cache::remember('destinations-list', 3600, fn () => Destination::query()->pluck('name', 'id')
+                            ))
                             ->reactive()
                             ->searchable(),
                     ])
@@ -188,7 +187,7 @@ class PopularPackages extends BaseWidget
                         Select::make('destination_airport_id')
                             ->label('Select Destination Airport')
                             ->options(function () {
-                                if (! empty($this->originId)) {
+                                if (! empty($this->destinationId)) {
                                     return Airport::whereHas('destinations', function ($query) {
                                         return $query->where('destination_id', $this->destinationId);
                                     })->pluck('nameAirport', 'codeIataAirport');
