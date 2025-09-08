@@ -100,25 +100,28 @@ class PopularPackages extends BaseWidget
 
                         return $query;
                     }),
-                Filter::make('date_range')
-                    ->label('Recorded At')
-                    ->schema([
-                        DatePicker::make('start_date')
-                            ->hint('Filtering may take a few seconds.')
-                            ->label('Start Date'),
-                        DatePicker::make('end_date')
-                            ->hint('Filtering may take a few seconds.')
-                            ->label('End Date'),
-                    ])
-                    ->query(function ($query, array $data) {
-                        if (! empty($data['start_date'])) {
-                            $endDate = $data['end_date'] ?? now()->toDateString();
-                            $query->whereBetween('psc.created_at', [$data['start_date'], $endDate]);
-                        }
+//                Filter::make('date_range')
+//                    ->label('Recorded At')
+//                    ->schema([
+//                        DatePicker::make('start_date')
+//                            ->hint('Filtering may take a few seconds.')
+//                            ->label('Start Date'),
+//                        DatePicker::make('end_date')
+//                            ->hint('Filtering may take a few seconds.')
+//                            ->label('End Date'),
+//                    ])
+//                    ->query(function ($query, array $data) {
+//                        if (!empty($data['start_date'])) {
+//                            $endDate = $data['end_date'] ?? now()->toDateString();
+//
+//                            $query->join('packages', 'packages.package_config_id', '=', 'package_configs.id')
+//                                ->whereBetween(DB::raw('DATE(packages.created_at)'), [$data['start_date'], $endDate]);
+//                        }
+//
+//                        return $query;
+//                    }),
 
-                        return $query;
-                    }),
-                //                Filter::make('airport')
+        //                Filter::make('airport')
                 //                    ->label('Origin Airport')
                 //                    ->schema([
                 //                        Select::make('airport_id')
