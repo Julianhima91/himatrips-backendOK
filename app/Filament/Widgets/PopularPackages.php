@@ -24,42 +24,17 @@ class PopularPackages extends BaseWidget
 
     public function table(Table $table): Table
     {
-        //        $subQuery = Destination::query()
-        //            ->selectRaw('
-        //                destinations.id,
-        //                destinations.name,
-        //                destinations.country,
-        //                COUNT(DISTINCT packages.batch_id) AS search_count
-        //            ')
-        //            ->leftJoin('destination_origins', 'destinations.id', '=', 'destination_origins.destination_id')
-        //            ->leftJoin('origins', 'destination_origins.origin_id', '=', 'origins.id')
-        //            ->leftJoin('package_configs', 'destination_origins.id', '=', 'package_configs.destination_origin_id')
-        //            ->leftJoin('packages', 'packages.package_config_id', '=', 'package_configs.id')
-        //            ->leftJoin('flight_data', 'flight_data.id', '=', 'packages.outbound_flight_id')
-        //            ->leftJoin('countries', 'destinations.country_id', '=', 'countries.id')
-        //            ->groupBy('destinations.id', 'destinations.name', 'destinations.country');
-
-        $subQuery = DB::table('destinations')
-            ->selectRaw('
-        destinations.id,
-        destinations.name,
-        countries.name as country,
-        COUNT(DISTINCT packages.batch_id) AS search_count,
-        MAX(packages.created_at) as latest_package_created_at,
-        MIN(packages.created_at) as earliest_package_created_at
-    ')
+        $destinations = Destination::query()
+            ->select('destinations.id', 'destinations.name', 'countries.name as country', DB::raw('COALESCE(SUM(psc.batch_count),0) as search_count'))
             ->leftJoin('destination_origins', 'destinations.id', '=', 'destination_origins.destination_id')
-            ->leftJoin('origins', 'destination_origins.origin_id', '=', 'origins.id')
             ->leftJoin('package_configs', 'destination_origins.id', '=', 'package_configs.destination_origin_id')
-            ->leftJoin('packages', 'packages.package_config_id', '=', 'package_configs.id')
-            ->leftJoin('flight_data', 'flight_data.id', '=', 'packages.outbound_flight_id')
+            ->leftJoin('package_search_counts as psc', 'psc.package_config_id', '=', 'package_configs.id')
             ->leftJoin('countries', 'destinations.country_id', '=', 'countries.id')
-            ->groupBy('destinations.id', 'destinations.name', 'countries.name');
-
-        $eloquentBuilder = Destination::query()->fromSub($subQuery, 'destinations');
+            ->groupBy('destinations.id', 'destinations.name', 'countries.name')
+            ->orderByDesc('search_count');
 
         return $table
-            ->query($eloquentBuilder)
+            ->query($destinations)
             ->columns([
                 TextColumn::make('name')
                     ->label('Destination Name')
@@ -75,18 +50,18 @@ class PopularPackages extends BaseWidget
                     ->sortable(),
             ])
             ->filters([
-                Filter::make('date_range')
-                    ->label('Created At')
-                    ->schema([
-                        DatePicker::make('start_date')->label('Start Date'),
-                        DatePicker::make('end_date')->label('End Date'),
-                    ])
-                    ->query(function ($query, array $data) {
-                        $startDate = $data['start_date'] ?? now()->subMonths(3)->toDateString();
-                        $endDate = $data['end_date'] ?? now();
-
-                        return $query->whereBetween(DB::raw('DATE(latest_package_created_at)'), [$startDate, $endDate]);
-                    }),
+                //                Filter::make('date_range')
+                //                    ->label('Created At')
+                //                    ->schema([
+                //                        DatePicker::make('start_date')->label('Start Date'),
+                //                        DatePicker::make('end_date')->label('End Date'),
+                //                    ])
+                //                    ->query(function ($query, array $data) {
+                //                        $startDate = $data['start_date'] ?? now()->subMonths(3)->toDateString();
+                //                        $endDate = $data['end_date'] ?? now();
+                //
+                //                        return $query->whereBetween(DB::raw('DATE(latest_package_created_at)'), [$startDate, $endDate]);
+                //                    }),
                 //                Filter::make('origin_country')
                 //                    ->label('Origin Country')
                 //                    ->schema([
