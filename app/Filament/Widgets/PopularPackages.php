@@ -54,8 +54,8 @@ class PopularPackages extends BaseWidget
                 Filter::make('origin_country')
                     ->label('Origin Country')
                     ->schema([
-                        Select::make('origin_country')
-                            ->label('Select Origin Country')
+                        Select::make('country')
+                            ->label('Select Country')
                             ->options(fn () => Country::query()->pluck('name', 'id'))
                             ->searchable(),
                     ])
@@ -70,7 +70,7 @@ class PopularPackages extends BaseWidget
                     ->label('Origin')
                     ->schema([
                         Select::make('origin_id')
-                            ->label('Select Origin')
+                            ->label('From Origin')
                             ->options(fn () => Cache::remember('origins-list', 3600, fn () => Origin::pluck('name', 'id')))
                             ->reactive()
                             ->searchable(),
@@ -79,6 +79,23 @@ class PopularPackages extends BaseWidget
                         if (! empty($data['origin_id'])) {
                             $this->originId = $data['origin_id'];
                             $query->where('destination_origins.origin_id', $data['origin_id']);
+                        }
+
+                        return $query;
+                    }),
+                Filter::make('destination')
+                    ->label('Destination')
+                    ->schema([
+                        Select::make('destination_id')
+                            ->label('Select Destination')
+                            ->options(fn () => Cache::remember('destinations-list', 3600, fn () => Destination::pluck('name', 'id')))
+                            ->reactive()
+                            ->searchable(),
+                    ])
+                    ->query(function ($query, array $data) {
+                        if (! empty($data['destination_id'])) {
+                            $this->destinationId = $data['destination_id'];
+                            $query->where('destination_origins.destination_id', $data['destination_id']);
                         }
 
                         return $query;
