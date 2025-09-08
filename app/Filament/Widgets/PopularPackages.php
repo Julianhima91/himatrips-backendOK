@@ -3,6 +3,7 @@
 namespace App\Filament\Widgets;
 
 use App\Models\Airport;
+use App\Models\Country;
 use App\Models\Destination;
 use App\Models\Origin;
 use Filament\Forms\Components\DatePicker;
@@ -50,6 +51,39 @@ class PopularPackages extends BaseWidget
                     ->sortable(),
             ])
             ->filters([
+                Filter::make('origin_country')
+                    ->label('Origin Country')
+                    ->schema([
+                        Select::make('origin_country')
+                            ->label('Select Origin Country')
+                            ->options(fn () => Country::query()->pluck('name', 'id'))
+                            ->searchable(),
+                    ])
+                    ->query(function ($query, array $data) {
+                        if (! empty($data['origin_country'])) {
+                            $query->where('countries.id', $data['origin_country']);
+                        }
+
+                        return $query;
+                    }),
+                Filter::make('origin')
+                    ->label('Origin')
+                    ->schema([
+                        Select::make('origin_id')
+                            ->label('Select Origin')
+                            ->options(fn () => Cache::remember('origins-list', 3600, fn () => Origin::pluck('name', 'id')))
+                            ->reactive()
+                            ->searchable(),
+                    ])
+                    ->query(function ($query, array $data) {
+                        if (! empty($data['origin_id'])) {
+                            $this->originId = $data['origin_id'];
+                            $query->where('destination_origins.origin_id', $data['origin_id']);
+                        }
+
+                        return $query;
+                    }),
+
                 //                Filter::make('date_range')
                 //                    ->label('Created At')
                 //                    ->schema([
