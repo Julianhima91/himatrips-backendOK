@@ -15,9 +15,11 @@ class UpdatePackageSearchCounts extends Command
     {
         DB::table('package_search_counts')->truncate();
 
+        $validConfigIds = DB::table('package_configs')->pluck('id')->toArray();
+
         $counts = DB::table('packages')
             ->select('package_config_id', DB::raw('COUNT(DISTINCT batch_id) as batch_count'))
-            ->where('created_at', '>=', now()->subMonths(3))
+            ->whereIn('package_config_id', $validConfigIds) // in live we have some package configs that are deleted/dont exist anymore
             ->groupBy('package_config_id')
             ->get()
             ->map(function ($item) {
