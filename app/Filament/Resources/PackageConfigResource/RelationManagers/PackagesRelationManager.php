@@ -2,21 +2,23 @@
 
 namespace App\Filament\Resources\PackageConfigResource\RelationManagers;
 
-use Filament\Forms;
-use Filament\Forms\Form;
+use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\TextInput;
 use Filament\Resources\RelationManagers\RelationManager;
-use Filament\Tables;
+use Filament\Schemas\Schema;
+use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Filters\Filter;
 use Filament\Tables\Table;
 
 class PackagesRelationManager extends RelationManager
 {
     protected static string $relationship = 'packages';
 
-    public function form(Form $form): Form
+    public function form(Schema $schema): Schema
     {
-        return $form
-            ->schema([
-                Forms\Components\TextInput::make('id')
+        return $schema
+            ->components([
+                TextInput::make('id')
                     ->required()
                     ->maxLength(255),
             ]);
@@ -27,15 +29,15 @@ class PackagesRelationManager extends RelationManager
         return $table
             ->recordTitleAttribute('id')
             ->columns([
-                Tables\Columns\TextColumn::make('id'),
-                Tables\Columns\TextColumn::make('outboundFlight.departure'),
-                Tables\Columns\TextColumn::make('inboundFlight.departure'),
-                Tables\Columns\TextColumn::make('total_price'),
+                TextColumn::make('id'),
+                TextColumn::make('outboundFlight.departure'),
+                TextColumn::make('inboundFlight.departure'),
+                TextColumn::make('total_price'),
             ])
             ->filters([
-                Tables\Filters\Filter::make('departure_date')
-                    ->form([
-                        Forms\Components\DatePicker::make('date')->label('Departure Date'),
+                Filter::make('departure_date')
+                    ->schema([
+                        DatePicker::make('date')->label('Departure Date'),
                     ])
                     ->query(function ($query, array $data) {
                         return $query->when(
@@ -49,9 +51,9 @@ class PackagesRelationManager extends RelationManager
             ])
             ->headerActions([
             ])
-            ->actions([
+            ->recordActions([
             ])
-            ->bulkActions([
+            ->toolbarActions([
             ]);
     }
 }

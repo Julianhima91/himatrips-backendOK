@@ -3,7 +3,7 @@
 namespace App\Filament\Resources\AirlineResource\Pages;
 
 use App\Filament\Resources\AirlineResource;
-use Filament\Actions;
+use Filament\Actions\DeleteAction;
 use Filament\Resources\Pages\EditRecord;
 
 class EditAirline extends EditRecord
@@ -13,7 +13,7 @@ class EditAirline extends EditRecord
     protected function getHeaderActions(): array
     {
         return [
-            Actions\DeleteAction::make(),
+            DeleteAction::make(),
         ];
     }
 }

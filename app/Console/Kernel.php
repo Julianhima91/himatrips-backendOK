@@ -2,6 +2,7 @@
 
 namespace App\Console;
 
+use App\Console\Commands\CleanupExpiredFlights;
 use App\Jobs\CheckDirectFlightForPackageConfigJob;
 use App\Jobs\DestinationOriginJob;
 use Illuminate\Console\Scheduling\Schedule;
@@ -10,7 +11,7 @@ use Illuminate\Foundation\Console\Kernel as ConsoleKernel;
 class Kernel extends ConsoleKernel
 {
     protected $commands = [
-        Commands\CleanupExpiredFlights::class,
+        CleanupExpiredFlights::class,
     ];
 
     /**

@@ -30,7 +30,7 @@ return new class extends Migration
                 'BUSINESS',
                 'GROUP',
                 'MATURE_COUPLE',
-                'OTHER'
+                'OTHER',
             ])->nullable();
             $table->enum('purpose_type', ['LEISURE', 'BUSINESS', 'OTHER'])->nullable();
             $table->datetime('review_date');
@@ -39,7 +39,7 @@ return new class extends Migration
             $table->boolean('is_anonymous')->default(false);
             $table->string('avatar_url')->nullable();
             $table->timestamps();
-            
+
             $table->index('hotel_id');
             $table->index('average_score');
             $table->index('review_date');

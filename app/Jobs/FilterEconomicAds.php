@@ -13,6 +13,7 @@ use App\Models\HotelData;
 use App\Models\HotelOffer;
 use App\Models\PackageConfig;
 use App\Settings\MaxTransitTime;
+use DateTime;
 use Illuminate\Bus\Batchable;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -85,7 +86,7 @@ class FilterEconomicAds implements ShouldQueue
             'origin_airport' => $this->airport,
             'destination_airport' => $this->destinationAirport,
             'date' => $date,
-            'nights' => (new \DateTime($returnDate))->diff(new \DateTime($date))->days,
+            'nights' => (new DateTime($returnDate))->diff(new DateTime($date))->days,
             'return_date' => $returnDate,
             'origin_id' => $this->adConfig->origin_id,
             'destination_id' => $this->destinationId,
@@ -223,7 +224,7 @@ class FilterEconomicAds implements ShouldQueue
             $logger->warning("No flight for batch {$this->baseBatchId}");
 
             $adConfig = $this->adConfig;
-            //in case we go back to the old logic =D
+            // in case we go back to the old logic =D
             //            if (in_array('cheapest_date', $this->adConfig->extra_options)) {
             //                $batchIds = Cache::get("$adConfig->id:economic_create_csv");
             //                unset($batchIds[array_search($this->baseBatchId, $batchIds)]);

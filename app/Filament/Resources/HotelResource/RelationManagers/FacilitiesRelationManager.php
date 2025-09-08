@@ -2,23 +2,25 @@
 
 namespace App\Filament\Resources\HotelResource\RelationManagers;
 
-use Filament\Forms;
-use Filament\Forms\Form;
+use Filament\Actions\ViewAction;
+use Filament\Forms\Components\TextInput;
 use Filament\Resources\RelationManagers\RelationManager;
-use Filament\Tables;
+use Filament\Schemas\Schema;
+use Filament\Tables\Columns\BadgeColumn;
+use Filament\Tables\Columns\IconColumn;
+use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
-use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\SoftDeletingScope;
 
 class FacilitiesRelationManager extends RelationManager
 {
     protected static string $relationship = 'facilities';
 
-    public function form(Form $form): Form
+    public function form(Schema $schema): Schema
     {
-        return $form
+        return $schema
             ->schema([
-                Forms\Components\TextInput::make('facility_name')
+                TextInput::make('facility_name')
                     ->required()
                     ->maxLength(255),
             ]);
@@ -29,34 +31,34 @@ class FacilitiesRelationManager extends RelationManager
         return $table
             ->recordTitleAttribute('facility_name')
             ->columns([
-                Tables\Columns\TextColumn::make('facility_name')
+                TextColumn::make('facility_name')
                     ->searchable()
                     ->sortable(),
-                Tables\Columns\TextColumn::make('group_name')
+                TextColumn::make('group_name')
                     ->label('Category')
                     ->searchable(),
-                Tables\Columns\BadgeColumn::make('charge_mode')
+                BadgeColumn::make('charge_mode')
                     ->colors([
                         'success' => 'FREE',
                         'warning' => 'PAID',
                         'gray' => 'UNKNOWN',
                     ]),
-                Tables\Columns\BadgeColumn::make('level')
+                BadgeColumn::make('level')
                     ->colors([
                         'primary' => 'property',
                         'info' => 'room',
                     ]),
-                Tables\Columns\IconColumn::make('icon')
+                IconColumn::make('icon')
                     ->label('Icon'),
             ])
             ->filters([
-                Tables\Filters\SelectFilter::make('charge_mode')
+                SelectFilter::make('charge_mode')
                     ->options([
                         'FREE' => 'Free',
                         'PAID' => 'Paid',
                         'UNKNOWN' => 'Unknown',
                     ]),
-                Tables\Filters\SelectFilter::make('level')
+                SelectFilter::make('level')
                     ->options([
                         'property' => 'Property',
                         'room' => 'Room',
@@ -66,7 +68,7 @@ class FacilitiesRelationManager extends RelationManager
                 //
             ])
             ->actions([
-                Tables\Actions\ViewAction::make(),
+                ViewAction::make(),
             ])
             ->bulkActions([
                 //

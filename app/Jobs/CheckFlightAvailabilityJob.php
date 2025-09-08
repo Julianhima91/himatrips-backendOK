@@ -5,6 +5,7 @@ namespace App\Jobs;
 use App\Http\Integrations\GoFlightIntegration\Requests\DirectIncompleteFlightRequest;
 use App\Http\Integrations\GoFlightIntegration\Requests\OneWayDirectFlightRequest;
 use App\Models\DirectFlightAvailability;
+use Exception;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -76,7 +77,7 @@ class CheckFlightAvailabilityJob implements ShouldQueue
             } else {
                 Log::info('No itineraries found for date: '.$this->date);
             }
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             Log::error('!!!ERROR!!!');
             Log::error($e->getMessage());
         }

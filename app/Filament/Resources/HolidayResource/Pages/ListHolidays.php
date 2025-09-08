@@ -3,7 +3,7 @@
 namespace App\Filament\Resources\HolidayResource\Pages;
 
 use App\Filament\Resources\HolidayResource;
-use Filament\Actions;
+use Filament\Actions\CreateAction;
 use Filament\Resources\Pages\ListRecords;
 
 class ListHolidays extends ListRecords
@@ -13,7 +13,7 @@ class ListHolidays extends ListRecords
     protected function getHeaderActions(): array
     {
         return [
-            Actions\CreateAction::make(),
+            CreateAction::make(),
         ];
     }
 }

@@ -2,23 +2,25 @@
 
 namespace App\Filament\Resources\HotelResource\RelationManagers;
 
-use Filament\Forms;
-use Filament\Forms\Form;
+use Filament\Actions\ViewAction;
+use Filament\Forms\Components\TextInput;
 use Filament\Resources\RelationManagers\RelationManager;
-use Filament\Tables;
+use Filament\Schemas\Schema;
+use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Filters\Filter;
+use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\SoftDeletingScope;
 
 class ReviewsRelationManager extends RelationManager
 {
     protected static string $relationship = 'reviews';
 
-    public function form(Form $form): Form
+    public function form(Schema $schema): Schema
     {
-        return $form
+        return $schema
             ->schema([
-                Forms\Components\TextInput::make('reviewer_name')
+                TextInput::make('reviewer_name')
                     ->required()
                     ->maxLength(255),
             ]);
@@ -29,41 +31,41 @@ class ReviewsRelationManager extends RelationManager
         return $table
             ->recordTitleAttribute('reviewer_name')
             ->columns([
-                Tables\Columns\TextColumn::make('reviewer_name')
+                TextColumn::make('reviewer_name')
                     ->searchable()
                     ->sortable(),
-                Tables\Columns\TextColumn::make('reviewer_country')
+                TextColumn::make('reviewer_country')
                     ->label('Country')
                     ->formatStateUsing(fn ($state) => strtoupper($state ?? '')),
-                Tables\Columns\TextColumn::make('average_score')
+                TextColumn::make('average_score')
                     ->label('Score')
                     ->badge()
-                    ->color(fn ($state) => match(true) {
+                    ->color(fn ($state) => match (true) {
                         $state >= 9 => 'success',
                         $state >= 7 => 'info',
                         $state >= 5 => 'warning',
                         default => 'danger',
                     })
                     ->sortable(),
-                Tables\Columns\TextColumn::make('customer_type')
+                TextColumn::make('customer_type')
                     ->badge()
                     ->formatStateUsing(fn ($state) => str_replace('_', ' ', $state)),
-                Tables\Columns\TextColumn::make('purpose_type')
+                TextColumn::make('purpose_type')
                     ->badge(),
-                Tables\Columns\TextColumn::make('review_date')
+                TextColumn::make('review_date')
                     ->date()
                     ->sortable(),
-                Tables\Columns\TextColumn::make('positive_text')
+                TextColumn::make('positive_text')
                     ->limit(50)
                     ->tooltip(fn ($state) => $state),
-                Tables\Columns\TextColumn::make('negative_text')
+                TextColumn::make('negative_text')
                     ->limit(50)
                     ->tooltip(fn ($state) => $state),
             ])
             ->filters([
-                Tables\Filters\Filter::make('high_score')
+                Filter::make('high_score')
                     ->query(fn (Builder $query) => $query->where('average_score', '>=', 8)),
-                Tables\Filters\SelectFilter::make('customer_type')
+                SelectFilter::make('customer_type')
                     ->options([
                         'YOUNG_COUPLE' => 'Young Couple',
                         'FAMILY_WITH_YOUNG_CHILDREN' => 'Family with Young Children',
@@ -79,7 +81,7 @@ class ReviewsRelationManager extends RelationManager
                 //
             ])
             ->actions([
-                Tables\Actions\ViewAction::make(),
+                ViewAction::make(),
             ])
             ->bulkActions([
                 //

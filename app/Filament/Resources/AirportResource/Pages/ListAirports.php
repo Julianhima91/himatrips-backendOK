@@ -3,7 +3,7 @@
 namespace App\Filament\Resources\AirportResource\Pages;
 
 use App\Filament\Resources\AirportResource;
-use Filament\Actions;
+use Filament\Actions\CreateAction;
 use Filament\Resources\Pages\ListRecords;
 
 class ListAirports extends ListRecords
@@ -13,7 +13,7 @@ class ListAirports extends ListRecords
     protected function getHeaderActions(): array
     {
         return [
-            Actions\CreateAction::make(),
+            CreateAction::make(),
         ];
     }
 }

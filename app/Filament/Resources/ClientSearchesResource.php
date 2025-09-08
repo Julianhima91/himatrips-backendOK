@@ -2,26 +2,31 @@
 
 namespace App\Filament\Resources;
 
-use App\Filament\Resources\PackageSearchesResource\Pages;
+use App\Filament\Resources\PackageSearchesResource\Pages\ListPackageSearches;
 use App\Models\ClientSearches;
-use Filament\Forms;
-use Filament\Forms\Components\Actions\Action;
+use DB;
+use Filament\Actions\Action;
+use Filament\Actions\BulkActionGroup;
+use Filament\Actions\DeleteBulkAction;
+use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Textarea;
-use Filament\Forms\Form;
 use Filament\Resources\Resource;
-use Filament\Tables;
+use Filament\Schemas\Schema;
+use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Filters\Filter;
+use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 
 class ClientSearchesResource extends Resource
 {
     protected static ?string $model = ClientSearches::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-magnifying-glass';
+    protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-magnifying-glass';
 
-    public static function form(Form $form): Form
+    public static function form(Schema $schema): Schema
     {
-        return $form
-            ->schema([
+        return $schema
+            ->components([
                 //
             ]);
     }
@@ -33,32 +38,32 @@ class ClientSearchesResource extends Resource
                 ClientSearches::query()
                     ->select('packages.*')
                     ->whereIn('id', function ($query) {
-                        $query->select(\DB::raw('MIN(id)'))
+                        $query->select(DB::raw('MIN(id)'))
                             ->from('packages')
                             ->groupBy('batch_id');
                     })
                     ->orderBy('created_at', 'desc')
             )->poll()
             ->columns([
-                Tables\Columns\TextColumn::make('id')
+                TextColumn::make('id')
                     ->label('ID')
                     ->sortable(),
-                Tables\Columns\TextColumn::make('packageConfig.destination_origin.origin.name')
+                TextColumn::make('packageConfig.destination_origin.origin.name')
                     ->label('Origin')
                     ->searchable()
                     ->sortable(),
-                Tables\Columns\TextColumn::make('packageConfig.destination_origin.destination.name')
+                TextColumn::make('packageConfig.destination_origin.destination.name')
                     ->label('Destination')
                     ->searchable()
                     ->sortable(),
-                Tables\Columns\TextColumn::make('passengers')
+                TextColumn::make('passengers')
                     ->label('Passengers')
                     ->getStateUsing(fn ($record) => "Ad: {$record->hotelData->adults}, CHD: {$record->hotelData->children}, INF: {$record->hotelData->infants}"),
-                Tables\Columns\TextColumn::make('created_at')
+                TextColumn::make('created_at')
                     ->label('Date')
                     ->searchable()
                     ->sortable(),
-                Tables\Columns\TextColumn::make('batch_id')
+                TextColumn::make('batch_id')
                     ->label('Search Link')
                     ->formatStateUsing(fn ($state, $record) => Action::make('searchLink')
                         ->label('LINK')
@@ -87,17 +92,17 @@ class ClientSearchesResource extends Resource
                     ),
             ])
             ->filters([
-                Tables\Filters\SelectFilter::make('origin')
+                SelectFilter::make('origin')
                     ->label('Origin')
                     ->relationship('packageConfig.destination_origin.origin', 'name'),
-                Tables\Filters\SelectFilter::make('destination')
+                SelectFilter::make('destination')
                     ->label('Destination')
                     ->relationship('packageConfig.destination_origin.destination', 'name'),
-                Tables\Filters\Filter::make('created_at')
+                Filter::make('created_at')
                     ->label('Created At')
-                    ->form([
-                        Forms\Components\DatePicker::make('from_date')->label('From Date'),
-                        Forms\Components\DatePicker::make('to_date')->label('To Date'),
+                    ->schema([
+                        DatePicker::make('from_date')->label('From Date'),
+                        DatePicker::make('to_date')->label('To Date'),
                     ])
                     ->query(function ($query, array $data) {
                         return $query
@@ -105,13 +110,13 @@ class ClientSearchesResource extends Resource
                             ->when($data['to_date'], fn ($q) => $q->whereDate('created_at', '<=', $data['to_date']));
                     }),
             ])
-            ->actions([
-                Tables\Actions\Action::make('Flights Json')
+            ->recordActions([
+                Action::make('Flights Json')
                     ->action(fn (ClientSearches $record) => true)
                     ->fillForm(fn (ClientSearches $record): array => [
                         'all_flights' => $record->inboundFlight->all_flights,
                     ])
-                    ->form([
+                    ->schema([
                         TextArea::make('all_flights')
                             ->disabled()
                             ->autosize(true)
@@ -122,9 +127,9 @@ class ClientSearchesResource extends Resource
                     ->modalSubmitActionLabel('Close')
                     ->slideOver(),
             ])
-            ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
+            ->toolbarActions([
+                BulkActionGroup::make([
+                    DeleteBulkAction::make(),
                 ]),
             ])
             ->emptyStateActions([
@@ -142,7 +147,7 @@ class ClientSearchesResource extends Resource
     public static function getPages(): array
     {
         return [
-            'index' => Pages\ListPackageSearches::route('/'),
+            'index' => ListPackageSearches::route('/'),
         ];
     }
 

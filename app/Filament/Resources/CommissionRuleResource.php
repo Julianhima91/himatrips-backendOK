@@ -2,34 +2,39 @@
 
 namespace App\Filament\Resources;
 
-use App\Filament\Resources\CommissionRuleResource\Pages;
+use App\Filament\Resources\CommissionRuleResource\Pages\CreateCommissionRule;
+use App\Filament\Resources\CommissionRuleResource\Pages\EditCommissionRule;
+use App\Filament\Resources\CommissionRuleResource\Pages\ListCommissionRules;
 use App\Models\CommissionRule;
-use Filament\Forms;
-use Filament\Forms\Form;
+use Filament\Actions\BulkActionGroup;
+use Filament\Actions\DeleteBulkAction;
+use Filament\Actions\EditAction;
+use Filament\Forms\Components\TextInput;
 use Filament\Resources\Resource;
-use Filament\Tables;
+use Filament\Schemas\Schema;
+use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 
 class CommissionRuleResource extends Resource
 {
     protected static ?string $model = CommissionRule::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-rectangle-stack';
+    protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-rectangle-stack';
 
-    public static function form(Form $form): Form
+    public static function form(Schema $schema): Schema
     {
-        return $form
-            ->schema([
-                Forms\Components\TextInput::make('name')
+        return $schema
+            ->components([
+                TextInput::make('name')
                     ->required()
                     ->maxLength(255),
 
-                Forms\Components\TextInput::make('minimum_number')
+                TextInput::make('minimum_number')
                     ->required()
                     ->numeric()
                     ->minValue(0),
 
-                Forms\Components\TextInput::make('minimum_percentage')
+                TextInput::make('minimum_percentage')
                     ->required()
                     ->numeric()
                     ->minValue(0)
@@ -42,20 +47,20 @@ class CommissionRuleResource extends Resource
     {
         return $table
             ->columns([
-                Tables\Columns\TextColumn::make('name')->sortable()->searchable(),
-                Tables\Columns\TextColumn::make('minimum_number')->sortable()->money('EUR'),
-                Tables\Columns\TextColumn::make('minimum_percentage')->sortable()->formatStateUsing(fn ($state) => $state.'%'),
-                Tables\Columns\TextColumn::make('created_at')->dateTime()->sortable(),
+                TextColumn::make('name')->sortable()->searchable(),
+                TextColumn::make('minimum_number')->sortable()->money('EUR'),
+                TextColumn::make('minimum_percentage')->sortable()->formatStateUsing(fn ($state) => $state.'%'),
+                TextColumn::make('created_at')->dateTime()->sortable(),
             ])
             ->filters([
                 //
             ])
-            ->actions([
-                Tables\Actions\EditAction::make(),
+            ->recordActions([
+                EditAction::make(),
             ])
-            ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
+            ->toolbarActions([
+                BulkActionGroup::make([
+                    DeleteBulkAction::make(),
                 ]),
             ]);
     }
@@ -70,9 +75,9 @@ class CommissionRuleResource extends Resource
     public static function getPages(): array
     {
         return [
-            'index' => Pages\ListCommissionRules::route('/'),
-            'create' => Pages\CreateCommissionRule::route('/create'),
-            'edit' => Pages\EditCommissionRule::route('/{record}/edit'),
+            'index' => ListCommissionRules::route('/'),
+            'create' => CreateCommissionRule::route('/create'),
+            'edit' => EditCommissionRule::route('/{record}/edit'),
         ];
     }
 }

@@ -4,6 +4,7 @@ namespace App\Jobs;
 
 use App\Http\Integrations\GoFlightIntegration\Requests\RetrieveFlightsRequest;
 use App\Http\Integrations\GoFlightIntegration\Requests\RetrieveIncompleteFlights;
+use Exception;
 use Illuminate\Bus\Batchable;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -60,11 +61,12 @@ class LiveSearchFlights implements ShouldQueue
         $logger->info("Batch ID: {$this->batchId}");
         $logger->info("Date: {$this->date}");
 
-        if (Cache::get("job_completed_{$this->batchId}")) {
-            $this->delete();
-
-            return;
-        }
+        // in case we go back to the old logic
+        //        if (Cache::get("job_completed_{$this->batchId}")) {
+        //            $this->delete();
+        //
+        //            return;
+        //        }
 
         $request = new RetrieveFlightsRequest;
 
@@ -80,8 +82,8 @@ class LiveSearchFlights implements ShouldQueue
 
         try {
             $response = $request->send();
-        } catch (\Exception $e) {
-            //if its the first attempt, retry
+        } catch (Exception $e) {
+            // if its the first attempt, retry
             if ($this->attempts() == 1) {
                 $this->release(1);
             }
@@ -89,7 +91,7 @@ class LiveSearchFlights implements ShouldQueue
             $this->fail($e);
         }
 
-        //check if context is set, and if it is incomplete, then we have to hit another endpoint
+        // check if context is set, and if it is incomplete, then we have to hit another endpoint
         if (isset($response->json()['data']['context']['status']) && $response->json()['data']['context']['status'] == 'incomplete') {
             $response = $this->getIncompleteResults($response->json()['data']['context']['sessionId']);
         }
@@ -109,10 +111,16 @@ class LiveSearchFlights implements ShouldQueue
 
                 if (! Cache::get("job_completed_{$this->batchId}")) {
                     Cache::put("job_completed_{$this->batchId}", true);
+                } else {
+                    cache()->put("flight1:{$this->batchId}:{$this->date}", $itineraries, now()->addMinutes(5));
+                    cache()->put("flight1:{$this->batchId}:{$this->return_date}", $itineraries, now()->addMinutes(5));
+                    Cache::put("flight:{$this->batchId}:latest", 'api1');
+
+                    $this->broadcastFlightResults($itineraries);
                 }
             }
-        } catch (\Exception $e) {
-            //if its the first attempt, retry
+        } catch (Exception $e) {
+            // if its the first attempt, retry
             if ($this->attempts() == 1) {
                 $this->release(1);
             }
@@ -137,5 +145,12 @@ class LiveSearchFlights implements ShouldQueue
         }
 
         return $response;
+    }
+
+    private function broadcastFlightResults(mixed $itineraries): void
+    {
+        $syncFlightsAction = app(\App\Actions\SyncFlightsAction::class);
+
+        $syncFlightsAction->handle($itineraries, $this->batchId, $this->date, $this->return_date, $this->destination, $this->origin->id);
     }
 }

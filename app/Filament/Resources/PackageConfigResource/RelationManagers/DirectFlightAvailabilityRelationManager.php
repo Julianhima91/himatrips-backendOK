@@ -5,12 +5,18 @@ namespace App\Filament\Resources\PackageConfigResource\RelationManagers;
 use App\Models\DirectFlightAvailability;
 use Coolsam\FilamentFlatpickr\Enums\FlatpickrMode;
 use Coolsam\FilamentFlatpickr\Forms\Components\Flatpickr;
-use Filament\Forms;
+use Filament\Actions\BulkActionGroup;
+use Filament\Actions\CreateAction;
+use Filament\Actions\DeleteAction;
+use Filament\Actions\DeleteBulkAction;
+use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
-use Filament\Forms\Form;
 use Filament\Notifications\Notification;
 use Filament\Resources\RelationManagers\RelationManager;
-use Filament\Tables;
+use Filament\Schemas\Schema;
+use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Columns\ToggleColumn;
+use Filament\Tables\Filters\Filter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 
@@ -18,11 +24,11 @@ class DirectFlightAvailabilityRelationManager extends RelationManager
 {
     protected static string $relationship = 'directFlightsAvailabilityDates';
 
-    public function form(Form $form): Form
+    public function form(Schema $schema): Schema
     {
-        return $form
-            ->schema([
-                Forms\Components\TextInput::make('date')
+        return $schema
+            ->components([
+                TextInput::make('date')
                     ->required()
                     ->maxLength(255),
             ]);
@@ -33,14 +39,14 @@ class DirectFlightAvailabilityRelationManager extends RelationManager
         return $table
             ->recordTitleAttribute('date')
             ->columns([
-                Tables\Columns\TextColumn::make('date'),
-                Tables\Columns\ToggleColumn::make('is_return_flight')
+                TextColumn::make('date'),
+                ToggleColumn::make('is_return_flight')
                     ->label('Return Flight')
                     ->disabled(),
             ])
             ->filters([
-                Tables\Filters\Filter::make('date_range')
-                    ->form([
+                Filter::make('date_range')
+                    ->schema([
                         Flatpickr::make('date_range')
                             ->minDate('today')
                             ->maxDate(now()->addYear())
@@ -64,25 +70,25 @@ class DirectFlightAvailabilityRelationManager extends RelationManager
                         return $query;
                     })
                     ->label('Filter by Date Range'),
-                Tables\Filters\Filter::make('return_flight')
-                ->form([
-                    Toggle::make('is_return_flight')
-                        ->label('Return Flight')
-                        ->default(false),
-                ])
+                Filter::make('return_flight')
+                    ->schema([
+                        Toggle::make('is_return_flight')
+                            ->label('Return Flight')
+                            ->default(false),
+                    ])
                     ->query(function (Builder $query, array $data) {
                         if (array_key_exists('is_return_flight', $data)) {
                             $query->where('is_return_flight', $data['is_return_flight']);
                         }
 
                         return $query;
-                    })
+                    }),
 
             ])
             ->headerActions([
-                Tables\Actions\CreateAction::make()
+                CreateAction::make()
                     ->label('Add Dates')
-                    ->form([
+                    ->schema([
                         Flatpickr::make('dates')
                             ->label('Select Dates')
                             ->minDate('today')
@@ -110,12 +116,12 @@ class DirectFlightAvailabilityRelationManager extends RelationManager
                             ->send();
                     }),
             ])
-            ->actions([
-                Tables\Actions\DeleteAction::make(),
+            ->recordActions([
+                DeleteAction::make(),
             ])
-            ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
+            ->toolbarActions([
+                BulkActionGroup::make([
+                    DeleteBulkAction::make(),
                 ]),
             ]);
     }

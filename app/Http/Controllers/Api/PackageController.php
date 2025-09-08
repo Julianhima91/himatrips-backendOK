@@ -29,6 +29,7 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
+use Throwable;
 
 class PackageController extends Controller
 {
@@ -73,11 +74,11 @@ class PackageController extends Controller
         $totalInfants = collect($request->input('rooms'))->pluck('infants')->sum();
         ray()->newScreen();
 
-        $return_date = Carbon::parse($request->date)->addDays($request->nights)->format('Y-m-d');
+        $return_date = Carbon::parse($request->date)->addDays((int) $request->nights)->format('Y-m-d');
 
         $date = $request->date;
 
-        //get the airports here
+        // get the airports here
         $origin_airport = Airport::query()->where('origin_id', $request->origin_id)->first();
         $destination_airport = Airport::query()->whereHas('destinations', function ($query) use ($request) {
             $query->where('destination_id', $request->destination_id);
@@ -117,7 +118,7 @@ class PackageController extends Controller
             }
 
             $jobs = [
-                //new LiveSearchFlightsApi2($origin_airport, $destination_airport, $date, $return_date, $origin_airport, $destination_airport, $totalAdults, $totalChildren, $totalInfants, $batchId),
+                // new LiveSearchFlightsApi2($origin_airport, $destination_airport, $date, $return_date, $origin_airport, $destination_airport, $totalAdults, $totalChildren, $totalInfants, $batchId),
                 new LiveSearchFlights($date, $return_date, $origin_airport, $destination_airport, $totalAdults, $totalChildren, $totalInfants, $batchId),
                 new LiveSearchFlightsApi3($date, $return_date, $origin_airport, $destination_airport, $totalAdults, $totalChildren, $totalInfants, $batchId),
                 new LiveSearchHotels($hotelStartDate, $request->nights, $request->destination_id, $totalAdults, $totalChildren, $totalInfants, $request->rooms, $batchId, $origin->country_code ?? 'AL'),
@@ -169,7 +170,7 @@ class PackageController extends Controller
                     $firstBoardOption = $destination->board_options ?? null;
                     [$packages, $minTotalPrice, $maxTotalPrice, $packageConfigId] = $packagesAction->handle($package_ids, $firstBoardOption);
 
-                    //fire off event
+                    // fire off event
                     broadcast(new LiveSearchCompleted($packages, $batchId, $minTotalPrice, $maxTotalPrice, $packageConfigId, $firstBoardOption));
                     $logger->info('======================================');
                     $logger->info('Broadcasting sent. SUCCESS');
@@ -186,7 +187,7 @@ class PackageController extends Controller
             //            $endTime = microtime(true);
             //            $totalElapsed = $endTime - $startTime;
             //            Log::info("Total elapsed time: {$totalElapsed} seconds");
-        } catch (\Throwable $e) {
+        } catch (Throwable $e) {
             $logger->error($e->getMessage());
 
             return response()->json(['message' => $e->getMessage()], 500);
@@ -201,8 +202,8 @@ class PackageController extends Controller
 
     public function show(Package $package)
     {
-        //we need to return the whole package here
-        //this will include the hotel data, hotel photos, flight data
+        // we need to return the whole package here
+        // this will include the hotel data, hotel photos, flight data
 
         $package->load(['hotelData', 'hotelData.hotel', 'hotelData.hotel.hotelPhotos', 'outboundFlight', 'inboundFlight', 'hotelData.offers']);
 
@@ -307,8 +308,8 @@ class PackageController extends Controller
             ], 200);
         }
 
-        //lets modify this so we automatically get the first month and year
-        //if the user has not selected a month and year
+        // lets modify this so we automatically get the first month and year
+        // if the user has not selected a month and year
         if (! $request->month || ! $request->year) {
             $first_available_date = Package::whereHas('packageConfig', function ($query) use ($destination_origin) {
                 $query->where('destination_origin_id', $destination_origin->id);
@@ -696,16 +697,20 @@ class PackageController extends Controller
     {
         $package = Package::where('batch_id', $batchId)->first();
 
-        $currentPrice = $package->outboundFlight->price;
-
         if (! $package) {
             return response()->json(['message' => 'Incorrect batch id.'], 400);
         }
+        $currentPrice = $package->outboundFlight->price;
 
         $flights = json_decode($package->outboundFlight->all_flights, true);
 
         if (! $flights) {
             return response()->json(['message' => 'No flights available for this package.'], 404);
+        }
+
+        if (isset($flights['otherApiFlights'])) {
+            $flights = array_merge($flights, $flights['otherApiFlights']);
+            unset($flights['otherApiFlights']);
         }
 
         $stops = $request->input('stops');
@@ -766,68 +771,74 @@ class PackageController extends Controller
 
         $outboundFlight = $package->outboundFlight;
         $inboundFlight = $package->inboundFlight;
+
         $flights = json_decode($outboundFlight->all_flights, true);
+
+        if (isset($flights['otherApiFlights'])) {
+            $flights = array_merge($flights, $flights['otherApiFlights']);
+            unset($flights['otherApiFlights']);
+        }
+
         $flightIndex = $request->input('flight_index');
 
-        if (isset($flights[$flightIndex])) {
-            $oldPrice = $outboundFlight->price;
-            $newPrice = $flights[$flightIndex]['price'];
-            $priceDifference = $newPrice - $oldPrice;
-
-            DB::beginTransaction();
-            $outboundFlight->update([
-                'price' => $flights[$flightIndex]['price'],
-                'departure' => $flights[$flightIndex]['departure'],
-                'arrival' => $flights[$flightIndex]['arrival'],
-                'airline' => $flights[$flightIndex]['airline'],
-                'stop_count' => $flights[$flightIndex]['stopCount'],
-                'origin' => $flights[$flightIndex]['origin'],
-                'destination' => $flights[$flightIndex]['destination'],
-                'adults' => $flights[$flightIndex]['adults'],
-                'children' => $flights[$flightIndex]['children'],
-                'infants' => $flights[$flightIndex]['infants'],
-                'extra_data' => json_encode($flights[$flightIndex]),
-                'segments' => $flights[$flightIndex]['segments'],
-            ]);
-
-            $inboundFlight->update([
-                'price' => $flights[$flightIndex]['price'],
-                'departure' => $flights[$flightIndex]['departure_flight_back'],
-                'arrival' => $flights[$flightIndex]['arrival_flight_back'],
-                'airline' => $flights[$flightIndex]['airline_back'],
-                'stop_count' => $flights[$flightIndex]['stopCount_back'],
-                'origin' => $flights[$flightIndex]['origin_back'],
-                'destination' => $flights[$flightIndex]['destination_back'],
-                'adults' => $flights[$flightIndex]['adults'],
-                'children' => $flights[$flightIndex]['children'],
-                'infants' => $flights[$flightIndex]['infants'],
-                'extra_data' => json_encode($flights[$flightIndex]),
-                'segments' => $flights[$flightIndex]['segments_back'],
-            ]);
-
-            $packages = Package::where('outbound_flight_id', $outboundFlight->id)->get();
-
-            foreach ($packages as $package) {
-                $offers = $package->hotelData->offers;
-
-                foreach ($offers as $offer) {
-                    $offer->total_price_for_this_offer += $priceDifference;
-                    $offer->save();
-                }
-
-                $package->total_price += $priceDifference;
-                $package->save();
-            }
-
-            DB::commit();
-
-            return response()->json([
-                'message' => 'Success',
-            ], 200);
-        } else {
+        if (! isset($flights[$flightIndex])) {
             return response()->json(['message' => 'Invalid flight index.'], 400);
         }
 
+        $selectedFlight = $flights[$flightIndex];
+        $oldPrice = $outboundFlight->price;
+        $newPrice = $selectedFlight['price'];
+        $priceDifference = $newPrice - $oldPrice;
+
+        DB::beginTransaction();
+
+        $outboundFlight->update([
+            'price' => $newPrice,
+            'departure' => $selectedFlight['departure'],
+            'arrival' => $selectedFlight['arrival'],
+            'airline' => $selectedFlight['airline'],
+            'stop_count' => $selectedFlight['stopCount'],
+            'origin' => $selectedFlight['origin'],
+            'destination' => $selectedFlight['destination'],
+            'adults' => $selectedFlight['adults'],
+            'children' => $selectedFlight['children'],
+            'infants' => $selectedFlight['infants'],
+            'extra_data' => json_encode($selectedFlight),
+            'segments' => $selectedFlight['segments'],
+        ]);
+
+        $inboundFlight->update([
+            'price' => $newPrice,
+            'departure' => $selectedFlight['departure_flight_back'],
+            'arrival' => $selectedFlight['arrival_flight_back'],
+            'airline' => $selectedFlight['airline_back'],
+            'stop_count' => $selectedFlight['stopCount_back'],
+            'origin' => $selectedFlight['origin_back'],
+            'destination' => $selectedFlight['destination_back'],
+            'adults' => $selectedFlight['adults'],
+            'children' => $selectedFlight['children'],
+            'infants' => $selectedFlight['infants'],
+            'extra_data' => json_encode($selectedFlight),
+            'segments' => $selectedFlight['segments_back'],
+        ]);
+
+        $packages = Package::where('outbound_flight_id', $outboundFlight->id)->get();
+
+        foreach ($packages as $package) {
+            $offers = $package->hotelData->offers ?? [];
+
+            foreach ($offers as $offer) {
+                $offer->total_price_for_this_offer += $priceDifference;
+                $offer->save();
+            }
+
+            $package->total_price += $priceDifference;
+            $package->save();
+        }
+
+        DB::commit();
+
+        return response()->json(['message' => 'Success'], 200);
     }
 
     private function manualLiveSearch(LivesearchRequest $request, FlightsAction $flights, HotelsAction $hotels, PackagesAction $packagesAction, $destination, $origin, $destinationOrigin, $packageConfig)

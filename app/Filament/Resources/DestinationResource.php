@@ -5,17 +5,35 @@ namespace App\Filament\Resources;
 use App\Enums\ActiveMonthsEnum;
 use App\Enums\BoardOptionEnum;
 use App\Enums\OfferCategoryEnum;
-use App\Filament\Resources\DestinationResource\Pages;
-use App\Filament\Resources\DestinationResource\RelationManagers;
+use App\Filament\Resources\DestinationResource\Pages\CreateDestination;
+use App\Filament\Resources\DestinationResource\Pages\EditDestination;
+use App\Filament\Resources\DestinationResource\Pages\ListDestinations;
+use App\Filament\Resources\DestinationResource\RelationManagers\AirportsRelationManager;
+use App\Filament\Resources\DestinationResource\RelationManagers\HotelsRelationManager;
+use App\Filament\Resources\DestinationResource\RelationManagers\OriginsRelationManager;
 use App\Jobs\DestinationPackageConfigJob;
 use App\Models\CommissionRule;
 use App\Models\Destination;
-use Filament\Forms;
+use Filament\Actions\Action;
+use Filament\Actions\BulkActionGroup;
+use Filament\Actions\CreateAction;
+use Filament\Actions\DeleteBulkAction;
+use Filament\Actions\EditAction;
+use Filament\Forms\Components\FileUpload;
+use Filament\Forms\Components\Select;
 use Filament\Forms\Components\SpatieTagsInput;
-use Filament\Forms\Form;
-use Filament\Forms\Get;
+use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\TimePicker;
+use Filament\Forms\Components\Toggle;
 use Filament\Resources\Resource;
-use Filament\Tables;
+use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Utilities\Get;
+use Filament\Schemas\Schema;
+use Filament\Tables\Columns\IconColumn;
+use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Columns\ToggleColumn;
+use Filament\Tables\Filters\Filter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 
@@ -23,70 +41,70 @@ class DestinationResource extends Resource
 {
     protected static ?string $model = Destination::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-rectangle-stack';
+    protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-rectangle-stack';
 
-    public static function form(Form $form): Form
+    public static function form(Schema $schema): Schema
     {
-        return $form
-            ->schema([
+        return $schema
+            ->components([
                 SpatieTagsInput::make('tags'),
-                Forms\Components\TextInput::make('name')
+                TextInput::make('name')
                     ->required()
                     ->maxLength(255),
-                Forms\Components\Toggle::make('show_in_homepage')
+                Toggle::make('show_in_homepage')
                     ->inline(false)
                     ->label('Show in homepage'),
-                Forms\Components\Toggle::make('is_active')
+                Toggle::make('is_active')
                     ->inline(false)
                     ->label('Is Active'),
-                Forms\Components\Select::make('offer_category')
+                Select::make('offer_category')
                     ->label('Offer Categories')
                     ->multiple()
                     ->options(OfferCategoryEnum::class)
                     ->placeholder('Select offer categories')
                     ->required(),
-                Forms\Components\TextInput::make('ad_min_nights')
+                TextInput::make('ad_min_nights')
                     ->label('Ad Min Nights')
                     ->numeric()
                     ->minValue(0)
                     ->placeholder('Minimum nights for ads')
                     ->required(),
-                Forms\Components\TextInput::make('ad_max_nights')
+                TextInput::make('ad_max_nights')
                     ->label('Ad Max Nights')
                     ->numeric()
                     ->minValue(0)
                     ->placeholder('Maximum nights for ads')
                     ->required(),
-                Forms\Components\Select::make('active_months')
+                Select::make('active_months')
                     ->label('Active Months')
                     ->multiple()
                     ->options(ActiveMonthsEnum::class)
                     ->placeholder('Select active months'),
-                Forms\Components\Textarea::make('description')
+                Textarea::make('description')
                     ->required()
                     ->maxLength(255)
                     ->columnSpanFull(),
-                Forms\Components\TextInput::make('city')
+                TextInput::make('city')
                     ->required()
                     ->maxLength(255),
-                Forms\Components\Select::make('country_id')
+                Select::make('country_id')
                     ->relationship('country', 'name')
                     ->required(),
-                Forms\Components\TextInput::make('address')
+                TextInput::make('address')
                     ->maxLength(255),
-                Forms\Components\TextInput::make('region')
+                TextInput::make('region')
                     ->maxLength(255),
-                Forms\Components\TextInput::make('neighborhood')
+                TextInput::make('neighborhood')
                     ->maxLength(255),
-                Forms\Components\TextInput::make('latitude')
+                TextInput::make('latitude')
                     ->numeric()
                     ->rule('between:-90,90')
                     ->step(0.000001),
-                Forms\Components\TextInput::make('longitude')
+                TextInput::make('longitude')
                     ->numeric()
                     ->rule('between:-180,180')
                     ->step(0.000001),
-                Forms\Components\Select::make('board_options')
+                Select::make('board_options')
                     ->multiple()
                     ->label('Board Options')
                     ->options(
@@ -95,38 +113,39 @@ class DestinationResource extends Resource
                             ->toArray()
                     )
                     ->placeholder('Select Board Options'),
-                Forms\Components\TimePicker::make('morning_flight_start_time')
+                TimePicker::make('morning_flight_start_time')
                     ->live()
                     ->hidden(fn (Get $get) => ! $get('prioritize_morning_flights'))
                     ->label('Morning Flight Start Time'),
-                Forms\Components\TimePicker::make('morning_flight_end_time')
+                TimePicker::make('morning_flight_end_time')
                     ->live()
                     ->hidden(fn (Get $get) => ! $get('prioritize_morning_flights'))
                     ->label('Morning Flight End Time'),
-                Forms\Components\TimePicker::make('evening_flight_start_time')
+                TimePicker::make('evening_flight_start_time')
                     ->live()
                     ->hidden(fn (Get $get) => ! $get('prioritize_evening_flights'))
                     ->label('Evening Flight Start Time'),
-                Forms\Components\TimePicker::make('evening_flight_end_time')
+                TimePicker::make('evening_flight_end_time')
                     ->live()
                     ->hidden(fn (Get $get) => ! $get('prioritize_evening_flights'))
                     ->label('Evening Flight End Time'),
-                Forms\Components\TextInput::make('min_nights_stay')
+                TextInput::make('min_nights_stay')
                     ->label('Min Nights Stay')
                     ->default(0)
                     ->numeric()
                     ->required()
                     ->placeholder('Min Nights Stay'),
-                Forms\Components\Select::make('commission_rule_id')
+                Select::make('commission_rule_id')
                     ->label('Commission Rule')
                     ->options(CommissionRule::all()->pluck('name', 'id'))
                     ->searchable()
                     ->nullable()
                     ->helperText('Select a commission rule or leave empty for default'),
-                Forms\Components\Section::make('Destination Photo')
+                Section::make('Destination Photo')
                     ->schema([
-                        Forms\Components\FileUpload::make('Images')
+                        FileUpload::make('Images')
                             ->maxSize(30480)
+                            ->disk('public')
                             ->multiple()
                             ->panelLayout('square'),
                     ]),
@@ -137,43 +156,43 @@ class DestinationResource extends Resource
     {
         return $table
             ->columns([
-                Tables\Columns\TextColumn::make('name')
+                TextColumn::make('name')
                     ->searchable(),
-                Tables\Columns\TextColumn::make('city')
+                TextColumn::make('city')
                     ->searchable(),
-                Tables\Columns\TextColumn::make('country')
+                TextColumn::make('country')
                     ->searchable(),
-                Tables\Columns\IconColumn::make('destinationPhotos')
+                IconColumn::make('destinationPhotos')
                     ->label('Has Photo')
                     ->icon(fn (Destination $destination) => $destination->destinationPhotos()->exists() ? 'heroicon-o-check-circle' : 'heroicon-o-x-circle'),
-                Tables\Columns\ToggleColumn::make('is_active')
+                ToggleColumn::make('is_active')
                     ->disabled(),
-                Tables\Columns\TextColumn::make('created_at')
+                TextColumn::make('created_at')
                     ->dateTime()
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
-                Tables\Columns\TextColumn::make('updated_at')
+                TextColumn::make('updated_at')
                     ->dateTime()
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
-                Tables\Filters\Filter::make('has_photo')
+                Filter::make('has_photo')
                     ->query(
                         fn (Builder $query) => $query->whereHas('destinationPhotos')
                     ),
-                Tables\Filters\Filter::make('has_hotels')
+                Filter::make('has_hotels')
                     ->query(
                         fn (Builder $query) => $query->whereHas('hotels')
                     ),
-                Tables\Filters\Filter::make('Does_not_have_photo')
+                Filter::make('Does_not_have_photo')
                     ->query(
                         fn (Builder $query) => $query->whereDoesntHave('origins')
                     ),
             ])
-            ->actions([
-                Tables\Actions\EditAction::make(),
-                Tables\Actions\Action::make('Create Connections')
+            ->recordActions([
+                EditAction::make(),
+                Action::make('Create Connections')
                     ->label('Create Connections')
                     ->action(function ($record) {
                         DestinationPackageConfigJob::dispatch($record->id);
@@ -181,31 +200,31 @@ class DestinationResource extends Resource
                     ->color('primary')
                     ->icon('heroicon-o-bolt'),
             ])
-            ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
+            ->toolbarActions([
+                BulkActionGroup::make([
+                    DeleteBulkAction::make(),
                 ]),
             ])
             ->emptyStateActions([
-                Tables\Actions\CreateAction::make(),
+                CreateAction::make(),
             ]);
     }
 
     public static function getRelations(): array
     {
         return [
-            RelationManagers\HotelsRelationManager::class,
-            RelationManagers\AirportsRelationManager::class,
-            RelationManagers\OriginsRelationManager::class,
+            HotelsRelationManager::class,
+            AirportsRelationManager::class,
+            OriginsRelationManager::class,
         ];
     }
 
     public static function getPages(): array
     {
         return [
-            'index' => Pages\ListDestinations::route('/'),
-            'create' => Pages\CreateDestination::route('/create'),
-            'edit' => Pages\EditDestination::route('/{record}/edit'),
+            'index' => ListDestinations::route('/'),
+            'create' => CreateDestination::route('/create'),
+            'edit' => EditDestination::route('/{record}/edit'),
         ];
     }
 }

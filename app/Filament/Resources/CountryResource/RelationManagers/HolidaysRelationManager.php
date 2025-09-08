@@ -3,11 +3,13 @@
 namespace App\Filament\Resources\CountryResource\RelationManagers;
 
 use App\Models\Holiday;
-use Filament\Forms;
+use Filament\Actions\Action;
+use Filament\Actions\CreateAction;
 use Filament\Forms\Components\FileUpload;
-use Filament\Forms\Form;
+use Filament\Forms\Components\TextInput;
 use Filament\Resources\RelationManagers\RelationManager;
-use Filament\Tables;
+use Filament\Schemas\Schema;
+use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
@@ -16,15 +18,15 @@ class HolidaysRelationManager extends RelationManager
 {
     protected static string $relationship = 'holidays';
 
-    public function form(Form $form): Form
+    public function form(Schema $schema): Schema
     {
-        return $form
-            ->schema([
-                Forms\Components\TextInput::make('name')
+        return $schema
+            ->components([
+                TextInput::make('name')
                     ->label('Holiday Name')
                     ->required()
                     ->maxLength(255),
-                Forms\Components\TextInput::make('day')
+                TextInput::make('day')
                     ->label('Day (DD-MM)')
                     ->required()
                     ->maxLength(5)
@@ -39,17 +41,17 @@ class HolidaysRelationManager extends RelationManager
         return $table
             ->recordTitleAttribute('name')
             ->columns([
-                Tables\Columns\TextColumn::make('name'),
-                Tables\Columns\TextColumn::make('day'),
+                TextColumn::make('name'),
+                TextColumn::make('day'),
             ])
             ->filters([
                 //
             ])
             ->headerActions([
-                Tables\Actions\CreateAction::make(),
-                Tables\Actions\Action::make('Import')
+                CreateAction::make(),
+                Action::make('Import')
                     ->modalHeading('Import Data via CSV')
-                    ->form([
+                    ->schema([
                         FileUpload::make('file')
                             ->label('CSV File')
                             ->required()
@@ -85,9 +87,9 @@ class HolidaysRelationManager extends RelationManager
                     }),
             ])
 
-            ->actions([
+            ->recordActions([
             ])
-            ->bulkActions([
+            ->toolbarActions([
             ]);
     }
 }

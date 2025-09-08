@@ -19,7 +19,7 @@ return new class extends Migration
             $table->json('score_breakdown')->nullable();
             $table->datetime('last_updated')->useCurrent();
             $table->timestamps();
-            
+
             $table->index('total_score');
         });
     }

@@ -2,6 +2,9 @@
 
 namespace App\Console\Commands;
 
+use App\Jobs\EconomicAdJob;
+use App\Jobs\HolidayAdJob;
+use App\Jobs\WeekendAdJob;
 use App\Models\AdConfig;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
@@ -31,9 +34,9 @@ class DispatchRefreshAdConfigs extends Command
         $queue = $this->option('queue') ?: $type;
 
         $jobClasses = [
-            'economic' => \App\Jobs\EconomicAdJob::class,
-            'weekend' => \App\Jobs\WeekendAdJob::class,
-            'holiday' => \App\Jobs\HolidayAdJob::class,
+            'economic' => EconomicAdJob::class,
+            'weekend' => WeekendAdJob::class,
+            'holiday' => HolidayAdJob::class,
         ];
 
         $statusColumn = "{$type}_status";

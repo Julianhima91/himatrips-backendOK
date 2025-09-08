@@ -3,27 +3,33 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\DestinationPhotosResource\Pages;
+use App\Filament\Resources\DestinationPhotosResource\Pages\EditDestinationPhotos;
+use App\Filament\Resources\DestinationPhotosResource\Pages\ListDestinationPhotos;
 use App\Models\DestinationPhoto;
-use Filament\Forms;
+use Filament\Actions\BulkActionGroup;
+use Filament\Actions\DeleteBulkAction;
+use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\SpatieTagsInput;
-use Filament\Forms\Form;
 use Filament\Resources\Resource;
-use Filament\Tables;
+use Filament\Schemas\Components\Section;
+use Filament\Schemas\Schema;
+use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 
 class DestinationPhotosResource extends Resource
 {
     protected static ?string $model = DestinationPhoto::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-rectangle-stack';
+    protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-rectangle-stack';
 
-    public static function form(Form $form): Form
+    public static function form(Schema $schema): Schema
     {
-        return $form
-            ->schema([
-                Forms\Components\Section::make('Destination Photo')
+        return $schema
+            ->components([
+                Section::make('Destination Photo')
                     ->schema([
-                        Forms\Components\FileUpload::make('file_path')
+                        FileUpload::make('file_path')
+                            ->disk('public')
                             ->disabled()
                             ->panelLayout('square'),
                     ]),
@@ -35,19 +41,19 @@ class DestinationPhotosResource extends Resource
     {
         return $table
             ->columns([
-                Tables\Columns\TextColumn::make('destination.name')
+                TextColumn::make('destination.name')
                     ->searchable(),
-                Tables\Columns\TextColumn::make('file_path')
+                TextColumn::make('file_path')
                     ->label('Name'),
             ])
             ->filters([
                 //
             ])
-            ->actions([
+            ->recordActions([
             ])
-            ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
+            ->toolbarActions([
+                BulkActionGroup::make([
+                    DeleteBulkAction::make(),
                 ]),
             ]);
     }
@@ -62,9 +68,9 @@ class DestinationPhotosResource extends Resource
     public static function getPages(): array
     {
         return [
-            'index' => Pages\ListDestinationPhotos::route('/'),
+            'index' => ListDestinationPhotos::route('/'),
             //            'create' => Pages\CreateDestinationPhotos::route('/create'),
-            'edit' => Pages\EditDestinationPhotos::route('/{record}/edit'),
+            'edit' => EditDestinationPhotos::route('/{record}/edit'),
         ];
     }
 }

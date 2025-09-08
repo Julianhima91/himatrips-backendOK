@@ -7,8 +7,8 @@ use App\Jobs\UpdateEconomicAdDestinationJob;
 use App\Jobs\UpdateHolidayAdDestinationJob;
 use App\Jobs\UpdateWeekendAdDestinationJob;
 use App\Models\AdConfig;
-use Filament\Actions;
 use Filament\Actions\Action;
+use Filament\Actions\DeleteAction;
 use Filament\Forms\Components\Select;
 use Filament\Resources\Pages\EditRecord;
 
@@ -19,12 +19,12 @@ class EditAdConfig extends EditRecord
     protected function getHeaderActions(): array
     {
         return [
-            Actions\DeleteAction::make(),
+            DeleteAction::make(),
 
             Action::make('openModal')
                 ->label('Update Economic')
                 ->modalHeading('Select an Option')
-                ->form([
+                ->schema([
                     Select::make('temp_destination_id')
                         ->label('Destination')
                         ->options(fn () => $this->record->destinations()->pluck('name', 'destinations.id'))
@@ -38,7 +38,7 @@ class EditAdConfig extends EditRecord
             Action::make('openModal')
                 ->label('Update Holidays')
                 ->modalHeading('Select an Option')
-                ->form([
+                ->schema([
                     Select::make('holiday_destination_id')
                         ->label('Destination')
                         ->options(fn () => $this->record->destinations()->pluck('name', 'destinations.id'))
@@ -52,7 +52,7 @@ class EditAdConfig extends EditRecord
             Action::make('openModal')
                 ->label('Update Weekends')
                 ->modalHeading('Select an Option')
-                ->form([
+                ->schema([
                     Select::make('holiday_destination_id')
                         ->label('Destination')
                         ->options(fn () => $this->record->destinations()->pluck('name', 'destinations.id'))

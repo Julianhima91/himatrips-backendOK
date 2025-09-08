@@ -3,7 +3,7 @@
 namespace App\Filament\Resources\DestinationPhotosResource\Pages;
 
 use App\Filament\Resources\DestinationPhotosResource;
-use Filament\Actions;
+use Filament\Actions\DeleteAction;
 use Filament\Resources\Pages\EditRecord;
 
 class EditDestinationPhotos extends EditRecord
@@ -13,7 +13,7 @@ class EditDestinationPhotos extends EditRecord
     protected function getHeaderActions(): array
     {
         return [
-            Actions\DeleteAction::make(),
+            DeleteAction::make(),
         ];
     }
 }

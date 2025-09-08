@@ -34,7 +34,7 @@ class EditHotel extends EditRecord
                 ->icon('heroicon-o-arrow-path')
                 ->modalHeading('Sync Hotel Data from Booking.com')
                 ->modalWidth('md')
-                ->form([
+                ->schema([
                     TextInput::make('booking_url')
                         ->label('Hotel Booking URL')
                         ->placeholder('https://www.booking.com/hotel/ch/art-house-basel.en-gb.html')
@@ -273,11 +273,11 @@ XML;
             ->withHeaders($header)
             ->afterRequesting(function ($request, $response) {
                 // Log the response
-                //\Log::info('HOTEL SEARCH REQUEST');
-                //\Log::info($request->getBody());
-                //\Log::info("HOTEL SEARCH REQUEST END\n");
-                //\Log::info("RESPONSE START\n");
-                //\Log::info(json_encode($response));
+                // \Log::info('HOTEL SEARCH REQUEST');
+                // \Log::info($request->getBody());
+                // \Log::info("HOTEL SEARCH REQUEST END\n");
+                // \Log::info("RESPONSE START\n");
+                // \Log::info(json_encode($response));
             })
             ->call('MakeRequest', [
                 'requestType' => 6,
@@ -286,13 +286,13 @@ XML;
 
         $reader = XmlReader::fromString($response->response->MakeRequestResult);
 
-        //get the array of photos
+        // get the array of photos
         $photos = $reader->values()['Root']['Main']['Pictures']['Picture'];
 
-        //for every photo we need to download it and save it to the database
+        // for every photo we need to download it and save it to the database
         foreach ($photos as $photo) {
             $photoData = file_get_contents($photo);
-            //generate random name for the photo
+            // generate random name for the photo
             $photoName = uniqid().'.jpg';
             $photoPath = 'hotels/'.$hotelId.'/'.$photoName;
             Storage::disk('public')->put($photoPath, $photoData);
@@ -309,15 +309,15 @@ XML;
     protected function handleRecordUpdate(Model $record, array $data): Model
     {
         unset($data['reviewSummary']);
-        //get the images from the data
+        // get the images from the data
         $images = $data['Images'];
         unset($data['Images']);
         $record->update($data);
 
-        //delete all photos first from the database and from storage
+        // delete all photos first from the database and from storage
         $record->hotelPhotos()->delete();
 
-        //for every image we create a hotel photo
+        // for every image we create a hotel photo
         foreach ($images as $image) {
             $record->hotelPhotos()->updateOrCreate([
                 'file_path' => $image,

@@ -3,7 +3,7 @@
 namespace App\Filament\Resources\DestinationResource\Pages;
 
 use App\Filament\Resources\DestinationResource;
-use Filament\Actions;
+use Filament\Actions\DeleteAction;
 use Filament\Resources\Pages\EditRecord;
 use Illuminate\Database\Eloquent\Model;
 
@@ -14,18 +14,18 @@ class EditDestination extends EditRecord
     protected function getHeaderActions(): array
     {
         return [
-            Actions\DeleteAction::make(),
+            DeleteAction::make(),
         ];
     }
 
     protected function handleRecordUpdate(Model $record, array $data): Model
     {
-        //get the image from the data
+        // get the image from the data
         $image = $data['Images'];
         unset($data['Images']);
         $record->update($data);
 
-        //delete all photos first from the database and from storage
+        // delete all photos first from the database and from storage
         $record->destinationPhotos()->delete();
 
         if ($image) {

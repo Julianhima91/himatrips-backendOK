@@ -3,25 +3,40 @@
 namespace App\Filament\Resources;
 
 use App\Actions\CheckFlightAvailability;
-use App\Filament\Resources\PackageConfigResource\Pages;
+use App\Filament\Resources\PackageConfigResource\Pages\CreatePackageConfig;
+use App\Filament\Resources\PackageConfigResource\Pages\EditPackageConfig;
+use App\Filament\Resources\PackageConfigResource\Pages\ListPackageConfigs;
 use App\Filament\Resources\PackageConfigResource\RelationManagers\DirectFlightAvailabilityRelationManager;
 use App\Filament\Resources\PackageConfigResource\RelationManagers\PackagesRelationManager;
 use App\Http\Requests\CheckFlightAvailabilityRequest;
 use App\Jobs\ImportPackagesJob;
+use App\Jobs\RetryFailedAvailabilityJob;
+use App\Jobs\ScoreOriginDestinationJob;
+use App\Jobs\UpdateFlightDatesForTopSearchedPackages;
 use App\Models\Airline;
 use App\Models\DirectFlightAvailability;
 use App\Models\Origin;
 use App\Models\PackageConfig;
-use Coolsam\FilamentFlatpickr\Enums\FlatpickrMode;
-use Coolsam\FilamentFlatpickr\Forms\Components\Flatpickr;
+use Filament\Actions\Action;
+use Filament\Actions\BulkActionGroup;
+use Filament\Actions\CreateAction;
+use Filament\Actions\DeleteBulkAction;
 use Filament\Forms;
+use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Select;
+use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
-use Filament\Forms\Form;
 use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
+// use Coolsam\FilamentFlatpickr\Enums\FlatpickrMode;
+// use Coolsam\FilamentFlatpickr\Forms\Components\Flatpickr;
+use Filament\Schemas\Components\Utilities\Get;
+use Filament\Schemas\Schema;
 use Filament\Tables;
+use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Columns\ToggleColumn;
 use Filament\Tables\Table;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\ValidationException;
@@ -30,12 +45,12 @@ class PackageConfigResource extends Resource
 {
     protected static ?string $model = PackageConfig::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-rectangle-stack';
+    protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-rectangle-stack';
 
-    public static function form(Form $form): Form
+    public static function form(Schema $schema): Schema
     {
-        return $form
-            ->schema([
+        return $schema
+            ->components([
                 Select::make('origin')
                     ->placeholder('Select an origin')
                     ->options(
@@ -50,7 +65,7 @@ class PackageConfigResource extends Resource
                     ->multiple()
                     ->placeholder('Select a destination')
                     ->hiddenOn('edit')
-                    ->options(function (Forms\Get $get) {
+                    ->options(function (Get $get) {
                         $origin = Origin::find($get('origin'));
                         $destinations = $origin?->destinations()->get()->pluck('name', 'id');
 
@@ -64,7 +79,7 @@ class PackageConfigResource extends Resource
                                     ])->first();
 
                                 if ($originDestinations) {
-                                    $exists = \App\Models\PackageConfig::where('destination_origin_id', $originDestinations->id)->exists();
+                                    $exists = PackageConfig::where('destination_origin_id', $originDestinations->id)->exists();
 
                                     if (! $exists) {
                                         $array[$key] = $value;
@@ -83,7 +98,7 @@ class PackageConfigResource extends Resource
                     ->live()
                     ->placeholder('Select a destination')
                     ->hiddenOn('create')
-                    ->options(function (Forms\Get $get) {
+                    ->options(function (Get $get) {
                         return Origin::find($get('origin'))?->destinations()->get()->pluck('name', 'id');
                     })
                     ->label('Destination')
@@ -99,38 +114,38 @@ class PackageConfigResource extends Resource
                     ->multiple()
                     ->searchable(),
 
-                Forms\Components\Toggle::make('is_active')
+                Toggle::make('is_active')
                     ->inline(false)
                     ->default(true)
                     ->label('Is Active'),
 
-                Forms\Components\Toggle::make('is_manual')
+                Toggle::make('is_manual')
                     ->inline(false)
                     ->default(true)
                     ->label('Is Manual'),
 
-                Forms\Components\Toggle::make('is_direct_flight')
+                Toggle::make('is_direct_flight')
                     ->inline(false)
                     ->label('Is Direct Flight'),
 
-                Forms\Components\Toggle::make('prioritize_morning_flights')
+                Toggle::make('prioritize_morning_flights')
                     ->live()
                     ->default(true)
                     ->inline(false)
                     ->label('Prioritize Morning Flights'),
 
-                Forms\Components\Toggle::make('prioritize_evening_flights')
+                Toggle::make('prioritize_evening_flights')
                     ->live()
                     ->default(true)
                     ->inline(false)
                     ->label('Prioritize Evening Flights'),
 
-                Forms\Components\TextInput::make('max_wait_time')
+                TextInput::make('max_wait_time')
                     ->numeric()
                     ->default(0)
                     ->label('Max Wait Time'),
 
-                Forms\Components\TextInput::make('max_stop_count')
+                TextInput::make('max_stop_count')
                     ->label('Max Stop Count')
                     ->default(1)
                     ->numeric()
@@ -150,7 +165,7 @@ class PackageConfigResource extends Resource
                     ])
                     ->label('Room Basis'),
 
-                Forms\Components\TextInput::make('commission_percentage')
+                TextInput::make('commission_percentage')
                     ->numeric()
                     ->default(30)
                     ->minValue(0)
@@ -159,7 +174,7 @@ class PackageConfigResource extends Resource
                     ->step(0.01)
                     ->label('Commission Percentage'),
 
-                Forms\Components\TextInput::make('commission_amount')
+                TextInput::make('commission_amount')
                     ->label('Commission Amount')
                     ->default(80)
                     ->minValue(0)
@@ -173,12 +188,12 @@ class PackageConfigResource extends Resource
     {
         return $table
             ->headerActions([
-                Tables\Actions\Action::make('Score Origin & Destination')
+                Action::make('Score Origin & Destination')
                     ->label('Score Origin & Destination')
                     ->icon('heroicon-o-star')
                     ->color('primary')
                     ->action(function () {
-                        \App\Jobs\ScoreOriginDestinationJob::dispatch();
+                        ScoreOriginDestinationJob::dispatch();
 
                         Notification::make()
                             ->success()
@@ -187,12 +202,12 @@ class PackageConfigResource extends Resource
                             ->send();
                     }),
 
-                Tables\Actions\Action::make('Retry failed jobs')
+                Action::make('Retry failed jobs')
                     ->label('Retry failed jobs')
                     ->icon('heroicon-o-arrow-path')
                     ->color('primary')
                     ->action(function () {
-                        \App\Jobs\RetryFailedAvailabilityJob::dispatch();
+                        RetryFailedAvailabilityJob::dispatch();
 
                         Notification::make()
                             ->success()
@@ -201,12 +216,12 @@ class PackageConfigResource extends Resource
                             ->send();
                     }),
 
-                Tables\Actions\Action::make('Run Top Searched Job')
+                Action::make('Run Top Searched Job')
                     ->label('Run Top Searched')
                     ->icon('heroicon-o-arrow-trending-up')
                     ->color('primary')
                     ->action(function () {
-                        \App\Jobs\UpdateFlightDatesForTopSearchedPackages::dispatch(4);
+                        UpdateFlightDatesForTopSearchedPackages::dispatch(4);
 
                         Notification::make()
                             ->success()
@@ -215,12 +230,12 @@ class PackageConfigResource extends Resource
                             ->send();
                     }),
 
-                Tables\Actions\Action::make('Run Medium Searched Job')
+                Action::make('Run Medium Searched Job')
                     ->label('Run from 1-4 Searched')
                     ->icon('heroicon-o-arrow-trending-down')
                     ->color('primary')
                     ->action(function () {
-                        \App\Jobs\UpdateFlightDatesForTopSearchedPackages::dispatch(1, 4);
+                        UpdateFlightDatesForTopSearchedPackages::dispatch(1, 4);
 
                         Notification::make()
                             ->success()
@@ -230,43 +245,43 @@ class PackageConfigResource extends Resource
                     }),
             ])
             ->columns([
-                Tables\Columns\TextColumn::make('destination_origin.origin.name')
+                TextColumn::make('destination_origin.origin.name')
                     ->label('Origin')
                     ->searchable()
                     ->sortable(),
-                Tables\Columns\TextColumn::make('destination_origin.destination.name')
+                TextColumn::make('destination_origin.destination.name')
                     ->label('Destination')
                     ->searchable()
                     ->sortable(),
-                Tables\Columns\TextColumn::make('destination_origin.directFlightsAvailability.date')
-                    ->label('Start Date')
-                    ->sortable()
-                    ->default('-')
-                    ->formatStateUsing(function ($state, $record) {
-                        $earliestDate = $record->destination_origin->directFlightsAvailability()
-                            ->where('is_return_flight', 0)
-                            ->orderBy('date')
-                            ->first()?->date;
+                //                TextColumn::make('destination_origin.directFlightsAvailability.date')
+                //                    ->label('Start Date')
+                //                    ->sortable()
+                //                    ->default('-')
+                //                    ->formatStateUsing(function ($state, $record) {
+                //                        $earliestDate = $record->destination_origin->directFlightsAvailability()
+                //                            ->where('is_return_flight', 0)
+                //                            ->orderBy('date')
+                //                            ->first()?->date;
+                //
+                //                        return $earliestDate ?? '-';
+                //                    })->alignCenter(),
 
-                        return $earliestDate ?? '-';
-                    })->alignCenter(),
-
-                Tables\Columns\TextColumn::make('destination_origin.directFlightsAvailability')
-                    ->label('End Date')
-                    ->sortable()
-                    ->default('-')
-                    ->formatStateUsing(function ($state, $record) {
-                        $latestDate = $record->destination_origin->directFlightsAvailability()
-                            ->where('is_return_flight', 0)
-                            ->orderBy('date', 'desc')
-                            ->first()?->date;
-
-                        return $latestDate ?? '-';
-                    })->alignCenter(),
-                Tables\Columns\ToggleColumn::make('is_active')
+                //                TextColumn::make('destination_origin.directFlightsAvailability')
+                //                    ->label('End Date')
+                //                    ->sortable()
+                //                    ->default('-')
+                //                    ->formatStateUsing(function ($state, $record) {
+                //                        $latestDate = $record->destination_origin->directFlightsAvailability()
+                //                            ->where('is_return_flight', 0)
+                //                            ->orderBy('date', 'desc')
+                //                            ->first()?->date;
+                //
+                //                        return $latestDate ?? '-';
+                //                    })->alignCenter(),
+                ToggleColumn::make('is_active')
                     ->disabled(),
 
-                //show the numbers of packages
+                // show the numbers of packages
                 //                Tables\Columns\TextColumn::make('packages_count')
                 //                    ->label('Packages')
                 //                    ->counts('packages')
@@ -275,7 +290,7 @@ class PackageConfigResource extends Resource
             ->filters([
                 //
             ])
-            ->actions([
+            ->recordActions([
                 //                Tables\Actions\Action::make('Choose Package Config')
                 //                    ->label('Check Flights')
                 //                    ->form([
@@ -337,12 +352,12 @@ class PackageConfigResource extends Resource
                 //                            return;
                 //                        }
                 //                    }),
-                Tables\Actions\Action::make('importPackages')
+                Action::make('importPackages')
                     ->label('Import Packages')
                     ->icon('heroicon-o-sparkles')
                     ->color('success')
-                    ->form([
-                        \Filament\Forms\Components\FileUpload::make('csv_file')
+                    ->schema([
+                        FileUpload::make('csv_file')
                             ->label('CSV File')
                             ->required()
                             ->acceptedFileTypes(['text/csv']),
@@ -350,7 +365,7 @@ class PackageConfigResource extends Resource
                     ->action(function (array $data, $record) {
                         $file = $data['csv_file'];
 
-                        if ($file instanceof \Illuminate\Http\UploadedFile) {
+                        if ($file instanceof UploadedFile) {
                             $path = $file->storeAs('imports', 'package_'.$record->id.'.csv', 'public');
                         } else {
                             $path = $file;
@@ -365,43 +380,44 @@ class PackageConfigResource extends Resource
                             ->success()
                             ->send();
                     }),
-                Tables\Actions\Action::make('insertDates')
-                    ->label('Insert Dates')
-                    ->form([
-                        Flatpickr::make('dates')
-                            ->label('Dates')
-                            ->minDate('today')
-                            ->maxDate(now()->addYear())
-                            ->mode(FlatpickrMode::MULTIPLE),
-                        Toggle::make('is_return_flight')
-                            ->label('Return Dates'),
-                    ])
-                    ->action(function ($record, array $data) {
-                        $dates = explode(',', $data['dates']);
-
-                        foreach ($dates as $date) {
-                            DirectFlightAvailability::updateOrCreate(
-                                [
-                                    'date' => $date,
-                                    'destination_origin_id' => $record->destination_origin_id,
-                                    'is_return_flight' => $data['is_return_flight'],
-                                ],
-                            );
-                        }
-
-                        Notification::make()
-                            ->success()
-                            ->title('Dates added!')
-                            ->send();
-                    }),
+                // todo: replace this if needed in the future flatpickr had dependency issues
+                //                Action::make('insertDates')
+                //                    ->label('Insert Dates')
+                //                    ->schema([
+                //                        Flatpickr::make('dates')
+                //                            ->label('Dates')
+                //                            ->minDate('today')
+                //                            ->maxDate(now()->addYear())
+                //                            ->mode(FlatpickrMode::MULTIPLE),
+                //                        Toggle::make('is_return_flight')
+                //                            ->label('Return Dates'),
+                //                    ])
+                //                    ->action(function ($record, array $data) {
+                //                        $dates = explode(',', $data['dates']);
+                //
+                //                        foreach ($dates as $date) {
+                //                            DirectFlightAvailability::updateOrCreate(
+                //                                [
+                //                                    'date' => $date,
+                //                                    'destination_origin_id' => $record->destination_origin_id,
+                //                                    'is_return_flight' => $data['is_return_flight'],
+                //                                ],
+                //                            );
+                //                        }
+                //
+                //                        Notification::make()
+                //                            ->success()
+                //                            ->title('Dates added!')
+                //                            ->send();
+                //                    }),
             ])
-            ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
+            ->toolbarActions([
+                BulkActionGroup::make([
+                    DeleteBulkAction::make(),
                 ]),
             ])
             ->emptyStateActions([
-                Tables\Actions\CreateAction::make(),
+                CreateAction::make(),
             ]);
     }
 
@@ -416,9 +432,9 @@ class PackageConfigResource extends Resource
     public static function getPages(): array
     {
         return [
-            'index' => Pages\ListPackageConfigs::route('/'),
-            'create' => Pages\CreatePackageConfig::route('/create'),
-            'edit' => Pages\EditPackageConfig::route('/{record}/edit'),
+            'index' => ListPackageConfigs::route('/'),
+            'create' => CreatePackageConfig::route('/create'),
+            'edit' => EditPackageConfig::route('/{record}/edit'),
         ];
     }
 }

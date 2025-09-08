@@ -2,29 +2,35 @@
 
 namespace App\Filament\Resources;
 
-use App\Filament\Resources\AirlineResource\Pages;
+use App\Filament\Resources\AirlineResource\Pages\CreateAirline;
+use App\Filament\Resources\AirlineResource\Pages\EditAirline;
+use App\Filament\Resources\AirlineResource\Pages\ListAirlines;
 use App\Models\Airline;
-use Filament\Forms;
-use Filament\Forms\Form;
+use Filament\Actions\BulkActionGroup;
+use Filament\Actions\CreateAction;
+use Filament\Actions\DeleteBulkAction;
+use Filament\Actions\EditAction;
+use Filament\Forms\Components\TextInput;
 use Filament\Resources\Resource;
-use Filament\Tables;
+use Filament\Schemas\Schema;
+use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 
 class AirlineResource extends Resource
 {
     protected static ?string $model = Airline::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-rectangle-stack';
+    protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-rectangle-stack';
 
-    public static function form(Form $form): Form
+    public static function form(Schema $schema): Schema
     {
-        return $form
-            ->schema([
-                Forms\Components\TextInput::make('nameAirline')
+        return $schema
+            ->components([
+                TextInput::make('nameAirline')
                     ->autofocus()
                     ->required()
                     ->label('Name'),
-                Forms\Components\TextInput::make('api_id')
+                TextInput::make('api_id')
                     ->required(),
             ]);
     }
@@ -33,26 +39,26 @@ class AirlineResource extends Resource
     {
         return $table
             ->columns([
-                Tables\Columns\TextColumn::make('nameAirline')
+                TextColumn::make('nameAirline')
                     ->label('Name')
                     ->searchable()
                     ->sortable(),
-                Tables\Columns\TextColumn::make('api_id')
+                TextColumn::make('api_id')
                     ->label('API ID'),
             ])
             ->filters([
                 //
             ])
-            ->actions([
-                Tables\Actions\EditAction::make(),
+            ->recordActions([
+                EditAction::make(),
             ])
-            ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
+            ->toolbarActions([
+                BulkActionGroup::make([
+                    DeleteBulkAction::make(),
                 ]),
             ])
             ->emptyStateActions([
-                Tables\Actions\CreateAction::make(),
+                CreateAction::make(),
             ]);
     }
 
@@ -66,9 +72,9 @@ class AirlineResource extends Resource
     public static function getPages(): array
     {
         return [
-            'index' => Pages\ListAirlines::route('/'),
-            'create' => Pages\CreateAirline::route('/create'),
-            'edit' => Pages\EditAirline::route('/{record}/edit'),
+            'index' => ListAirlines::route('/'),
+            'create' => CreateAirline::route('/create'),
+            'edit' => EditAirline::route('/{record}/edit'),
         ];
     }
 }

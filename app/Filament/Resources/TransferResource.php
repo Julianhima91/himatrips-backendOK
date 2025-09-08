@@ -2,37 +2,43 @@
 
 namespace App\Filament\Resources;
 
-use App\Filament\Resources\TransferResource\Pages;
+use App\Filament\Resources\TransferResource\Pages\CreateTransfer;
+use App\Filament\Resources\TransferResource\Pages\EditTransfer;
+use App\Filament\Resources\TransferResource\Pages\ListTransfers;
 use App\Models\Transfer;
-use Filament\Forms;
-use Filament\Forms\Form;
+use Filament\Actions\BulkActionGroup;
+use Filament\Actions\DeleteBulkAction;
+use Filament\Actions\EditAction;
+use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Toggle;
 use Filament\Resources\Resource;
-use Filament\Tables;
+use Filament\Schemas\Schema;
+use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 
 class TransferResource extends Resource
 {
     protected static ?string $model = Transfer::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-rectangle-stack';
+    protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-rectangle-stack';
 
-    public static function form(Form $form): Form
+    public static function form(Schema $schema): Schema
     {
-        return $form
-            ->schema([
-                Forms\Components\TextInput::make('description')
+        return $schema
+            ->components([
+                TextInput::make('description')
                     ->required()
                     ->maxLength(255),
-                Forms\Components\TextInput::make('adult_price')
+                TextInput::make('adult_price')
                     ->numeric()
                     ->required(),
-                Forms\Components\Toggle::make('has_children_price')
+                Toggle::make('has_children_price')
                     ->label('Enable Children Price')
                     ->live()
                     ->default(false)
                     ->dehydrated(false),
 
-                Forms\Components\TextInput::make('children_price')
+                TextInput::make('children_price')
                     ->numeric()
                     ->required()
                     ->visible(fn ($get) => $get('has_children_price')),
@@ -43,19 +49,19 @@ class TransferResource extends Resource
     {
         return $table
             ->columns([
-                Tables\Columns\TextColumn::make('description'),
-                Tables\Columns\TextColumn::make('adult_price')->money('EUR'),
-                Tables\Columns\TextColumn::make('children_price')->money('EUR'),
+                TextColumn::make('description'),
+                TextColumn::make('adult_price')->money('EUR'),
+                TextColumn::make('children_price')->money('EUR'),
             ])
             ->filters([
                 //
             ])
-            ->actions([
-                Tables\Actions\EditAction::make(),
+            ->recordActions([
+                EditAction::make(),
             ])
-            ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
+            ->toolbarActions([
+                BulkActionGroup::make([
+                    DeleteBulkAction::make(),
                 ]),
             ]);
     }
@@ -70,9 +76,9 @@ class TransferResource extends Resource
     public static function getPages(): array
     {
         return [
-            'index' => Pages\ListTransfers::route('/'),
-            'create' => Pages\CreateTransfer::route('/create'),
-            'edit' => Pages\EditTransfer::route('/{record}/edit'),
+            'index' => ListTransfers::route('/'),
+            'create' => CreateTransfer::route('/create'),
+            'edit' => EditTransfer::route('/{record}/edit'),
         ];
     }
 }

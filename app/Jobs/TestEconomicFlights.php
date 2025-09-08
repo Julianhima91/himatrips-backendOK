@@ -13,6 +13,7 @@ use App\Models\HotelData;
 use App\Models\HotelOffer;
 use App\Models\PackageConfig;
 use App\Settings\MaxTransitTime;
+use DateTime;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -82,7 +83,7 @@ class TestEconomicFlights implements ShouldQueue
             'origin_airport' => $this->airport,
             'destination_airport' => $this->destinationAirport,
             'date' => $date,
-            'nights' => (new \DateTime($returnDate))->diff(new \DateTime($date))->days,
+            'nights' => (new DateTime($returnDate))->diff(new DateTime($date))->days,
             'return_date' => $returnDate,
             'origin_id' => $this->adConfig->origin_id,
             'destination_id' => $this->destinationId,
@@ -211,7 +212,7 @@ class TestEconomicFlights implements ShouldQueue
             $logger->warning("No flight for batch {$this->batchId}");
 
             $adConfig = $this->adConfig;
-            //in case we go back to the old logic =D
+            // in case we go back to the old logic =D
             //            if (in_array('cheapest_date', $this->adConfig->extra_options)) {
             //                $batchIds = Cache::get("$adConfig->id:economic_create_csv");
             //                unset($batchIds[array_search($this->batchId, $batchIds)]);
@@ -227,7 +228,7 @@ class TestEconomicFlights implements ShouldQueue
             $flights = $flights->reject(null);
             $first_outbound_flight = $flights[0] ?? $flights->first();
 
-            //$logger->error("FLIGHT PRICE:::::::::::::::::::: $first_outbound_flight->price");
+            // $logger->error("FLIGHT PRICE:::::::::::::::::::: $first_outbound_flight->price");
             $logger->warning("origin: $first_outbound_flight->origin");
             $logger->warning("destination: $first_outbound_flight->destination");
             $outbound_flight_hydrated = FlightData::create([

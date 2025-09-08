@@ -6,6 +6,7 @@ use App\Data\HotelDataDTO;
 use App\Data\HotelOfferDTO;
 use App\Models\Destination;
 use App\Models\Hotel;
+use Exception;
 use Illuminate\Bus\Batchable;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -65,25 +66,25 @@ class LiveSearchHotels implements ShouldQueue
      */
     public function handle(): void
     {
-        //get the hotel IDs
+        // get the hotel IDs
         //        $hotelIds = Hotel::where('destination_id', $this->destination)->pluck('hotel_id');
 
         $hotelIds = Hotel::whereHas('destinations', function ($query) {
             $query->where('destination_id', $this->destination);
         })->pluck('hotel_id');
 
-        //implode the array to form strings like this   <HotelId>226</HotelId>
+        // implode the array to form strings like this   <HotelId>226</HotelId>
         $hotelIds = implode('', array_map(function ($hotelId) {
             return "<HotelId>{$hotelId}</HotelId>";
         }, $hotelIds->toArray()));
 
         // We will use board options more like a filter in the front end rather than a filter in hotel api
-        //$boardOptions = Destination::find($this->destination)->board_options;
+        // $boardOptions = Destination::find($this->destination)->board_options;
 
         try {
             $response = $this->getHotelData($hotelIds, $this->checkin_date, $this->nights, $this->adults, $this->children, $this->infants, $this->rooms, null, $this->countryCode);
-        } catch (\Exception $e) {
-            //if it's the first time, we retry
+        } catch (Exception $e) {
+            // if it's the first time, we retry
             if ($this->attempts() == 1) {
                 addBreadcrumb('message', 'Hotel Attempts', ['attempts' => $this->attempts()]);
                 $this->release(1);
@@ -120,12 +121,12 @@ class LiveSearchHotels implements ShouldQueue
 
                 $offers = [];
 
-                //save all offers
+                // save all offers
                 foreach ($hotelOffer->Offers as $offer) {
 
                     $reservation_deadline = Carbon::createFromFormat('d/M/Y', $offer->CxlDeadLine);
 
-                    //if price is 0, we skip this offer
+                    // if price is 0, we skip this offer
                     if ($offer->TotalPrice == 0 || $offer->TotalPrice > 1000000) {
                         continue;
                     }
@@ -146,15 +147,15 @@ class LiveSearchHotels implements ShouldQueue
                 $hotel_results[] = $hotel;
 
             }
-        } catch (\Exception $e) {
-            //if its the first time, we retry
+        } catch (Exception $e) {
+            // if its the first time, we retry
             if ($this->attempts() == 1) {
                 addBreadcrumb('message', 'Hotel Attempts', ['attempts' => $this->attempts()]);
                 $this->release(1);
             }
         }
 
-        //save the hotel results in cache
+        // save the hotel results in cache
         Cache::put("hotels:{$this->batchId}", $hotel_results, now()->addMinutes(5));
         Cache::put("batch:{$this->batchId}:hotels", $hotel_results, now()->addMinutes(180));
         Cache::put("hotel_job_completed_{$this->batchId}", true, now()->addMinutes(2));
@@ -162,7 +163,7 @@ class LiveSearchHotels implements ShouldQueue
 
     public function getHotelData(string $hotelIds, mixed $arrivalDate, mixed $nights, $adults, $children, $infants, $rooms, $boardOptions, $countryCode): mixed
     {
-        //todo: Add All possible variations
+        // todo: Add All possible variations
         $oneRoom = [
             [1, 0],  // 1 adult, 0 children
             [1, 1],  // 1 adult, 1 child
@@ -362,12 +363,12 @@ XML;
             ->withHeaders($header)
             ->afterRequesting(function ($request, $response) {
                 // Log the response
-                //\Log::info('HOTEL SEARCH REQUEST');
-                //ray($request->getBody());
-                //ray($response);
-                //\Log::info("HOTEL SEARCH REQUEST END\n");
-                //\Log::info("RESPONSE START\n");
-                //\Log::info(json_encode($response));
+                // \Log::info('HOTEL SEARCH REQUEST');
+                // ray($request->getBody());
+                // ray($response);
+                // \Log::info("HOTEL SEARCH REQUEST END\n");
+                // \Log::info("RESPONSE START\n");
+                // \Log::info(json_encode($response));
             })
             ->call('MakeRequest', [
                 'requestType' => 11,

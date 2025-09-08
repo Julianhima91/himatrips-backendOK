@@ -25,7 +25,7 @@ return new class extends Migration
             $table->enum('level', ['property', 'room'])->default('property');
             $table->json('extended_attributes')->nullable();
             $table->timestamps();
-            
+
             $table->index(['hotel_id', 'facility_id']);
             $table->index('charge_mode');
             $table->index('level');

@@ -6,6 +6,7 @@ use App\Http\Integrations\GoFlightIntegration\Requests\OneWayDirectFlightCalenda
 use App\Models\Airport;
 use App\Models\DirectFlightAvailability;
 use DateTime;
+use Exception;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -78,7 +79,7 @@ class RetryFailedAvailabilityJob implements ShouldQueue
             $responseData = $response->json();
 
             if (! isset($responseData['data']['PriceGrids']['Grid'][0])) {
-                throw new \Exception('Invalid API response structure');
+                throw new Exception('Invalid API response structure');
             }
 
             $grids = $responseData['data']['PriceGrids']['Grid'][0];
@@ -119,7 +120,7 @@ class RetryFailedAvailabilityJob implements ShouldQueue
 
             return true;
 
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             $logger->error("Retry failed for $yearMonth. Error: ".$e->getMessage());
 
             return false;

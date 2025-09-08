@@ -2,21 +2,21 @@
 
 namespace App\Filament\Resources\CountryResource\RelationManagers;
 
-use Filament\Forms;
-use Filament\Forms\Form;
+use Filament\Forms\Components\TextInput;
 use Filament\Resources\RelationManagers\RelationManager;
-use Filament\Tables;
+use Filament\Schemas\Schema;
+use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 
 class AirportsRelationManager extends RelationManager
 {
     protected static string $relationship = 'airports';
 
-    public function form(Form $form): Form
+    public function form(Schema $schema): Schema
     {
-        return $form
-            ->schema([
-                Forms\Components\TextInput::make('nameAirport')
+        return $schema
+            ->components([
+                TextInput::make('nameAirport')
                     ->required()
                     ->maxLength(255),
             ]);
@@ -27,16 +27,16 @@ class AirportsRelationManager extends RelationManager
         return $table
             ->recordTitleAttribute('nameAirport')
             ->columns([
-                Tables\Columns\TextColumn::make('nameAirport'),
+                TextColumn::make('nameAirport'),
             ])
             ->filters([
                 //
             ])
             ->headerActions([
             ])
-            ->actions([
+            ->recordActions([
             ])
-            ->bulkActions([
+            ->toolbarActions([
             ]);
     }
 }

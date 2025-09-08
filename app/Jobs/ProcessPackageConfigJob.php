@@ -7,6 +7,7 @@ use App\Models\Airport;
 use App\Models\DirectFlightAvailability;
 use App\Models\PackageConfig;
 use DateTime;
+use Exception;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -108,7 +109,7 @@ class ProcessPackageConfigJob implements ShouldQueue
                     $logger->info("Date: {$date->format('Y-m-d')} (Is Return: ".($isReturnFlight ? 'Yes' : 'No').')');
                 }
             }
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             $logger->error("Failed to check flights for $yearMonth. Error: ".$e->getMessage());
 
             DB::table('failed_availability_checks')->insert([

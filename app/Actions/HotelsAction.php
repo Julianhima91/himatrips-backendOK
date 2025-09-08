@@ -12,7 +12,7 @@ class HotelsAction
 {
     public function handle($destination, $outbound_flight_hydrated, $inbound_flight_hydrated, $batchId, $origin_id, $destination_id, $roomObject)
     {
-        //array of hotel data DTOs
+        // array of hotel data DTOs
         $hotel_results = Cache::get("hotels:{$batchId}");
 
         $packageConfig = PackageConfig::query()
@@ -70,13 +70,13 @@ class HotelsAction
             $cheapestOffer = collect($hotel_data->offers)->sortBy('TotalPrice')->first();
 
             $hotel_data->update(['price' => $cheapestOffer->total_price_for_this_offer + $transferPrice]);
-            //calculate commission (20%)
-            //$commission = ($outbound_flight_hydrated->price + $inbound_flight_hydrated->price + $first_offer->price) * $commission_percentage;
+            // calculate commission (20%)
+            // $commission = ($outbound_flight_hydrated->price + $inbound_flight_hydrated->price + $first_offer->price) * $commission_percentage;
 
-            //$calculatedCommissionPercentage = ($packageConfig->commission_percentage / 100) * $first_offer->total_price_for_this_offer;
-            //$fixedCommissionRate = $packageConfig->commission_amount;
-            //$commission = max($fixedCommissionRate, $calculatedCommissionPercentage);
-            //create the package here
+            // $calculatedCommissionPercentage = ($packageConfig->commission_percentage / 100) * $first_offer->total_price_for_this_offer;
+            // $fixedCommissionRate = $packageConfig->commission_amount;
+            // $commission = max($fixedCommissionRate, $calculatedCommissionPercentage);
+            // create the package here
             $package = Package::create([
                 'hotel_data_id' => $hotel_data->id,
                 'outbound_flight_id' => $outbound_flight_hydrated->id,
