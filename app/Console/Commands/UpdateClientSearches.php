@@ -7,6 +7,7 @@ use App\Models\PackageConfig;
 use Carbon\Carbon;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class UpdateClientSearches extends Command
 {
@@ -38,6 +39,8 @@ class UpdateClientSearches extends Command
                 ->find($package->package_config_id);
 
             if (! $packageConfig) {
+                Log::info("Package: $package");
+
                 continue;
             }
 
@@ -89,6 +92,7 @@ class UpdateClientSearches extends Command
         }
 
         foreach (array_chunk($insertData, 500) as $chunk) {
+            Log::info('Inserting chunk of data');
             DB::table('client_searches')->insert($chunk);
         }
 
