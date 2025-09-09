@@ -32,7 +32,8 @@ class UpdateClientSearches extends Command
             ->orderBy('created_at', 'desc')
             ->get();
 
-        Log::info(count($packages));
+        $count = 0;
+        Log::info("Total Packages: " . count($packages));
 
         $insertData = [];
 
@@ -41,7 +42,8 @@ class UpdateClientSearches extends Command
                 ->find($package->package_config_id);
 
             if (! $packageConfig) {
-                Log::info("Package: $package");
+                $count++;
+                Log::info("Package ID: " . $package->id . " Package Config ID: " . $package->package_config_id . " Package Config Not Found");;
 
                 continue;
             }
@@ -97,6 +99,8 @@ class UpdateClientSearches extends Command
             Log::info('Inserting chunk of data');
             DB::table('client_searches')->insert($chunk);
         }
+
+        Log::info("Total Packages not found: " . count($count));
 
         $this->info('Client searches updated successfully.');
     }
