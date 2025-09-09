@@ -8,7 +8,6 @@ use Filament\Tables;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Filament\Widgets\TableWidget;
-use Illuminate\Support\Facades\DB;
 
 class PassengerStatsWidget extends TableWidget
 {
@@ -33,8 +32,7 @@ class PassengerStatsWidget extends TableWidget
                     ->sortable(),
                 TextColumn::make('total_flights')
                     ->label('Total Itineraries')
-                    // todo: remove dividing by 2 once enough time has passed for the return column to be correct in db
-                    ->formatStateUsing(fn ($record) => intval($record->total_flights / 2))
+                    ->formatStateUsing(fn ($record) => intval($record->total_flights))
                     ->sortable(),
             ])
             ->filters([
