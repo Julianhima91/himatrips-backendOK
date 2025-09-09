@@ -7,7 +7,6 @@ use App\Models\PackageConfig;
 use Carbon\Carbon;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 
 class UpdateClientSearches extends Command
 {
@@ -32,9 +31,6 @@ class UpdateClientSearches extends Command
             ->orderBy('created_at', 'desc')
             ->get();
 
-        $count = 0;
-        Log::info("Total Packages: " . count($packages));
-
         $insertData = [];
 
         foreach ($packages as $package) {
@@ -42,9 +38,6 @@ class UpdateClientSearches extends Command
                 ->find($package->package_config_id);
 
             if (! $packageConfig) {
-                $count++;
-                Log::info("Package ID: " . $package->id . " Package Config ID: " . $package->package_config_id . " Package Config Not Found");;
-
                 continue;
             }
 
@@ -57,7 +50,7 @@ class UpdateClientSearches extends Command
             $url = config('app.front_url').'/search-'.
                 strtolower(str_replace(' ', '-', $originName)).'-to-'.
                 strtolower(str_replace(' ', '-', $destinationName)).'?'.
-                base64_encode(http_build_query([
+                'query='.base64_encode(http_build_query([
                     'batch_id' => $package->batch_id,
                     'nights' => $hotelData->number_of_nights,
                     'checkin_date' => $hotelData->check_in_date,
@@ -96,11 +89,8 @@ class UpdateClientSearches extends Command
         }
 
         foreach (array_chunk($insertData, 500) as $chunk) {
-            Log::info('Inserting chunk of data');
             DB::table('client_searches')->insert($chunk);
         }
-
-        Log::info("Total Packages not found: " . $count);
 
         $this->info('Client searches updated successfully.');
     }
