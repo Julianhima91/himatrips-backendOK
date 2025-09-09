@@ -36,7 +36,7 @@ class ClientSearchesResource extends Resource
     public static function table(Table $table): Table
     {
         return $table
-            ->query(ClientSearches::query()->orderByDesc('created_at'))
+            ->query(ClientSearches::query()->orderByDesc('package_created_at'))
             ->headerActions([
                 Action::make('Fetch Latest Searches')
                     ->label('Fetch Latest')
