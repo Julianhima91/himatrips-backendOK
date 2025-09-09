@@ -20,11 +20,6 @@ class ClientSearchesResource extends Resource
 
     protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-magnifying-glass';
 
-    public static function canCreate(): bool
-    {
-        return false;
-    }
-
     public static function form(\Filament\Schemas\Schema $schema): \Filament\Schemas\Schema
     {
         return $schema
@@ -48,8 +43,7 @@ class ClientSearchesResource extends Resource
                             ->title('Latest client searches fetched successfully.')
                             ->success()
                             ->send();
-                    })
-                    ->requiresConfirmation(),
+                    }),
             ])
             ->columns([
                 TextColumn::make('package_id')->label('ID')->sortable(),
@@ -69,13 +63,13 @@ class ClientSearchesResource extends Resource
                     ),
             ])
             ->filters([
-                SelectFilter::make('origin')
+                SelectFilter::make('origin_id')
                     ->label('Origin')
                     ->options(fn () => ClientSearches::pluck('origin_name', 'origin_id')->unique()),
-                SelectFilter::make('destination')
+                SelectFilter::make('destination_id')
                     ->label('Destination')
                     ->options(fn () => ClientSearches::pluck('destination_name', 'destination_id')->unique()),
-                Filter::make('created_at')
+                Filter::make('package_created_at')
                     ->label('Created At')
                     ->schema([
                         DatePicker::make('from_date')->label('From Date'),
@@ -83,8 +77,8 @@ class ClientSearchesResource extends Resource
                     ])
                     ->query(function ($query, array $data) {
                         return $query
-                            ->when($data['from_date'], fn ($q) => $q->whereDate('created_at', '>=', $data['from_date']))
-                            ->when($data['to_date'], fn ($q) => $q->whereDate('created_at', '<=', $data['to_date']));
+                            ->when($data['from_date'], fn ($q) => $q->whereDate('package_created_at', '>=', $data['from_date']))
+                            ->when($data['to_date'], fn ($q) => $q->whereDate('package_created_at', '<=', $data['to_date']));
                     }),
             ])
             ->recordActions([
