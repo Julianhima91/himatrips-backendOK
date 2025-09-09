@@ -100,7 +100,7 @@ class UpdateClientSearches extends Command
             DB::table('client_searches')->insert($chunk);
         }
 
-        Log::info("Total Packages not found: " . count($count));
+        Log::info("Total Packages not found: " . $count);
 
         $this->info('Client searches updated successfully.');
     }
