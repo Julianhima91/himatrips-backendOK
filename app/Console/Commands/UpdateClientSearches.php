@@ -32,6 +32,8 @@ class UpdateClientSearches extends Command
             ->orderBy('created_at', 'desc')
             ->get();
 
+        Log::info(count($packages));
+
         $insertData = [];
 
         foreach ($packages as $package) {
