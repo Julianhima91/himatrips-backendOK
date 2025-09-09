@@ -2,7 +2,7 @@
 
 namespace App\Filament\Widgets;
 
-use App\Models\FlightData;
+use App\Models\FlightPassengerStat;
 use Filament\Forms\Components\TextInput;
 use Filament\Tables;
 use Filament\Tables\Columns\TextColumn;
@@ -18,15 +18,9 @@ class PassengerStatsWidget extends TableWidget
 
     public function table(Table $table): Table
     {
-        $query = FlightData::query()
-            ->select('adults', 'children')
-            ->selectRaw('COUNT(*) as total_flights')
-            ->selectRaw('CONCAT(adults, "-", children) as id')
-            ->groupBy('adults', 'children')
-            ->orderByDesc('total_flights')
-            ->tap(function () {
-                DB::statement("SET SESSION sql_mode=(SELECT REPLACE(@@sql_mode,'ONLY_FULL_GROUP_BY',''))");
-            });
+        $query = FlightPassengerStat::query()
+            ->select('id', 'adults', 'children', 'total_flights')
+            ->orderByDesc('total_flights');
 
         return $table
             ->query($query)
