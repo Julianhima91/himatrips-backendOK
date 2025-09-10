@@ -4,14 +4,11 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\PackageSearchesResource\Pages\ListPackageSearches;
 use App\Models\ClientSearches;
-use DB;
 use Filament\Actions\Action;
-use Filament\Actions\BulkActionGroup;
-use Filament\Actions\DeleteBulkAction;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Textarea;
+use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
-use Filament\Schemas\Schema;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\SelectFilter;
@@ -23,7 +20,7 @@ class ClientSearchesResource extends Resource
 
     protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-magnifying-glass';
 
-    public static function form(Schema $schema): Schema
+    public static function form(\Filament\Schemas\Schema $schema): \Filament\Schemas\Schema
     {
         return $schema
             ->components([
@@ -34,71 +31,45 @@ class ClientSearchesResource extends Resource
     public static function table(Table $table): Table
     {
         return $table
-            ->query(
-                ClientSearches::query()
-                    ->select('packages.*')
-                    ->whereIn('id', function ($query) {
-                        $query->select(DB::raw('MIN(id)'))
-                            ->from('packages')
-                            ->groupBy('batch_id');
-                    })
-                    ->orderBy('created_at', 'desc')
-            )->poll()
+            ->query(ClientSearches::query()->orderByDesc('package_created_at'))
+            ->headerActions([
+                Action::make('Fetch Latest Searches')
+                    ->label('Fetch Latest')
+                    ->icon('heroicon-o-arrow-path')
+                    ->action(function () {
+                        \Artisan::call('client-searches:update');
+
+                        Notification::make()
+                            ->title('Latest client searches fetched successfully.')
+                            ->success()
+                            ->send();
+                    }),
+            ])
             ->columns([
-                TextColumn::make('id')
-                    ->label('ID')
-                    ->sortable(),
-                TextColumn::make('packageConfig.destination_origin.origin.name')
-                    ->label('Origin')
-                    ->searchable()
-                    ->sortable(),
-                TextColumn::make('packageConfig.destination_origin.destination.name')
-                    ->label('Destination')
-                    ->searchable()
-                    ->sortable(),
+                TextColumn::make('package_id')->label('ID')->sortable(),
+                TextColumn::make('origin_name')->label('Origin')->sortable()->searchable(),
+                TextColumn::make('destination_name')->label('Destination')->sortable()->searchable(),
                 TextColumn::make('passengers')
                     ->label('Passengers')
-                    ->getStateUsing(fn ($record) => "Ad: {$record->hotelData->adults}, CHD: {$record->hotelData->children}, INF: {$record->hotelData->infants}"),
-                TextColumn::make('created_at')
-                    ->label('Date')
-                    ->searchable()
-                    ->sortable(),
-                TextColumn::make('batch_id')
+                    ->getStateUsing(fn ($record) => "Ad: {$record->adults}, CHD: {$record->children}, INF: {$record->infants}"),
+                TextColumn::make('created_at')->label('Date')->sortable(),
+                TextColumn::make('url')
                     ->label('Search Link')
                     ->formatStateUsing(fn ($state, $record) => Action::make('searchLink')
                         ->label('LINK')
-                        ->url(fn () => config('app.front_url').'/search-'.strtolower(
-                            str_replace(' ', '-', "{$record->packageConfig->destination_origin->origin->name}").
-                            '-to-'.
-                            str_replace(' ', '-', "{$record->packageConfig->destination_origin->destination->name}")
-                        ).'?&query='.base64_encode(http_build_query([
-                            'batch_id' => $record->batch_id,
-                            'nights' => $record->hotelData->number_of_nights,
-                            'checkin_date' => $record->hotelData->check_in_date,
-                            'origin_id' => $record->packageConfig->destination_origin->origin->id,
-                            'destination_id' => $record->packageConfig->destination_origin->destination->id,
-                            'page' => 1,
-                            'rooms' => $record->hotelData->room_object,
-                            'directFlightsOnly' => $record->inboundFlight->stop_count === 0 ? 'true' : 'false',
-                            'sort_by' => 'total_price',
-                            'sort_order' => 'ASC',
-                            'adults' => $record->hotelData->adults,
-                            'infants' => $record->hotelData->infants,
-                            'children' => $record->hotelData->children,
-                            'refresh' => 0,
-                        ])))
+                        ->url($record->url)
                         ->color('success')
                         ->openUrlInNewTab()
                     ),
             ])
             ->filters([
-                SelectFilter::make('origin')
+                SelectFilter::make('origin_id')
                     ->label('Origin')
-                    ->relationship('packageConfig.destination_origin.origin', 'name'),
-                SelectFilter::make('destination')
+                    ->options(fn () => ClientSearches::pluck('origin_name', 'origin_id')->unique()),
+                SelectFilter::make('destination_id')
                     ->label('Destination')
-                    ->relationship('packageConfig.destination_origin.destination', 'name'),
-                Filter::make('created_at')
+                    ->options(fn () => ClientSearches::pluck('destination_name', 'destination_id')->unique()),
+                Filter::make('package_created_at')
                     ->label('Created At')
                     ->schema([
                         DatePicker::make('from_date')->label('From Date'),
@@ -106,8 +77,8 @@ class ClientSearchesResource extends Resource
                     ])
                     ->query(function ($query, array $data) {
                         return $query
-                            ->when($data['from_date'], fn ($q) => $q->whereDate('created_at', '>=', $data['from_date']))
-                            ->when($data['to_date'], fn ($q) => $q->whereDate('created_at', '<=', $data['to_date']));
+                            ->when($data['from_date'], fn ($q) => $q->whereDate('package_created_at', '>=', $data['from_date']))
+                            ->when($data['to_date'], fn ($q) => $q->whereDate('package_created_at', '<=', $data['to_date']));
                     }),
             ])
             ->recordActions([
@@ -127,11 +98,6 @@ class ClientSearchesResource extends Resource
                     ->modalSubmitActionLabel('Close')
                     ->slideOver(),
             ])
-            ->toolbarActions([
-                BulkActionGroup::make([
-                    DeleteBulkAction::make(),
-                ]),
-            ])
             ->emptyStateActions([
             ])
             ->paginated([10, 25, 50, 100]);
@@ -149,10 +115,5 @@ class ClientSearchesResource extends Resource
         return [
             'index' => ListPackageSearches::route('/'),
         ];
-    }
-
-    public static function canCreate(): bool
-    {
-        return false;
     }
 }
