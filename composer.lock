@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "5ca2e1d17a001d9313af0cc0c2c773f5",
+    "content-hash": "2f54f084f558e745680e3a9ef0432332",
     "packages": [
         {
             "name": "amphp/amp",
@@ -2611,17 +2611,11 @@
         },
         {
             "name": "gboquizosanchez/filament-log-viewer",
-            "version": "v2.1.0",
-            "source": {
-                "type": "git",
-                "url": "https://github.com/Ireg27/filament-all-logs.git",
-                "reference": "90a413de1763af1326011eaabac54d9c5979c639"
-            },
+            "version": "dev-main",
             "dist": {
-                "type": "zip",
-                "url": "https://api.github.com/repos/Ireg27/filament-all-logs/zipball/90a413de1763af1326011eaabac54d9c5979c639",
-                "reference": "90a413de1763af1326011eaabac54d9c5979c639",
-                "shasum": ""
+                "type": "path",
+                "url": "C:/Users/GERI/Desktop/workspace/filament-all-logs",
+                "reference": "b6682dcd89141b365c2603d8b2d3489be306652d"
             },
             "require": {
                 "ext-zip": "*",
@@ -2682,10 +2676,10 @@
                 "laravel",
                 "log-viewer"
             ],
-            "support": {
-                "source": "https://github.com/Ireg27/filament-all-logs/tree/v2.1.0"
-            },
-            "time": "2025-08-27T10:30:58+00:00"
+            "transport-options": {
+                "symlink": true,
+                "relative": false
+            }
         },
         {
             "name": "graham-campbell/result-type",
@@ -15327,7 +15321,9 @@
     ],
     "aliases": [],
     "minimum-stability": "stable",
-    "stability-flags": [],
+    "stability-flags": {
+        "gboquizosanchez/filament-log-viewer": 20
+    },
     "prefer-stable": true,
     "prefer-lowest": false,
     "platform": {

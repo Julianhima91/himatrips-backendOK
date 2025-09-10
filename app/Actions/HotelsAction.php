@@ -7,11 +7,14 @@ use App\Models\HotelOffer;
 use App\Models\Package;
 use App\Models\PackageConfig;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
 
 class HotelsAction
 {
     public function handle($destination, $outbound_flight_hydrated, $inbound_flight_hydrated, $batchId, $origin_id, $destination_id, $roomObject)
     {
+        $logger = Log::channel('livesearch');
+
         // array of hotel data DTOs
         $hotel_results = Cache::get("hotels:{$batchId}");
 
@@ -24,6 +27,13 @@ class HotelsAction
             })->first();
 
         $package_ids = [];
+
+        if (empty($hotel_results) || count($hotel_results) === 0) {
+            $logger->warning("No hotel results found for batch ID: {$batchId}".
+                ($packageConfig ? " (Package Config ID: {$packageConfig->id})" : ''));
+
+            return ['success' => false];
+        }
 
         foreach ($hotel_results as $hotel_result) {
             $hotel_data = HotelData::create([

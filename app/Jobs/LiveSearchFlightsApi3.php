@@ -97,8 +97,7 @@ class LiveSearchFlightsApi3 implements ShouldQueue
         try {
             $itineraries = $response->dtoOrFail();
 
-            $logger->info("$this->batchId API 3 ITINERARIES COUNT:");
-            $logger->info(count($itineraries));
+            $logger->info("$this->batchId API 3 ITINERARIES COUNT: ".count($itineraries));
             if ($itineraries->isEmpty()) {
                 ray('empty itineraries');
                 $this->release(1);

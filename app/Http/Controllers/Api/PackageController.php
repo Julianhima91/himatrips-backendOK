@@ -69,6 +69,8 @@ class PackageController extends Controller
     public function liveSearch(LivesearchRequest $request, FlightsAction $flights, HotelsAction $hotels, PackagesAction $packagesAction)
     {
         $logger = Log::channel('livesearch');
+        $errorLogger = Log::channel('livesearch-errors');
+
         $totalAdults = collect($request->input('rooms'))->pluck('adults')->sum();
         $totalChildren = collect($request->input('rooms'))->pluck('children')->sum();
         $totalInfants = collect($request->input('rooms'))->pluck('infants')->sum();
@@ -130,7 +132,6 @@ class PackageController extends Controller
             //            $startTime = microtime(true);
             //            Log::info("Start time: {$startTime} seconds");
 
-            //            dd('end');
             // Continuously check the shared state until one job completes
             while (true) {
                 if (Cache::get("job_completed_{$batchId}") && Cache::get("hotel_job_completed_{$batchId}")) {
@@ -146,14 +147,31 @@ class PackageController extends Controller
                     //                    $flightsElapsed = $flightsFinished - $jobsFinished;
                     //                    Log::info("Flights finished time: {$flightsElapsed} seconds");
 
+                    $logger->info('COUNTTTTTTXXXXXX');
+                    $logger->info($outbound_flight_hydrated);
+                    $logger->info($inbound_flight_hydrated);
+
                     if (is_null($outbound_flight_hydrated) || is_null($inbound_flight_hydrated)) {
+                        $errorLogger->info("Package Config ID: $packageConfig->id");
+                        $errorLogger->info('Package Config Origin: '.$packageConfig->destination_origin->origin->name.' | Origin ID: '.$packageConfig->destination_origin->origin_id);
+                        $errorLogger->info('Package Config Destination: '.$packageConfig->destination_origin->destination->name.' | Destination ID: '.$packageConfig->destination_origin->destination_id);
+                        $errorLogger->info('-------------------------------------------------------------------------');
+                        $errorLogger->info('Request Data:');
+                        $errorLogger->info("Batch ID: $batchId");
+                        $errorLogger->info("Date Start: $date");
+                        $errorLogger->info("Date End: $return_date");
+                        $errorLogger->info('Rooms: '.json_encode($request->rooms, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
+                        $errorLogger->info('-------------------------------------------------------------------------');
+                        $errorLogger->info('Reason: Flights null');
+                        $errorLogger->info("Check livesearch.log for detailed flight information for batch id: $batchId");
+                        $errorLogger->info('END======================================================================');
+
                         broadcast(new LiveSearchFailed('No flights found', $batchId));
                         $logger->warning('======================================');
                         $logger->warning("$batchId Broadcasting failed sent. FLIGHTS NULL");
                         $logger->warning('======================================');
 
-                        $logger->warning('REQUEST:');
-                        $logger->warning(json_encode($request->all(), JSON_PRETTY_PRINT));
+                        $logger->warning('Request: '.json_encode($request->all(), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
 
                         return response()->json([
                             'success' => false,
@@ -163,9 +181,37 @@ class PackageController extends Controller
                     }
 
                     $package_ids = $hotels->handle($destination, $outbound_flight_hydrated, $inbound_flight_hydrated, $batchId, $request->origin_id, $request->destination_id, $request->input('rooms'));
-                    //                    $hotelsFinished = microtime(true);
-                    //                    $hotelsElapsed = $hotelsFinished - $flightsFinished;
-                    //                    Log::info("Hotels finished time: {$hotelsElapsed} seconds");
+
+                    if ($package_ids === ['success' => false] || empty($package_ids)) {
+                        $errorLogger->info("Package Config ID: $packageConfig->id");
+                        $errorLogger->info('Package Config Origin: '.$packageConfig->destination_origin->origin->name.' | Origin ID: '.$packageConfig->destination_origin->origin_id);
+                        $errorLogger->info('Package Config Destination: '.$packageConfig->destination_origin->destination->name.' | Destination ID: '.$packageConfig->destination_origin->destination_id);
+                        $errorLogger->info('-------------------------------------------------------------------------');
+                        $errorLogger->info('Request Data:');
+                        $errorLogger->info("Batch ID: $batchId");
+                        $errorLogger->info("Date Start: $date");
+                        $errorLogger->info("Date End: $return_date");
+                        $errorLogger->info('Rooms: '.json_encode($request->rooms, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
+                        $errorLogger->info('-------------------------------------------------------------------------');
+                        $errorLogger->info('Reason: Hotels null');
+                        $errorLogger->info("Check livesearch.log for detailed flight information for batch id: $batchId");
+                        $errorLogger->info('END======================================================================');
+
+                        $outbound_flight_hydrated->delete();
+                        $inbound_flight_hydrated->delete();
+
+                        broadcast(new LiveSearchFailed('No hotels found', $batchId));
+                        $logger->warning('======================================');
+                        $logger->warning("$batchId Broadcasting failed sent. FLIGHTS NULL");
+                        $logger->warning('======================================');
+                        $logger->warning('Request: '.json_encode($request->all(), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
+
+                        return response()->json([
+                            'success' => false,
+                            'message' => 'No hotels found for the selected destination and dates.',
+                            'batch_id' => $batchId,
+                        ], 204);
+                    }
 
                     $firstBoardOption = $destination->board_options ?? null;
                     [$packages, $minTotalPrice, $maxTotalPrice, $packageConfigId] = $packagesAction->handle($package_ids, $firstBoardOption);
