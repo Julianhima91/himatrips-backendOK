@@ -10,7 +10,7 @@
         "filament/filament": "~4.0",
         "filament/spatie-laravel-settings-plugin": "~4.0",
         "filament/spatie-laravel-tags-plugin": "^3.2",
-        "gboquizosanchez/filament-log-viewer": "dev-main",
+        "gboquizosanchez/filament-log-viewer": "v2.1.1",
         "guzzlehttp/guzzle": "^7.2",
         "laravel/framework": "^11.28",
         "laravel/sanctum": "^4.0",
@@ -42,11 +42,8 @@
     },
     "repositories": [
         {
-            "type": "path",
-            "url": "C:/Users/GERI/Desktop/workspace/filament-all-logs",
-            "options": {
-                "symlink": true
-            }
+            "type": "vcs",
+            "url": "https://github.com/Ireg27/filament-all-logs.git"
         }
     ],
     "autoload": {

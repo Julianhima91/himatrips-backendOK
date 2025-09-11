@@ -194,7 +194,7 @@ class PackageController extends Controller
                         $errorLogger->info('Rooms: '.json_encode($request->rooms, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
                         $errorLogger->info('-------------------------------------------------------------------------');
                         $errorLogger->info('Reason: Hotels null');
-                        $errorLogger->info("Check livesearch.log for detailed flight information for batch id: $batchId");
+                        $errorLogger->info("Check livesearch.log for hotel information for batch id: $batchId");
                         $errorLogger->info('END======================================================================');
 
                         $outbound_flight_hydrated->delete();
@@ -202,7 +202,7 @@ class PackageController extends Controller
 
                         broadcast(new LiveSearchFailed('No hotels found', $batchId));
                         $logger->warning('======================================');
-                        $logger->warning("$batchId Broadcasting failed sent. FLIGHTS NULL");
+                        $logger->warning("$batchId Broadcasting failed sent. HOTELS NULL");
                         $logger->warning('======================================');
                         $logger->warning('Request: '.json_encode($request->all(), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
 
