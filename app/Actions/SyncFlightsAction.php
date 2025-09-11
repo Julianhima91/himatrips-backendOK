@@ -20,7 +20,7 @@ class SyncFlightsAction
         $package = Package::where('batch_id', $batchId)->first();
 
         if (! $package) {
-            $logger->error("No package found for batch_id {$batchId}");
+            $logger->warning("No package found for batch_id {$batchId} (for merging flights after livesearch)");
 
             return;
         }
@@ -56,7 +56,7 @@ class SyncFlightsAction
             })->first();
 
         if (! $packageConfig) {
-            $logger->error("No package config found for batch_id {$batchId}");
+            $logger->warning("No package config found for batch_id {$batchId} (for merging flights after livesearch)");
 
             return;
         }
