@@ -80,7 +80,7 @@ class WeekendFlightSearch implements ShouldQueue
             $itineraries = $response->dtoOrFail();
 
             if ($itineraries->isEmpty()) {
-                $logger->error('EMPTY ITINERARIES | Attempt: '.$this->attempts());
+                $logger->warning('EMPTY ITINERARIES | Attempt: '.$this->attempts());
 
                 if ($this->attempts() < $this->tries) {
                     $this->release(5);

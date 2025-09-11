@@ -101,7 +101,7 @@ class ProcessResponsesJob implements ShouldQueue
 
             event(new CheckChainJobCompletedEvent(null, $this->batchIds, $this->adConfig->id));
 
-            $logger->error("Missing data for batch {$this->batchId}");
+            $logger->warning("Missing data for batch {$this->batchId}");
         }
     }
 
@@ -212,8 +212,8 @@ class ProcessResponsesJob implements ShouldQueue
             $first_outbound_flight = $flights[0] ?? $flights->first();
 
             //            $logger->error(json_encode($flights, JSON_PRETTY_PRINT));
-            $logger->error($flights[0]);
-            $logger->error($flights->first());
+            $logger->warning($flights[0]);
+            $logger->warning($flights->first());
 
             $outbound_flight_hydrated = FlightData::create([
                 'price' => $first_outbound_flight->price,

@@ -136,7 +136,7 @@ class ProcessEconomicResponsesJob implements ShouldQueue
 
             $logger->info("Cache cleared for batch: $this->baseBatchId");
         } else {
-            $logger->error('Missing flight data in cache - Outbound: '.($flights ? 'Found' : 'Missing').', Return: '.($flightsReturn ? 'Found' : 'Missing'));
+            $logger->warning('Missing flight data in cache - Outbound: '.($flights ? 'Found' : 'Missing').', Return: '.($flightsReturn ? 'Found' : 'Missing'));
         }
 
         $logger->info("ProcessEconomicResponsesJob completed for batch: $this->baseBatchId");

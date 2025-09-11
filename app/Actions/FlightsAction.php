@@ -303,7 +303,7 @@ class FlightsAction
 
         $first_inbound_flight = $inbound_flight->first();
 
-        $logger->error($first_inbound_flight);
+        $logger->info($first_inbound_flight);
 
         $inbound_flight_hydrated = FlightData::create([
             'price' => $first_inbound_flight->price,

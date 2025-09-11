@@ -105,7 +105,8 @@ class EconomicAdJob implements ShouldQueue
             ->catch(function (Batch $batch, Throwable $e) use ($adConfigId) {
                 $logger = Log::channel('economic');
                 $logger->error('Economic batch failed: '.$e->getMessage());
-                Log::info($adConfigId);
+                $logger->error("Ad config ID: $adConfigId");
+
                 $adConfig1 = AdConfig::find($adConfigId);
                 $adConfig1->update(['economic_status' => 'failed']);
             })

@@ -185,6 +185,7 @@ class HolidayAdJob implements ShouldQueue
             ->catch(function (Batch $batch, Throwable $e) use ($adConfigId) {
                 $logger = Log::channel('holiday');
                 $logger->error('Holiday batch failed: '.$e->getMessage());
+                $logger->error("Ad config ID: $adConfigId");
 
                 $adConfig1 = AdConfig::find($adConfigId);
                 $adConfig1->update(['holiday_status' => 'failed']);
@@ -196,7 +197,7 @@ class HolidayAdJob implements ShouldQueue
                 $adConfig1 = AdConfig::find($adConfigId);
                 $adConfig1->update(['holiday_status' => 'completed']);
 
-                //todo: we can remove it from then
+                // todo: we can remove it from then
                 HolidayCSVJob::dispatch($adConfig, $batchIds)->onQueue('holiday');
             })
             ->onQueue('holiday')

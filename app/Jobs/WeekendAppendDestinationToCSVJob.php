@@ -159,11 +159,11 @@ class WeekendAppendDestinationToCSVJob implements ShouldQueue
             }
         }
 
-        $logger->error($maxDestinationTags);
-        $logger->error($maxImages);
-        $logger->error($maxTagsPerImage);
-        $logger->error($maxVideos);
-        $logger->error($maxTagsPerVideo);
+        $logger->info($maxDestinationTags);
+        $logger->info($maxImages);
+        $logger->info($maxTagsPerImage);
+        $logger->info($maxVideos);
+        $logger->info($maxTagsPerVideo);
 
         foreach ($ads as $ad) {
             $destinationOrigin = DestinationOrigin::where([
@@ -198,7 +198,7 @@ class WeekendAppendDestinationToCSVJob implements ShouldQueue
 
         // 1st part
         $headers = [
-            //we can remove id, only for debugging
+            // we can remove id, only for debugging
             //            'id',
             'destination_id',
             'price',
@@ -288,7 +288,7 @@ class WeekendAppendDestinationToCSVJob implements ShouldQueue
 💡 Rezervo tani!📞 Ofertat janë të limituara!';
 
             $row = [
-                //we can remove id, only for debugging
+                // we can remove id, only for debugging
                 //                $ad->id,
                 $ad->package_config_id,
                 floor($ad->total_price / 2),

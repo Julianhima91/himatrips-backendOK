@@ -329,7 +329,7 @@ class TestEconomicFlights implements ShouldQueue
             $cheapestOffer = collect($hotel_data->offers)->sortBy('TotalPrice')->first();
 
             $hotel_data->update(['price' => $cheapestOffer->total_price_for_this_offer + $transferPrice]);
-            $logger->error("PACKAGE PRICE:::::::::::::::::::: $first_offer->total_price_for_this_offer");
+            $logger->info("PACKAGE PRICE:::::::::::::::::::: $first_offer->total_price_for_this_offer");
 
             Ad::create([
                 'hotel_data_id' => $hotel_data->id,

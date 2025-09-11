@@ -32,7 +32,7 @@ class CheapestDateListener
         $a = Cache::get("$event->adConfigId:current_holidays");
         $logger->info('Cached Holidays:', $a);
 
-        //todo when count of both arrays is the same, then proceed to sort them
+        // todo when count of both arrays is the same, then proceed to sort them
         if (isset($currentBatchIds) && isset($batchIds) && count($batchIds) === count($currentBatchIds)) {
             sort($batchIds);
             sort($currentBatchIds);
@@ -40,7 +40,7 @@ class CheapestDateListener
 
         $logger->warning($batchIds);
         $logger->warning($currentBatchIds);
-        $logger->error('comparison result: '.var_export($batchIds == $currentBatchIds, true));
+        $logger->info('comparison result: '.var_export($batchIds == $currentBatchIds, true));
 
         if ($batchIds === $currentBatchIds) {
 
@@ -74,7 +74,7 @@ class CheapestDateListener
                 })
                 ->pluck('ads.id');
 
-            //We get the cheapest ad for each holiday
+            // We get the cheapest ad for each holiday
             $logger->info('Selected Ad IDs:', ['ad_ids' => $query->toArray()]);
 
             if ($query->isNotEmpty()) {

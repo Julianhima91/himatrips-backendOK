@@ -52,7 +52,7 @@ class ProcessWeekendResponsesJob implements ShouldQueue
         $flights = Cache::get("batch:{$this->batchId}:flights");
         $hotels = Cache::get("batch:{$this->batchId}:hotels");
 
-        //todo: move to else condition
+        // todo: move to else condition
         if (! $flights || ! $hotels) {
             $missing = [];
 
@@ -63,7 +63,7 @@ class ProcessWeekendResponsesJob implements ShouldQueue
                 $missing[] = 'hotels';
             }
 
-            $logger->error("Missing data for batch {$this->batchId}: ".implode(', ', $missing));
+            $logger->warning("Missing data for batch {$this->batchId}: ".implode(', ', $missing));
             $this->cleanupInvalidBatch();
             event(new CheckChainWeekendJobCompletedEvent(null, $this->batchIds, $this->adConfig->id));
 
@@ -85,7 +85,7 @@ class ProcessWeekendResponsesJob implements ShouldQueue
 
             event(new CheckChainWeekendJobCompletedEvent($this->request['batch_id'], $this->batchIds, $this->adConfig->id));
         } else {
-            $logger->error("Missing data for batch {$this->batchId}");
+            $logger->warning("Missing data for batch {$this->batchId}");
         }
     }
 
