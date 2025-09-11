@@ -17,8 +17,16 @@ class SyncFlightsAction
         $logger = Log::channel('livesearch');
         $destinationId = $destination->id;
 
-        $outboundFlight = Package::where('batch_id', $batchId)->first()->outboundFlight;
-        $inboundFlight = Package::where('batch_id', $batchId)->first()->inboundFlight;
+        $package = Package::where('batch_id', $batchId)->first();
+
+        if (! $package) {
+            $logger->error("No package found for batch_id {$batchId}");
+
+            return;
+        }
+
+        $outboundFlight = $package->outboundFlight;
+        $inboundFlight = $package->inboundFlight;
 
         $apiChoice = Cache::get("flight:{$batchId}:latest");
         if ($apiChoice === 'api1') {
