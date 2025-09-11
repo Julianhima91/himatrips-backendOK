@@ -89,6 +89,12 @@ return [
             'level' => 'debug',
         ],
 
+        'livesearch-errors' => [
+            'driver' => 'single',
+            'path' => storage_path('logs/livesearch-errors.log'),
+            'level' => 'debug',
+        ],
+
         'directdates' => [
             'driver' => 'single',
             'path' => storage_path('logs/directdates.log'),
