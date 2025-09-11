@@ -47,7 +47,7 @@ class SyncFlightsAction
                 ]);
             })->first();
 
-        //if we have direct flights, keep only direct flights
+        // if we have direct flights, keep only direct flights
         if ($outbound_flight_direct->isNotEmpty()) {
             $logger->info('Direct Flight Found');
             $logger->info('Count: '.count($outbound_flight_direct ?? []));
@@ -68,9 +68,19 @@ class SyncFlightsAction
             });
 
             $minOutboundStops = ! empty($outboundStops) ? min($outboundStops) : null;
-            $logger->info('Minimum outbound stopCount: '.($minOutboundStops ?? 'N/A'));
-            $logger->info("Flights after filtering based on ($packageConfig->max_stop_count) max stops");
-            $logger->info('Count: '.count($outbound_flight_max_stops ?? []));
+            $logger->info($batchId.' Minimum outbound stop count we found: '.($minOutboundStops ?? 'N/A'));
+            $logger->info($batchId." Maximum stop count of package config (id: $packageConfig->id) is ".($packageConfig->max_stop_count ?? '0'));
+            $logger->info($batchId.' Total flights after this filter: '.count($outbound_flight_max_stops ?? []));
+
+            if ($outbound_flight_max_stops->isEmpty() && $minOutboundStops !== null) {
+                $logger->warning($batchId.' No flights matched max_stop_count, falling back to least-stop flights.');
+
+                $outbound_flight_max_stops = $outboundFlight->filter(function ($flight) use ($minOutboundStops) {
+                    return $flight && $flight->stopCount === $minOutboundStops;
+                });
+
+                $logger->info($batchId.' Fallback flights (least-stop) count: '.count($outbound_flight_max_stops ?? []));
+            }
 
             $outboundFlightsApi2 = $outbound_flight_max_stops;
             $maxTransitTimeSettings = app(MaxTransitTime::class);
@@ -116,7 +126,7 @@ class SyncFlightsAction
             });
         });
 
-        //if we have morning flights, find the cheapest one
+        // if we have morning flights, find the cheapest one
         if ($outbound_flight_morning->isNotEmpty()) {
             $logger->info('Morning Flights found');
             $logger->info('Count: '.count($outbound_flight_morning ?? []));
@@ -133,7 +143,7 @@ class SyncFlightsAction
         $logger->info('Count: '.count($outboundFlightsApi2 ?? []));
         $logger->warning('==============================================');
 
-        //if collection is empty return early and broadcast failure
+        // if collection is empty return early and broadcast failure
         if (! $outboundFlightsApi2->isEmpty()) {
             $before = json_decode($outboundFlight->all_flights, true) ?? [];
             $after = $before;
