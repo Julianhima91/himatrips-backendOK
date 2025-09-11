@@ -55,6 +55,12 @@ class SyncFlightsAction
                 ]);
             })->first();
 
+        if (! $packageConfig) {
+            $logger->error("No package config found for batch_id {$batchId}");
+
+            return;
+        }
+
         // if we have direct flights, keep only direct flights
         if ($outbound_flight_direct->isNotEmpty()) {
             $logger->info('Direct Flight Found');

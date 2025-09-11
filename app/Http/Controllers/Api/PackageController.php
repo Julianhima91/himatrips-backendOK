@@ -147,10 +147,6 @@ class PackageController extends Controller
                     //                    $flightsElapsed = $flightsFinished - $jobsFinished;
                     //                    Log::info("Flights finished time: {$flightsElapsed} seconds");
 
-                    $logger->info('COUNTTTTTTXXXXXX');
-                    $logger->info($outbound_flight_hydrated);
-                    $logger->info($inbound_flight_hydrated);
-
                     if (is_null($outbound_flight_hydrated) || is_null($inbound_flight_hydrated)) {
                         $errorLogger->info("Package Config ID: $packageConfig->id");
                         $errorLogger->info('Package Config Origin: '.$packageConfig->destination_origin->origin->name.' | Origin ID: '.$packageConfig->destination_origin->origin_id);
