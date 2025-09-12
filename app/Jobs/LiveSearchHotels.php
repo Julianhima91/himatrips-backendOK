@@ -45,6 +45,8 @@ class LiveSearchHotels implements ShouldQueue
 
     private $countryCode;
 
+    private ?string $lastXmlRequest = null;
+
     /**
      * Create a new job instance.
      */
@@ -149,9 +151,15 @@ class LiveSearchHotels implements ShouldQueue
             }
         } catch (Exception $e) {
             // if its the first time, we retry
-            if ($this->attempts() == 1) {
+            if ($this->attempts() < $this->tries) {
                 addBreadcrumb('message', 'Hotel Attempts', ['attempts' => $this->attempts()]);
                 $this->release(1);
+            } else {
+                if ($this->lastXmlRequest) {
+                    $curl = $this->buildCurlForHotels($this->lastXmlRequest);
+                    Log::channel('livesearch-errors')->error("Exception parsing hotel results. Reproduce with:\n{$curl}");
+                }
+                $this->fail($e);
             }
         }
 
@@ -341,6 +349,7 @@ class LiveSearchHotels implements ShouldQueue
     </Main>
 </Root>
 XML;
+        $this->lastXmlRequest = $xmlRequestBody;
 
         $header = Soap::header(
             'authentication',
@@ -404,5 +413,37 @@ XML;
         }
 
         return $roomAssignments;
+    }
+
+    private function buildCurlForHotels(string $xmlRequestBody): string
+    {
+        $url = 'https://hima.xml.goglobal.travel/xmlwebservice.asmx?WSDL';
+
+        $xmlEscaped = addslashes($xmlRequestBody);
+
+        $soapBody = <<<SOAP
+<?xml version="1.0" encoding="utf-8"?>
+<soap:Envelope xmlns:soap="http://www.w3.org/2003/05/soap-envelope"
+               xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+               xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <soap:Body>
+    <MakeRequest xmlns="http://www.goglobal.travel/">
+      <requestType>11</requestType>
+      <xmlRequest><![CDATA[
+{$xmlEscaped}
+      ]]></xmlRequest>
+    </MakeRequest>
+  </soap:Body>
+</soap:Envelope>
+SOAP;
+
+        $soapBodyEscaped = str_replace(["\n", "\r"], '', $soapBody);
+
+        return <<<CURL
+                curl -X POST "{$url}" \
+                  -H "Content-Type: application/soap+xml; charset=utf-8" \
+                  -H "SOAPAction: MakeRequest" \
+                  --data-binary "{$soapBodyEscaped}"
+                CURL;
     }
 }
