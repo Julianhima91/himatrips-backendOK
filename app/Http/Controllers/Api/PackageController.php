@@ -493,6 +493,10 @@ class PackageController extends Controller
                 ];
             }
 
+            if (! $packages[0]->outboundFlight) {
+                Log::error('No outbound flight found for package: '.$packages[0]->id.' batch id: '.$request->batch_id);
+            }
+
             $livesearchRequest->merge([
                 'nights' => $packages[0]->hotelData->number_of_nights,
                 'date' => $packages[0]->outboundFlight->departure->format('Y-m-d'),
