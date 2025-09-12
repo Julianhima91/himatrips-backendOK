@@ -47,10 +47,10 @@ class DirectFlightAvailabilityRelationManager extends RelationManager
             ->filters([
                 Filter::make('date_range')
                     ->schema([
-                        Flatpickr::make('date_range')
-                            ->minDate('today')
-                            ->maxDate(now()->addYear())
-                            ->mode(FlatpickrMode::RANGE),
+                        //                        Flatpickr::make('date_range')
+                        //                            ->minDate('today')
+                        //                            ->maxDate(now()->addYear())
+                        //                            ->mode(FlatpickrMode::RANGE),
 
                     ])
                     ->query(function (Builder $query, array $data) {
@@ -89,11 +89,11 @@ class DirectFlightAvailabilityRelationManager extends RelationManager
                 CreateAction::make()
                     ->label('Add Dates')
                     ->schema([
-                        Flatpickr::make('dates')
-                            ->label('Select Dates')
-                            ->minDate('today')
-                            ->maxDate(now()->addYear())
-                            ->mode(FlatpickrMode::MULTIPLE),
+                        //                        Flatpickr::make('dates')
+                        //                            ->label('Select Dates')
+                        //                            ->minDate('today')
+                        //                            ->maxDate(now()->addYear())
+                        //                            ->mode(FlatpickrMode::MULTIPLE),
                         Toggle::make('is_return_flight')
                             ->label('Return Flight'),
                     ])
