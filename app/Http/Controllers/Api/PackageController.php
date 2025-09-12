@@ -148,6 +148,19 @@ class PackageController extends Controller
                     //                    Log::info("Flights finished time: {$flightsElapsed} seconds");
 
                     if (is_null($outbound_flight_hydrated) || is_null($inbound_flight_hydrated)) {
+                        $endpoint = $request->url();
+                        $method = strtoupper($request->method());
+
+                        $headers = collect($request->headers->all())
+                            ->map(fn ($values, $key) => "-H \"$key: ".implode('; ', $values).'"')
+                            ->implode(' ');
+
+                        $body = json_encode($request->all(), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+
+                        $curlCommand = "curl -X {$method} '{$endpoint}' {$headers} -d '{$body}'";
+
+                        $errorLogger->info("Reproduce with cURL:\n{$curlCommand}");
+
                         $errorLogger->info("Package Config ID: $packageConfig->id");
                         $errorLogger->info('Package Config Origin: '.$packageConfig->destination_origin->origin->name.' | Origin ID: '.$packageConfig->destination_origin->origin_id);
                         $errorLogger->info('Package Config Destination: '.$packageConfig->destination_origin->destination->name.' | Destination ID: '.$packageConfig->destination_origin->destination_id);
@@ -179,6 +192,19 @@ class PackageController extends Controller
                     $package_ids = $hotels->handle($destination, $outbound_flight_hydrated, $inbound_flight_hydrated, $batchId, $request->origin_id, $request->destination_id, $request->input('rooms'));
 
                     if ($package_ids === ['success' => false] || empty($package_ids)) {
+                        $endpoint = $request->url();
+                        $method = strtoupper($request->method());
+
+                        $headers = collect($request->headers->all())
+                            ->map(fn ($values, $key) => "-H \"$key: ".implode('; ', $values).'"')
+                            ->implode(' ');
+
+                        $body = json_encode($request->all(), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+
+                        $curlCommand = "curl -X {$method} '{$endpoint}' {$headers} -d '{$body}'";
+
+                        $errorLogger->info("Reproduce with cURL:\n{$curlCommand}");
+
                         $errorLogger->info("Package Config ID: $packageConfig->id");
                         $errorLogger->info('Package Config Origin: '.$packageConfig->destination_origin->origin->name.' | Origin ID: '.$packageConfig->destination_origin->origin_id);
                         $errorLogger->info('Package Config Destination: '.$packageConfig->destination_origin->destination->name.' | Destination ID: '.$packageConfig->destination_origin->destination_id);
