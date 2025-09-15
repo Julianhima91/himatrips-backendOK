@@ -67,7 +67,10 @@ class FlightsAction
                 return $flight->stopCount <= $packageConfig->max_stop_count && $flight->stopCount_back <= $packageConfig->max_stop_count;
             });
 
-            $minOutboundStops = ! empty($outboundStops) ? min($outboundStops) : null;
+            $minOutboundStops = ! empty($outboundStops)
+                ? min($outboundStops)
+                : $outbound_flight->pluck('stopCount')->filter()->min();
+
             $logger->info($batchId.' Minimum outbound stop count we found: '.($minOutboundStops ?? 'N/A'));
             $logger->info($batchId." Maximum stop count of package config (id: $packageConfig->id) is ".($packageConfig->max_stop_count ?? '0'));
             $logger->info($batchId.' Total flights after this filter: '.count($outbound_flight_max_stops ?? []));
@@ -207,7 +210,9 @@ class FlightsAction
                 return $flight->stopCount <= $packageConfig->max_stop_count && $flight->stopCount_back <= $packageConfig->max_stop_count;
             });
 
-            $minInboundStops = ! empty($inboundStops) ? min($inboundStops) : null;
+            $minInboundStops = ! empty($inboundStops)
+                ? min($inboundStops)
+                : $inbound_flight->pluck('stopCount')->filter()->min();
             $logger->info($batchId.' Minimum outbound stop count we found: '.($minInboundStops ?? 'N/A'));
             $logger->info($batchId." Maximum stop count of package config (id: $packageConfig->id) is ".$packageConfig->max_stop_count ?? 0);
             $logger->info($batchId.' Total flights after this filter: '.count($inbound_flight_max_stops ?? []));
