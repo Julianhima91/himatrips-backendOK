@@ -330,7 +330,7 @@ class LiveSearchHotels implements ShouldQueue
     <Header>
         <Agency>147255</Agency>
         <User>HIMAXMLLOOK</User>
-        <Password>D25%74S#cn2!</Password>
+        <Password>D25%@41#cn2!</Password>
         <Operation>HOTEL_SEARCH_REQUEST</Operation>
         <OperationType>Request</OperationType>
     </Header>
