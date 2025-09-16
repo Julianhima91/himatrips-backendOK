@@ -11,10 +11,10 @@ class CustomViewLog extends BaseViewLog
     public function getHeaderActions(): array
     {
         return array_merge(parent::getHeaderActions(), [
-            Action::make('export')
-                ->label('Export to CSV')
-                ->icon(Heroicon::OutlinedArrowDownTray)
-                ->action(fn () => $this->exportToCsv()),
+            //            Action::make('export')
+            //                ->label('Export to CSV')
+            //                ->icon(Heroicon::OutlinedArrowDownTray)
+            //                ->action(fn () => $this->exportToCsv()),
         ]);
     }
 
