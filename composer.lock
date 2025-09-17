@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "a01185c368cf2d623748ecaa606f83ef",
+    "content-hash": "711c8d785fa93b1d6eff6e10dbe89c19",
     "packages": [
         {
             "name": "amphp/amp",
@@ -2611,16 +2611,16 @@
         },
         {
             "name": "gboquizosanchez/filament-log-viewer",
-            "version": "v2.1.1",
+            "version": "v2.1.2",
             "source": {
                 "type": "git",
                 "url": "https://github.com/Ireg27/filament-all-logs.git",
-                "reference": "a4b8f1c4884a9306b272643959f96f5d5f0d1a66"
+                "reference": "3d78614d2f228f8b6621d7e07775099f2ad8ad29"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/Ireg27/filament-all-logs/zipball/a4b8f1c4884a9306b272643959f96f5d5f0d1a66",
-                "reference": "a4b8f1c4884a9306b272643959f96f5d5f0d1a66",
+                "url": "https://api.github.com/repos/Ireg27/filament-all-logs/zipball/3d78614d2f228f8b6621d7e07775099f2ad8ad29",
+                "reference": "3d78614d2f228f8b6621d7e07775099f2ad8ad29",
                 "shasum": ""
             },
             "require": {
@@ -2683,9 +2683,9 @@
                 "log-viewer"
             ],
             "support": {
-                "source": "https://github.com/Ireg27/filament-all-logs/tree/v2.1.1"
+                "source": "https://github.com/Ireg27/filament-all-logs/tree/v2.1.2"
             },
-            "time": "2025-09-11T10:03:49+00:00"
+            "time": "2025-09-17T12:29:00+00:00"
         },
         {
             "name": "graham-campbell/result-type",
@@ -15334,5 +15334,5 @@
         "php": "^8.1"
     },
     "platform-dev": [],
-    "plugin-api-version": "2.3.0"
+    "plugin-api-version": "2.6.0"
 }
