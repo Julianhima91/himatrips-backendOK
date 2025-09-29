@@ -7,7 +7,6 @@ enum LongFlightDestinationEnum: int
     case MALDIVES = 13;
     case ZANZIBAR = 57;
     case BALI = 59;
-
     case PHUKET = 50;
 
     /**

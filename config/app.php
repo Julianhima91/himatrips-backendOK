@@ -20,6 +20,7 @@ return [
     'front_url' => env('FRONT_URL', 'http://localhost:3001'),
 
     'flight_api_key_3' => env('FLIGHT_API_KEY_3', ''),
+    'flight_api_key_1' => env('FLIGHT_API_KEY_1', 'eff37b01a1msh6090de6dea39514p108435jsnf7c09e43a0a5'),
     /*
     |--------------------------------------------------------------------------
     | Application Environment

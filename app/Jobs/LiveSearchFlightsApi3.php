@@ -3,7 +3,6 @@
 namespace App\Jobs;
 
 use App\Http\Integrations\GoFlightIntegration\Requests\RetrieveFlightsApi3Request;
-use App\Http\Integrations\GoFlightIntegration\Requests\RetrieveIncompleteFlights;
 use Exception;
 use Illuminate\Bus\Batchable;
 use Illuminate\Bus\Queueable;
@@ -74,23 +73,13 @@ class LiveSearchFlightsApi3 implements ShouldQueue
 
         try {
             $response = $request->send();
-            //            ray('trying')->purple();
-            //            ray($response->json())->purple();
-            //            ray($response->json()['places'])->purple();
         } catch (\Exception $e) {
-            //            ray('Exception caught')->purple();
-            //            ray($e->getMessage())->purple();
             if ($this->attempts() == 1) {
                 $this->release(1);
             }
 
             $this->fail($e);
         }
-
-        // check if context is set, and if it is incomplete, then we have to hit another endpoint
-        //        if (isset($response->json()['data']['context']['status']) && $response->json()['data']['context']['status'] == 'incomplete') {
-        //            $response = $this->getIncompleteResults($response->json()['data']['context']['sessionId']);
-        //        }
 
         $logger = Log::channel('livesearch');
 
@@ -99,22 +88,17 @@ class LiveSearchFlightsApi3 implements ShouldQueue
 
             $logger->info("$this->batchId API 3 ITINERARIES COUNT: ".count($itineraries));
             if ($itineraries->isEmpty()) {
-                ray('empty itineraries');
                 $this->release(1);
             } else {
-                ray('SUCCESS')->purple();
-                cache()->put("flight:{$this->batchId}:{$this->date}", $itineraries, now()->addMinutes(5));
-                cache()->put("flight:{$this->batchId}:{$this->return_date}", $itineraries, now()->addMinutes(5));
+                Cache::put("flight:{$this->batchId}:{$this->date}", $itineraries, now()->addMinutes(5));
+                Cache::put("flight:{$this->batchId}:{$this->return_date}", $itineraries, now()->addMinutes(5));
                 Cache::put("batch:{$this->batchId}:flights", $itineraries, now()->addMinutes(180));
 
                 if (! Cache::get("job_completed_{$this->batchId}")) {
-                    ray('inside')->purple();
-
                     Cache::put("job_completed_{$this->batchId}", true);
                 } else {
-                    ray('outside')->purple();
-                    cache()->put("flight3:{$this->batchId}:{$this->date}", $itineraries, now()->addMinutes(5));
-                    cache()->put("flight3:{$this->batchId}:{$this->return_date}", $itineraries, now()->addMinutes(5));
+                    Cache::put("flight3:{$this->batchId}:{$this->date}", $itineraries, now()->addMinutes(5));
+                    Cache::put("flight3:{$this->batchId}:{$this->return_date}", $itineraries, now()->addMinutes(5));
                     Cache::put("flight:{$this->batchId}:latest", 'api3');
                     $this->broadcastFlightResults($itineraries);
                 }
@@ -127,24 +111,6 @@ class LiveSearchFlightsApi3 implements ShouldQueue
 
             $this->fail($e);
         }
-    }
-
-    private function getIncompleteResults($session)
-    {
-
-        $request = new RetrieveIncompleteFlights($this->adults, $this->children, $this->infants);
-
-        $request->query()->merge([
-            'sessionId' => $session,
-        ]);
-
-        $response = $request->send();
-
-        if (isset($response->json()['context']['status']) && $response->json()['context']['status'] == 'incomplete') {
-            return $this->getIncompleteResults($session);
-        }
-
-        return $response;
     }
 
     private function broadcastFlightResults(mixed $itineraries): void
