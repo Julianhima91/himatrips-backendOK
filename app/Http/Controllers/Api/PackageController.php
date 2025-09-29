@@ -151,7 +151,10 @@ class PackageController extends Controller
                         $endpoint = $request->url();
                         $method = strtoupper($request->method());
 
+                        $importantHeaders = ['accept', 'content-type', 'authorization'];
+
                         $headers = collect($request->headers->all())
+                            ->filter(fn ($values, $key) => in_array(strtolower($key), $importantHeaders))
                             ->map(fn ($values, $key) => "-H \"$key: ".implode('; ', $values).'"')
                             ->implode(' ');
 
@@ -195,7 +198,10 @@ class PackageController extends Controller
                         $endpoint = $request->url();
                         $method = strtoupper($request->method());
 
+                        $importantHeaders = ['accept', 'content-type', 'authorization'];
+
                         $headers = collect($request->headers->all())
+                            ->filter(fn ($values, $key) => in_array(strtolower($key), $importantHeaders))
                             ->map(fn ($values, $key) => "-H \"$key: ".implode('; ', $values).'"')
                             ->implode(' ');
 
