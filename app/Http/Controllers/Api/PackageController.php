@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Actions\FlightsAction;
 use App\Actions\HotelsAction;
 use App\Actions\PackagesAction;
+use App\Enums\LongFlightDestinationEnum;
 use App\Events\LiveSearchCompleted;
 use App\Events\LiveSearchFailed;
 use App\Http\Controllers\Controller;
@@ -80,14 +81,47 @@ class PackageController extends Controller
 
         $date = $request->date;
 
-        // get the airports here
         $origin_airport = Airport::query()->where('origin_id', $request->origin_id)->first();
+        if (! $origin_airport) {
+            $errorLogger->error("Origin airport not found for origin_id: {$request->origin_id}");
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Origin airport not found.',
+            ], 400);
+        }
+
         $destination_airport = Airport::query()->whereHas('destinations', function ($query) use ($request) {
             $query->where('destination_id', $request->destination_id);
         })->first();
+        if (! $destination_airport) {
+            $errorLogger->error("Destination airport not found for destination_id: {$request->destination_id}");
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Destination airport not found.',
+            ], 400);
+        }
 
         $destination = Destination::where('id', $request->destination_id)->first();
+        if (! $destination) {
+            $errorLogger->error("Destination not found for id: {$request->destination_id}");
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Destination not found.',
+            ], 400);
+        }
+
         $origin = Origin::where('id', $request->origin_id)->first();
+        if (! $origin) {
+            $errorLogger->error("Origin not found for id: {$request->origin_id}");
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Origin not found.',
+            ], 400);
+        }
 
         $destinationOrigin = DestinationOrigin::query()
             ->where([
@@ -95,9 +129,27 @@ class PackageController extends Controller
                 ['destination_id', $destination->id],
             ])->first();
 
+        if (! $destinationOrigin) {
+            $errorLogger->error("Destination-Origin combination not found for origin_id: {$origin->id}, destination_id: {$destination->id}");
+
+            return response()->json([
+                'success' => false,
+                'message' => 'This destination is not available from the selected origin.',
+            ], 400);
+        }
+
         $packageConfig = PackageConfig::query()
             ->where('destination_origin_id', $destinationOrigin->id)
             ->first();
+
+        if (! $packageConfig) {
+            $errorLogger->error("Package config not found for destination_origin_id: {$destinationOrigin->id}");
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Package configuration not found.',
+            ], 400);
+        }
 
         if ($packageConfig->is_manual) {
             return $this->manualLiveSearch($request, $flights, $hotels, $packagesAction, $destination, $origin, $destinationOrigin, $packageConfig);
@@ -106,14 +158,15 @@ class PackageController extends Controller
         try {
             $batchId = Str::orderedUuid();
 
-            Cache::put("job_completed_{$batchId}", false, now()->addMinutes(1));
-            Cache::put("hotel_job_completed_{$batchId}", false, now()->addMinutes(1));
+            $cacheExpiration = now()->addMinutes(3);
+            Cache::put("job_completed_{$batchId}", false, $cacheExpiration);
+            Cache::put("hotel_job_completed_{$batchId}", false, $cacheExpiration);
+            Cache::put("livesearch_cleanup_{$batchId}", true, $cacheExpiration);
 
-            $longFlightDestinations = ['Maldives', 'Zanzibar', 'Bali', 'Thailand'];
+            $isLongFlightDestination = LongFlightDestinationEnum::isLongFlightDestination($destination->id);
 
-            if (in_array($destination->name, $longFlightDestinations)) {
+            if ($isLongFlightDestination) {
                 $return_date = Carbon::parse($return_date)->addDay()->format('Y-m-d');
-
                 $hotelStartDate = Carbon::parse($date)->addDay()->format('Y-m-d');
             } else {
                 $hotelStartDate = $date;
@@ -129,149 +182,139 @@ class PackageController extends Controller
             foreach ($jobs as $job) {
                 Bus::dispatch($job);
             }
-            //            $startTime = microtime(true);
-            //            Log::info("Start time: {$startTime} seconds");
 
-            // Continuously check the shared state until one job completes
-            while (true) {
+            $maxWaitTime = 120; // 2 minutes timeout
+            $pollInterval = 0.5; // 500ms between checks so that we dont use true statement
+            $startTime = time();
+
+            while (time() - $startTime < $maxWaitTime) {
                 if (Cache::get("job_completed_{$batchId}") && Cache::get("hotel_job_completed_{$batchId}")) {
-                    // One job has completed, break the loop
-                    //                    $jobsFinished = microtime(true);
-                    //                    $jobsElapsed = $jobsFinished - $startTime;
-                    //                    Log::info("Jobs finished time: {$jobsElapsed} seconds");
-
-                    ray('job completed');
-
                     [$outbound_flight_hydrated, $inbound_flight_hydrated] = $flights->handle($date, $destination, $batchId, $return_date, $request->origin_id, $request->destination_id);
-                    //                    $flightsFinished = microtime(true);
-                    //                    $flightsElapsed = $flightsFinished - $jobsFinished;
-                    //                    Log::info("Flights finished time: {$flightsElapsed} seconds");
 
                     if (is_null($outbound_flight_hydrated) || is_null($inbound_flight_hydrated)) {
-                        $endpoint = $request->url();
-                        $method = strtoupper($request->method());
+                        $this->logSearchFailure($request, $errorLogger, $packageConfig, $batchId, $date, $return_date, 'Flights null');
 
-                        $importantHeaders = ['accept', 'content-type', 'authorization'];
-
-                        $headers = collect($request->headers->all())
-                            ->filter(fn ($values, $key) => in_array(strtolower($key), $importantHeaders))
-                            ->map(fn ($values, $key) => "-H \"$key: ".implode('; ', $values).'"')
-                            ->implode(' ');
-
-                        $body = json_encode($request->all(), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
-
-                        $curlCommand = "curl -X {$method} '{$endpoint}' {$headers} -d '{$body}'";
-
-                        $errorLogger->info("Reproduce with cURL:\n{$curlCommand}");
-
-                        $errorLogger->info("Package Config ID: $packageConfig->id");
-                        $errorLogger->info('Package Config Origin: '.$packageConfig->destination_origin->origin->name.' | Origin ID: '.$packageConfig->destination_origin->origin_id);
-                        $errorLogger->info('Package Config Destination: '.$packageConfig->destination_origin->destination->name.' | Destination ID: '.$packageConfig->destination_origin->destination_id);
-                        $errorLogger->info('-------------------------------------------------------------------------');
-                        $errorLogger->info('Request Data:');
-                        $errorLogger->info("Batch ID: $batchId");
-                        $errorLogger->info("Date Start: $date");
-                        $errorLogger->info("Date End: $return_date");
-                        $errorLogger->info('Rooms: '.json_encode($request->rooms, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
-                        $errorLogger->info('-------------------------------------------------------------------------');
-                        $errorLogger->info('Reason: Flights null');
-                        $errorLogger->info("Check livesearch.log for detailed flight information for batch id: $batchId");
-                        $errorLogger->info('END======================================================================');
+                        if ($outbound_flight_hydrated) {
+                            $outbound_flight_hydrated->delete();
+                        }
+                        if ($inbound_flight_hydrated) {
+                            $inbound_flight_hydrated->delete();
+                        }
 
                         broadcast(new LiveSearchFailed('No flights found', $batchId));
-                        $logger->warning('======================================');
                         $logger->warning("$batchId Broadcasting failed sent. FLIGHTS NULL");
-                        $logger->warning('======================================');
 
-                        $logger->warning('Request: '.json_encode($request->all(), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
+                        $this->cleanupCache($batchId);
 
                         return response()->json([
                             'success' => false,
                             'message' => 'No flights found.',
                             'batch_id' => $batchId,
-                        ], 204);
+                        ], 400);
                     }
 
                     $package_ids = $hotels->handle($destination, $outbound_flight_hydrated, $inbound_flight_hydrated, $batchId, $request->origin_id, $request->destination_id, $request->input('rooms'));
 
                     if ($package_ids === ['success' => false] || empty($package_ids)) {
-                        $endpoint = $request->url();
-                        $method = strtoupper($request->method());
-
-                        $importantHeaders = ['accept', 'content-type', 'authorization'];
-
-                        $headers = collect($request->headers->all())
-                            ->filter(fn ($values, $key) => in_array(strtolower($key), $importantHeaders))
-                            ->map(fn ($values, $key) => "-H \"$key: ".implode('; ', $values).'"')
-                            ->implode(' ');
-
-                        $body = json_encode($request->all(), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
-
-                        $curlCommand = "curl -X {$method} '{$endpoint}' {$headers} -d '{$body}'";
-
-                        $errorLogger->info("Reproduce with cURL:\n{$curlCommand}");
-
-                        $errorLogger->info("Package Config ID: $packageConfig->id");
-                        $errorLogger->info('Package Config Origin: '.$packageConfig->destination_origin->origin->name.' | Origin ID: '.$packageConfig->destination_origin->origin_id);
-                        $errorLogger->info('Package Config Destination: '.$packageConfig->destination_origin->destination->name.' | Destination ID: '.$packageConfig->destination_origin->destination_id);
-                        $errorLogger->info('-------------------------------------------------------------------------');
-                        $errorLogger->info('Request Data:');
-                        $errorLogger->info("Batch ID: $batchId");
-                        $errorLogger->info("Date Start: $date");
-                        $errorLogger->info("Date End: $return_date");
-                        $errorLogger->info('Rooms: '.json_encode($request->rooms, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
-                        $errorLogger->info('-------------------------------------------------------------------------');
-                        $errorLogger->info('Reason: Hotels null');
-                        $errorLogger->info("Check livesearch.log for hotel information for batch id: $batchId");
-                        $errorLogger->info('END======================================================================');
+                        $this->logSearchFailure($request, $errorLogger, $packageConfig, $batchId, $date, $return_date, 'Hotels null');
 
                         $outbound_flight_hydrated->delete();
                         $inbound_flight_hydrated->delete();
 
                         broadcast(new LiveSearchFailed('No hotels found', $batchId));
-                        $logger->warning('======================================');
                         $logger->warning("$batchId Broadcasting failed sent. HOTELS NULL");
-                        $logger->warning('======================================');
-                        $logger->warning('Request: '.json_encode($request->all(), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
+
+                        $this->cleanupCache($batchId);
 
                         return response()->json([
                             'success' => false,
                             'message' => 'No hotels found for the selected destination and dates.',
                             'batch_id' => $batchId,
-                        ], 204);
+                        ], 400);
                     }
 
                     $firstBoardOption = $destination->board_options ?? null;
                     [$packages, $minTotalPrice, $maxTotalPrice, $packageConfigId] = $packagesAction->handle($package_ids, $firstBoardOption);
 
-                    // fire off event
                     broadcast(new LiveSearchCompleted($packages, $batchId, $minTotalPrice, $maxTotalPrice, $packageConfigId, $firstBoardOption));
-                    $logger->info('======================================');
-                    $logger->info('Broadcasting sent. SUCCESS');
-                    $logger->info('======================================');
+                    $this->cleanupCache($batchId);
 
-                    //                    $queriesFinished = microtime(true);
-                    //                    $queriesElapsed = $queriesFinished - $jobsFinished;
-                    //                    Log::info("Queries finished time: {$queriesElapsed} seconds");
-
-                    break;
+                    return response()->json([
+                        'success' => true,
+                        'message' => 'Live search started',
+                        'data' => ['batch_id' => $batchId],
+                    ], 200);
                 }
+
+                usleep($pollInterval * 1000000); // microseconds
             }
 
-            //            $endTime = microtime(true);
-            //            $totalElapsed = $endTime - $startTime;
-            //            Log::info("Total elapsed time: {$totalElapsed} seconds");
-        } catch (Throwable $e) {
-            $logger->error($e->getMessage());
+            $this->cleanupCache($batchId);
+            $logger->error("Live search timeout for batch: $batchId");
+            broadcast(new LiveSearchFailed('Search timeout', $batchId));
 
-            return response()->json(['message' => $e->getMessage()], 500);
+            return response()->json([
+                'success' => false,
+                'message' => 'Search timeout. Please try again.',
+                'batch_id' => $batchId,
+            ], 408);
+
+        } catch (Throwable $e) {
+            $logger->error('Live search error: '.$e->getMessage());
+            $this->cleanupCache($batchId ?? null);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'An error occurred during the search.',
+            ], 500);
+        }
+    }
+
+    /**
+     * Helper method to log search failures with consistent format
+     */
+    private function logSearchFailure($request, $errorLogger, $packageConfig, $batchId, $date, $return_date, $reason)
+    {
+        $endpoint = $request->url();
+        $method = strtoupper($request->method());
+
+        $importantHeaders = ['accept', 'content-type', 'authorization'];
+        $headers = collect($request->headers->all())
+            ->filter(fn ($values, $key) => in_array(strtolower($key), $importantHeaders))
+            ->map(fn ($values, $key) => "-H \"$key: ".implode('; ', $values).'"')
+            ->implode(' ');
+
+        $body = json_encode($request->all(), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+        $curlCommand = "curl -X {$method} '{$endpoint}' {$headers} -d '{$body}'";
+
+        $errorLogger->info("Reproduce with cURL:\n{$curlCommand}");
+        $errorLogger->info("Package Config ID: $packageConfig->id");
+        $errorLogger->info('Package Config Origin: '.$packageConfig->destination_origin->origin->name.' | Origin ID: '.$packageConfig->destination_origin->origin_id);
+        $errorLogger->info('Package Config Destination: '.$packageConfig->destination_origin->destination->name.' | Destination ID: '.$packageConfig->destination_origin->destination_id);
+        $errorLogger->info('-------------------------------------------------------------------------');
+        $errorLogger->info('Request Data:');
+        $errorLogger->info("Batch ID: $batchId");
+        $errorLogger->info("Date Start: $date");
+        $errorLogger->info("Date End: $return_date");
+        $errorLogger->info('Rooms: '.json_encode($request->rooms, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
+        $errorLogger->info('-------------------------------------------------------------------------');
+        $errorLogger->info("Reason: $reason");
+        $errorLogger->info("Check livesearch.log for detailed information for batch id: $batchId");
+        $errorLogger->info('END======================================================================');
+    }
+
+    /**
+     * Helper method to clean up cache entries
+     */
+    private function cleanupCache($batchId)
+    {
+        if (! $batchId) {
+            return;
         }
 
-        $logger->info('Response sent');
-
-        return response()->json(['message' => 'Live search started', 'data' => [
-            'batch_id' => $batchId,
-        ]], 200);
+        Cache::forget("job_completed_{$batchId}");
+        Cache::forget("hotel_job_completed_{$batchId}");
+        Cache::forget("livesearch_cleanup_{$batchId}");
     }
 
     public function show(Package $package)
