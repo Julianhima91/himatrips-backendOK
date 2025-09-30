@@ -183,7 +183,7 @@ class PackageController extends Controller
                 Bus::dispatch($job);
             }
 
-            $maxWaitTime = 120; // 2 minutes timeout
+            $maxWaitTime = 60; // 1 minutes timeout
             $pollInterval = 0.5; // 500ms between checks so that we dont use true statement
             $startTime = time();
 
@@ -278,7 +278,7 @@ class PackageController extends Controller
         $endpoint = $request->url();
         $method = strtoupper($request->method());
 
-        $importantHeaders = ['accept', 'content-type', 'authorization'];
+        $importantHeaders = ['accept', 'authorization'];
         $headers = collect($request->headers->all())
             ->filter(fn ($values, $key) => in_array(strtolower($key), $importantHeaders))
             ->map(fn ($values, $key) => "-H \"$key: ".implode('; ', $values).'"')
