@@ -44,7 +44,7 @@ class RetrieveIncompleteFlights extends SoloRequest
     protected function defaultHeaders(): array
     {
         return [
-            'X-RapidAPI-Key' => 'eff37b01a1msh6090de6dea39514p108435jsnf7c09e43a0a5',
+            'X-RapidAPI-Key' => config('app.flight_api_key_1'),
             'X-RapidAPI-Host' => 'flights-search3.p.rapidapi.com',
         ];
     }

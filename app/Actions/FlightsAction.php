@@ -67,13 +67,7 @@ class FlightsAction
                 return $flight->stopCount <= $packageConfig->max_stop_count && $flight->stopCount_back <= $packageConfig->max_stop_count;
             });
 
-            $minOutboundStops = ! empty($outboundStops)
-                ? min($outboundStops)
-                : $outbound_flight->pluck('stopCount')->filter()->min();
-
-            $logger->info($batchId.' Minimum outbound stop count we found: '.($minOutboundStops ?? 'N/A'));
-            $logger->info($batchId." Maximum stop count of package config (id: $packageConfig->id) is ".($packageConfig->max_stop_count ?? '0'));
-            $logger->info($batchId.' Total flights after this filter: '.count($outbound_flight_max_stops ?? []));
+            $minOutboundStops = $outbound_flight->pluck('stopCount')->filter()->min();
 
             if ($outbound_flight_max_stops->isEmpty() && $minOutboundStops !== null) {
                 $logger->warning($batchId.' No flights matched max_stop_count, falling back to least-stop flights.');
@@ -85,11 +79,15 @@ class FlightsAction
                 $logger->info($batchId.' Fallback flights (least-stop) count: '.count($outbound_flight_max_stops ?? []));
             }
 
+            $logger->info($batchId.' Minimum outbound stop count we found: '.($minOutboundStops ?? 'N/A'));
+            $logger->info($batchId." Maximum stop count of package config (id: $packageConfig->id) is ".($packageConfig->max_stop_count ?? '0'));
+            $logger->info($batchId.' Total flights after this filter: '.count($outbound_flight_max_stops ?? []));
+
             $outbound_flight = $outbound_flight_max_stops;
             $maxTransitTimeSettings = app(MaxTransitTime::class);
 
             if ($maxTransitTimeSettings->minutes !== 0) {
-                $outbound_flight_max_wait = $outbound_flight_max_stops->filter(function ($flight) use ($maxTransitTimeSettings) {
+                $outbound_flight_max_wait = $outbound_flight->filter(function ($flight) use ($maxTransitTimeSettings) {
                     if ($flight == null) {
                         return false;
                     }
@@ -106,7 +104,6 @@ class FlightsAction
                     $logger->info($batchId.' Count: '.count($outbound_flight_max_wait ?? []));
                 }
             }
-
         }
 
         $outbound_flight_morning = $outbound_flight->when($destination->prioritize_morning_flights, function (Collection $collection) use ($destination) {
@@ -198,27 +195,19 @@ class FlightsAction
             $logger->warning('No Direct Flight Found'." $batchId");
             $logger->warning($batchId.' Count of flights with 1 or more stops: '.count($inbound_flight ?? []));
 
-            $inboundStops = [];
-
             $inbound_flight_max_stops = $inbound_flight->filter(function ($flight) use ($packageConfig, &$inboundStops) {
                 if ($flight == null) {
                     return false;
                 }
 
-                $inboundStops[] = $flight->stopCount;
-
-                return $flight->stopCount <= $packageConfig->max_stop_count && $flight->stopCount_back <= $packageConfig->max_stop_count;
+                return $flight->stopCount <= $packageConfig->max_stop_count
+                    && $flight->stopCount_back <= $packageConfig->max_stop_count;
             });
 
-            $minInboundStops = ! empty($inboundStops)
-                ? min($inboundStops)
-                : $inbound_flight->pluck('stopCount')->filter()->min();
-            $logger->info($batchId.' Minimum outbound stop count we found: '.($minInboundStops ?? 'N/A'));
-            $logger->info($batchId." Maximum stop count of package config (id: $packageConfig->id) is ".$packageConfig->max_stop_count ?? 0);
-            $logger->info($batchId.' Total flights after this filter: '.count($inbound_flight_max_stops ?? []));
+            $minInboundStops = $inbound_flight->pluck('stopCount')->filter()->min();
 
             if ($inbound_flight_max_stops->isEmpty() && $minInboundStops !== null) {
-                $logger->warning($batchId.' No flights matched max_stop_count, falling back to least-stop flights.');
+                $logger->warning($batchId.' No flights matched max_stop_count ('.$packageConfig->max_stop_count.'), falling back to least-stop flights ('.$minInboundStops.')');
 
                 $inbound_flight_max_stops = $inbound_flight->filter(function ($flight) use ($minInboundStops) {
                     return $flight && $flight->stopCount === $minInboundStops;
@@ -227,12 +216,16 @@ class FlightsAction
                 $logger->info($batchId.' Fallback flights (least-stop) count: '.count($inbound_flight_max_stops ?? []));
             }
 
+            $logger->info($batchId.' Minimum inbound stop count we found: '.($minInboundStops ?? 'N/A'));
+            $logger->info($batchId." Maximum stop count of package config (id: $packageConfig->id) is ".($packageConfig->max_stop_count ?? 0));
+            $logger->info($batchId.' Total flights after this filter: '.count($inbound_flight_max_stops ?? []));
+
             $inbound_flight = $inbound_flight_max_stops;
 
             $maxTransitTimeSettings = app(MaxTransitTime::class);
 
             if ($maxTransitTimeSettings->minutes !== 0) {
-                $inbound_flight_max_wait = $inbound_flight_max_stops->filter(function ($flight) use ($maxTransitTimeSettings) {
+                $inbound_flight_max_wait = $inbound_flight->filter(function ($flight) use ($maxTransitTimeSettings) {
                     if ($flight == null) {
                         return false;
                     }

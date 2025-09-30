@@ -101,18 +101,17 @@ class LiveSearchFlights implements ShouldQueue
 
             $logger->info("$this->batchId API 1 ITINERARIES COUNT: ".count($itineraries));
             if ($itineraries->isEmpty()) {
-                ray('empty itineraries');
                 $this->release(1);
             } else {
-                cache()->put("flight:{$this->batchId}:{$this->date}", $itineraries, now()->addMinutes(5));
-                cache()->put("flight:{$this->batchId}:{$this->return_date}", $itineraries, now()->addMinutes(5));
+                Cache::put("flight:{$this->batchId}:{$this->date}", $itineraries, now()->addMinutes(5));
+                Cache::put("flight:{$this->batchId}:{$this->return_date}", $itineraries, now()->addMinutes(5));
                 Cache::put("batch:{$this->batchId}:flights", $itineraries, now()->addMinutes(180));
 
                 if (! Cache::get("job_completed_{$this->batchId}")) {
                     Cache::put("job_completed_{$this->batchId}", true);
                 } else {
-                    cache()->put("flight1:{$this->batchId}:{$this->date}", $itineraries, now()->addMinutes(5));
-                    cache()->put("flight1:{$this->batchId}:{$this->return_date}", $itineraries, now()->addMinutes(5));
+                    Cache::put("flight1:{$this->batchId}:{$this->date}", $itineraries, now()->addMinutes(5));
+                    Cache::put("flight1:{$this->batchId}:{$this->return_date}", $itineraries, now()->addMinutes(5));
                     Cache::put("flight:{$this->batchId}:latest", 'api1');
 
                     $this->broadcastFlightResults($itineraries);
