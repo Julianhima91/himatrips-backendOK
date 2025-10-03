@@ -157,6 +157,8 @@ class LiveSearchHotels implements ShouldQueue
             } else {
                 if ($this->lastXmlRequest) {
                     $curl = $this->buildCurlForHotels($this->lastXmlRequest);
+
+                    Log::channel('livesearch-errors')->info("Hotel API Response:\nCurl:\n{$curl}\nResponse:\n".json_encode($response));
                     Log::channel('livesearch-errors')->error("Exception parsing hotel results. Reproduce with:\n{$curl}");
                 }
                 $this->fail($e);
