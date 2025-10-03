@@ -95,6 +95,12 @@ return [
             'level' => 'debug',
         ],
 
+        'flights' => [
+            'driver' => 'single',
+            'path' => storage_path('logs/flights.log'),
+            'level' => 'debug',
+        ],
+
         'directdates' => [
             'driver' => 'single',
             'path' => storage_path('logs/directdates.log'),
