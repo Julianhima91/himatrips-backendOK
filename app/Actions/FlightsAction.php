@@ -16,6 +16,7 @@ class FlightsAction
     public function handle($date, $destination, $batchId, $return_date, $origin_id, $destination_id)
     {
         $logger = Log::channel('livesearch');
+        $flightLogger = Log::channel('flights');
         $outbound_flight = Cache::get("flight:{$batchId}:{$date}");
 
         // filter the flights as per the destination configuration
@@ -29,6 +30,7 @@ class FlightsAction
         $logger->info('Filtering for batch id: '.$batchId.' starting ...');
         $logger->info("========================================= $batchId");
         $logger->info('Total for batch id: '.$batchId.' Before filter count: '.count($outbound_flight ?? []));
+        $flightLogger->info("All outbound flights before filtering (batch {$batchId}):\n".json_encode($outbound_flight?->toArray() ?? [], JSON_PRETTY_PRINT));
 
         // filter for direct flights
         $outbound_flight_direct = $outbound_flight->filter(function ($flight) {
