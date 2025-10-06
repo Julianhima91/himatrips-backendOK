@@ -85,8 +85,8 @@ class LiveSearchHotels implements ShouldQueue
 
         try {
             $response = $this->getHotelData($hotelIds, $this->checkin_date, $this->nights, $this->adults, $this->children, $this->infants, $this->rooms, null, $this->countryCode);
-
-            Log::channel('livesearch-errors')->info("{$this->batchId} Hotel API Response:\n".json_encode($response));
+            // we only keep this for debugging since responses are too high KB
+            // Log::channel('livesearch-errors')->info("{$this->batchId} Hotel API Response:\n".json_encode($response));
         } catch (Exception $e) {
             // if it's the first time, we retry
             if ($this->attempts() == 1) {
