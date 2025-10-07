@@ -30,9 +30,14 @@ class FlightsAction
         $logger->info('Filtering for batch id: '.$batchId.' starting ...');
         $logger->info("========================================= $batchId");
         $logger->info('Total for batch id: '.$batchId.' Before filter count: '.count($outbound_flight ?? []));
-        $flightLogger->info('--------------------------------------------------------------------------------');
-        $flightLogger->info("All outbound flights before filtering (batch {$batchId}):\n".json_encode($outbound_flight?->toArray() ?? [], JSON_PRETTY_PRINT));
 
+        $flightsArray = $outbound_flight?->toArray() ?? [];
+
+        if (! empty($flightsArray) && collect($flightsArray)->every(fn ($value) => is_null($value))) {
+            $flightLogger->info('--------------------------------------------------------------------------------');
+            $flightLogger->info("Outbound flight array is full of null values (batch {$batchId}):");
+            $flightLogger->info(json_encode($flightsArray, JSON_PRETTY_PRINT));
+        }
         // filter for direct flights
         $outbound_flight_direct = $outbound_flight->filter(function ($flight) {
             if ($flight == null) {
@@ -54,13 +59,13 @@ class FlightsAction
         if ($outbound_flight_direct->isNotEmpty()) {
             $logger->info('Direct Flight Found'." $batchId");
             $logger->info($batchId.' Count of flights with direct flight: '.count($outbound_flight_direct ?? []));
-            $flightLogger->info("All DIRECT outbound flights (batch {$batchId}):\n".json_encode($outbound_flight_direct?->toArray() ?? [], JSON_PRETTY_PRINT));
+            //            $flightLogger->info("All DIRECT outbound flights (batch {$batchId}):\n".json_encode($outbound_flight_direct?->toArray() ?? [], JSON_PRETTY_PRINT));
 
             $outbound_flight = $outbound_flight_direct;
         } else {
             $logger->warning('No Direct Flight Found'." $batchId");
             $logger->warning($batchId.' Count of flights with 1 or more stops: '.count($outbound_flight ?? []));
-            $flightLogger->info("All outbound flights with STOPS (batch {$batchId}):\n".json_encode($outbound_flight?->toArray() ?? [], JSON_PRETTY_PRINT));
+            //            $flightLogger->info("All outbound flights with STOPS (batch {$batchId}):\n".json_encode($outbound_flight?->toArray() ?? [], JSON_PRETTY_PRINT));
 
             $outboundStops = [];
             $outbound_flight_max_stops = $outbound_flight->filter(function ($flight) use ($packageConfig, &$outboundStops) {
@@ -77,7 +82,7 @@ class FlightsAction
 
             if ($outbound_flight_max_stops->isEmpty() && $minOutboundStops !== null) {
                 $logger->warning($batchId.' No flights matched max_stop_count, falling back to least-stop flights.');
-                $flightLogger->info("All outbound flights FALLBACK (batch {$batchId}):\n".json_encode($outbound_flight_max_stops?->toArray() ?? [], JSON_PRETTY_PRINT));
+                //                $flightLogger->info("All outbound flights FALLBACK (batch {$batchId}):\n".json_encode($outbound_flight_max_stops?->toArray() ?? [], JSON_PRETTY_PRINT));
 
                 $outbound_flight_max_stops = $outbound_flight->filter(function ($flight) use ($minOutboundStops) {
                     return $flight && $flight->stopCount === $minOutboundStops;
@@ -89,7 +94,7 @@ class FlightsAction
             $logger->info($batchId.' Minimum outbound stop count we found: '.($minOutboundStops ?? 'N/A'));
             $logger->info($batchId." Maximum stop count of package config (id: $packageConfig->id) is ".($packageConfig->max_stop_count ?? '0'));
             $logger->info($batchId.' Total flights after this filter: '.count($outbound_flight_max_stops ?? []));
-            $flightLogger->info("All outbound flights AFTER FILTER (batch {$batchId}):\n".json_encode($outbound_flight_max_stops?->toArray() ?? [], JSON_PRETTY_PRINT));
+            //            $flightLogger->info("All outbound flights AFTER FILTER (batch {$batchId}):\n".json_encode($outbound_flight_max_stops?->toArray() ?? [], JSON_PRETTY_PRINT));
 
             $outbound_flight = $outbound_flight_max_stops;
             $maxTransitTimeSettings = app(MaxTransitTime::class);
@@ -110,7 +115,7 @@ class FlightsAction
 
                     $logger->info($batchId.' Flights after filtering based on max transit time settings');
                     $logger->info($batchId.' Count: '.count($outbound_flight_max_wait ?? []));
-                    $flightLogger->info("All outbound flights AFTER TRANSIT TIME SETTINGS (batch {$batchId}):\n".json_encode($outbound_flight_max_wait?->toArray() ?? [], JSON_PRETTY_PRINT));
+                    //                    $flightLogger->info("All outbound flights AFTER TRANSIT TIME SETTINGS (batch {$batchId}):\n".json_encode($outbound_flight_max_wait?->toArray() ?? [], JSON_PRETTY_PRINT));
                 }
             }
         }
@@ -139,7 +144,7 @@ class FlightsAction
         if ($outbound_flight_morning->isNotEmpty()) {
             $logger->info($batchId.' Morning Flights found');
             $logger->info($batchId.' Count after filtering based on morning flights: '.count($outbound_flight_morning ?? []));
-            $flightLogger->info("All outbound flights AFTER MORNING FILTER (batch {$batchId}):\n".json_encode($outbound_flight_morning?->toArray() ?? [], JSON_PRETTY_PRINT));
+            //            $flightLogger->info("All outbound flights AFTER MORNING FILTER (batch {$batchId}):\n".json_encode($outbound_flight_morning?->toArray() ?? [], JSON_PRETTY_PRINT));
 
             $outbound_flight = $outbound_flight_morning;
         }
@@ -153,7 +158,7 @@ class FlightsAction
         $logger->info('Final Flights Array for batch id: '." $batchId");
         $logger->info('Final Count: '.count($outbound_flight ?? [])." $batchId");
         $logger->warning('=============================================='." $batchId");
-        $flightLogger->info("All outbound flights FINAL (batch {$batchId}):\n".json_encode($outbound_flight?->toArray() ?? [], JSON_PRETTY_PRINT));
+        //        $flightLogger->info("All outbound flights FINAL (batch {$batchId}):\n".json_encode($outbound_flight?->toArray() ?? [], JSON_PRETTY_PRINT));
 
         // if collection is empty return early and broadcast failure
         if ($outbound_flight->isEmpty()) {
@@ -189,7 +194,13 @@ class FlightsAction
         $logger->info('Now filtering for return flights for batch id:'.$batchId.'starting ...');
         $logger->warning('=============================================='." $batchId");
         $logger->info('Total for batch id: '.$batchId.' Before filter count: '.count($inbound_flight ?? []));
-        $flightLogger->info("All inbound flights before filtering (batch {$batchId}):\n".json_encode($inbound_flight?->toArray() ?? [], JSON_PRETTY_PRINT));
+        $flightsArray = $inbound_flight?->toArray() ?? [];
+
+        if (! empty($flightsArray) && collect($flightsArray)->every(fn ($value) => is_null($value))) {
+            $flightLogger->info('--------------------------------------------------------------------------------');
+            $flightLogger->info("Inbound flight array is full of null values (batch {$batchId}):");
+            $flightLogger->info(json_encode($flightsArray, JSON_PRETTY_PRINT));
+        }
 
         $inbound_flight_direct = $inbound_flight->filter(function ($flight) {
             if ($flight == null) {
@@ -203,13 +214,13 @@ class FlightsAction
         if ($inbound_flight_direct->isNotEmpty()) {
             $logger->info('Direct Flight Found'." $batchId");
             $logger->info($batchId.' Count of flights with direct flight: '.count($inbound_flight_direct ?? []));
-            $flightLogger->info("All DIRECT inbound flights (batch {$batchId}):\n".json_encode($inbound_flight_direct?->toArray() ?? [], JSON_PRETTY_PRINT));
+            //            $flightLogger->info("All DIRECT inbound flights (batch {$batchId}):\n".json_encode($inbound_flight_direct?->toArray() ?? [], JSON_PRETTY_PRINT));
 
             $inbound_flight = $inbound_flight_direct;
         } else {
             $logger->warning('No Direct Flight Found'." $batchId");
             $logger->warning($batchId.' Count of flights with 1 or more stops: '.count($inbound_flight ?? []));
-            $flightLogger->info("All inbound flights with STOPS (batch {$batchId}):\n".json_encode($inbound_flight?->toArray() ?? [], JSON_PRETTY_PRINT));
+            //            $flightLogger->info("All inbound flights with STOPS (batch {$batchId}):\n".json_encode($inbound_flight?->toArray() ?? [], JSON_PRETTY_PRINT));
 
             $inbound_flight_max_stops = $inbound_flight->filter(function ($flight) use ($packageConfig, &$inboundStops) {
                 if ($flight == null) {
@@ -224,7 +235,7 @@ class FlightsAction
 
             if ($inbound_flight_max_stops->isEmpty() && $minInboundStops !== null) {
                 $logger->warning($batchId.' No flights matched max_stop_count ('.$packageConfig->max_stop_count.'), falling back to least-stop flights ('.$minInboundStops.')');
-                $flightLogger->info("All inbound flights FALLBACK (batch {$batchId}):\n".json_encode($inbound_flight_max_stops?->toArray() ?? [], JSON_PRETTY_PRINT));
+                //                $flightLogger->info("All inbound flights FALLBACK (batch {$batchId}):\n".json_encode($inbound_flight_max_stops?->toArray() ?? [], JSON_PRETTY_PRINT));
 
                 $inbound_flight_max_stops = $inbound_flight->filter(function ($flight) use ($minInboundStops) {
                     return $flight && $flight->stopCount === $minInboundStops;
@@ -236,7 +247,7 @@ class FlightsAction
             $logger->info($batchId.' Minimum inbound stop count we found: '.($minInboundStops ?? 'N/A'));
             $logger->info($batchId." Maximum stop count of package config (id: $packageConfig->id) is ".($packageConfig->max_stop_count ?? 0));
             $logger->info($batchId.' Total flights after this filter: '.count($inbound_flight_max_stops ?? []));
-            $flightLogger->info("All inbound flights AFTER FILTER (batch {$batchId}):\n".json_encode($inbound_flight_max_stops?->toArray() ?? [], JSON_PRETTY_PRINT));
+            //            $flightLogger->info("All inbound flights AFTER FILTER (batch {$batchId}):\n".json_encode($inbound_flight_max_stops?->toArray() ?? [], JSON_PRETTY_PRINT));
 
             $inbound_flight = $inbound_flight_max_stops;
 
@@ -258,7 +269,7 @@ class FlightsAction
 
                     $logger->info($batchId.' Flights after filtering based on max transit time settings');
                     $logger->info($batchId.' Count: '.count($inbound_flight_max_wait ?? []));
-                    $flightLogger->info("All inbound flights AFTER TRANSIT TIME SETTINGS (batch {$batchId}):\n".json_encode($inbound_flight_max_wait?->toArray() ?? [], JSON_PRETTY_PRINT));
+                    //                    $flightLogger->info("All inbound flights AFTER TRANSIT TIME SETTINGS (batch {$batchId}):\n".json_encode($inbound_flight_max_wait?->toArray() ?? [], JSON_PRETTY_PRINT));
                 }
             }
         }
@@ -287,7 +298,7 @@ class FlightsAction
         if ($inbound_flight_evening->isNotEmpty()) {
             $logger->info($batchId.' Evening Flights found');
             $logger->info($batchId.' Count after filtering based on evening flights: '.count($inbound_flight_evening ?? []));
-            $flightLogger->info("All inbound flights AFTER EVENING FILTER (batch {$batchId}):\n".json_encode($inbound_flight_evening?->toArray() ?? [], JSON_PRETTY_PRINT));
+            //            $flightLogger->info("All inbound flights AFTER EVENING FILTER (batch {$batchId}):\n".json_encode($inbound_flight_evening?->toArray() ?? [], JSON_PRETTY_PRINT));
 
             $inbound_flight = $inbound_flight_evening;
         }
@@ -312,8 +323,8 @@ class FlightsAction
         $logger->info('Final return flights array for batch id: '." $batchId");
         $logger->info('Final Count: '.count($inbound_flight)." $batchId");
         $logger->warning('=============================================='." $batchId");
-        $flightLogger->info("All inbound flights FINAL (batch {$batchId}):\n".json_encode($inbound_flight?->toArray() ?? [], JSON_PRETTY_PRINT));
-        $flightLogger->info('--------------------------------------------------------------------------------');
+        //        $flightLogger->info("All inbound flights FINAL (batch {$batchId}):\n".json_encode($inbound_flight?->toArray() ?? [], JSON_PRETTY_PRINT));
+        //        $flightLogger->info('--------------------------------------------------------------------------------');
 
         // if collection is empty return early and broadcast failure
         if ($inbound_flight->isEmpty()) {
