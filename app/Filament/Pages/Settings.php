@@ -15,6 +15,8 @@ class Settings extends SettingsPage
 
     protected static string $settings = PackageHourly::class;
 
+    protected static string|null|\UnitEnum $navigationGroup = 'System';
+
     public function form(Schema $schema): Schema
     {
         $packageHourlySettings = app(PackageHourly::class);

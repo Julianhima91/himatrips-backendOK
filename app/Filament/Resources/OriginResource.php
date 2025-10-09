@@ -26,7 +26,7 @@ class OriginResource extends Resource
 {
     protected static ?string $model = Origin::class;
 
-    protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-rectangle-stack';
+    protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-arrow-up-right';
 
     public static function form(Schema $schema): Schema
     {

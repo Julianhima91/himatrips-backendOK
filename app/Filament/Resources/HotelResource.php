@@ -34,7 +34,7 @@ class HotelResource extends Resource
 {
     protected static ?string $model = Hotel::class;
 
-    protected static string|null|\BackedEnum $navigationIcon = 'heroicon-o-rectangle-stack';
+    protected static string|null|\BackedEnum $navigationIcon = 'heroicon-o-building-office';
 
     public static function form(Schema $schema): Schema
     {

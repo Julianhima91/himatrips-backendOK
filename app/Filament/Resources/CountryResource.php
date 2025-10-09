@@ -25,7 +25,7 @@ class CountryResource extends Resource
 
     protected static string|\UnitEnum|null $navigationGroup = 'Advertising';
 
-    protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-rectangle-stack';
+    protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-globe-alt';
 
     public static function form(Schema $schema): Schema
     {
