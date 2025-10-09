@@ -19,7 +19,9 @@ class CommissionRuleResource extends Resource
 {
     protected static ?string $model = CommissionRule::class;
 
-    protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-rectangle-stack';
+    protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-currency-dollar';
+
+    protected static string|null|\UnitEnum $navigationGroup = 'System';
 
     public static function form(Schema $schema): Schema
     {

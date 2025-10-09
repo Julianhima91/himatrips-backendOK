@@ -21,7 +21,7 @@ class AirportResource extends Resource
 {
     protected static ?string $model = Airport::class;
 
-    protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-rectangle-stack';
+    protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-paper-airplane';
 
     public static function form(Schema $schema): Schema
     {

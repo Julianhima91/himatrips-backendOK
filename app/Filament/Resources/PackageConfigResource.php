@@ -45,7 +45,7 @@ class PackageConfigResource extends Resource
 {
     protected static ?string $model = PackageConfig::class;
 
-    protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-rectangle-stack';
+    protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-wrench-screwdriver';
 
     public static function form(Schema $schema): Schema
     {

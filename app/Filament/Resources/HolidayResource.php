@@ -28,7 +28,7 @@ class HolidayResource extends Resource
 
     protected static string|\UnitEnum|null $navigationGroup = 'Advertising';
 
-    protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-calendar';
+    protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-calendar-days';
 
     public static function form(Schema $schema): Schema
     {

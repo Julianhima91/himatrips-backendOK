@@ -20,6 +20,8 @@ class ClientSearchesResource extends Resource
 
     protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-magnifying-glass';
 
+    protected static string|null|\UnitEnum $navigationGroup = 'System';
+
     public static function form(\Filament\Schemas\Schema $schema): \Filament\Schemas\Schema
     {
         return $schema
