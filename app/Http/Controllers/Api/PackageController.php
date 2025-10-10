@@ -36,35 +36,50 @@ class PackageController extends Controller
 {
     public function search(Request $request)
     {
-        // todo: Validate the request: nights, checkin_date, origin, destination. Use Request
-        $request->validate([
-            'nights' => 'required|integer',
-            'checkin_date' => 'required|date|date_format:Y-m-d',
-            'origin_id' => 'required|exists:origins,id',
-            'destination_id' => 'required|exists:destinations,id',
+        $validated = $request->validate([
+            'nights' => ['required', 'integer', 'min:1'],
+            'checkin_date' => ['required', 'date_format:Y-m-d'],
+            'origin_id' => ['required', 'exists:origins,id'],
+            'destination_id' => ['required', 'exists:destinations,id'],
         ]);
 
-        $destination_origin = DestinationOrigin::where('destination_id', $request->destination_id)
-            ->where('origin_id', $request->origin_id)
+        $destinationOrigin = DestinationOrigin::where('destination_id', $validated['destination_id'])
+            ->where('origin_id', $validated['origin_id'])
             ->first();
 
-        $packages = Package::whereHas('packageConfig', function ($query) use ($destination_origin) {
-            $query->where('destination_origin_id', $destination_origin->id);
-        })->whereHas('hotelData', function ($query) use ($request) {
-            $query->where('check_in_date', $request->checkin_date)
-                ->where('number_of_nights', $request->nights);
-        })
+        if (! $destinationOrigin) {
+            return response()->json(['message' => 'Invalid destination or origin combination.'], 404);
+        }
+
+        $packages = Package::query()
+            ->whereHas('packageConfig', fn($q) =>
+            $q->where('destination_origin_id', $destinationOrigin->id)
+            )
+            ->whereHas('hotelData', fn($q) =>
+            $q->where('check_in_date', $validated['checkin_date'])
+                ->where('number_of_nights', $validated['nights'])
+            )
             ->join('hotel_data', 'packages.hotel_data_id', '=', 'hotel_data.id')
-            ->select('packages.*', DB::raw('(packages.total_price - hotel_data.price) as price_minus_hotel'))
-            ->with(['hotelData', 'hotelData.hotel', 'hotelData.hotel.hotelPhotos', 'outboundFlight', 'inboundFlight', 'packageConfig:id,last_processed_at'])
+            ->select([
+                'packages.*',
+                DB::raw('(packages.total_price - hotel_data.price) AS price_minus_hotel'),
+            ])
+            ->with([
+                'hotelData',
+                'hotelData.hotel',
+                'hotelData.hotel.hotelPhotos',
+                'outboundFlight',
+                'inboundFlight',
+                'packageConfig:id,last_processed_at',
+            ])
             ->orderBy('total_price')
             ->paginate(10);
 
         if ($packages->isEmpty()) {
-            return response()->json(['message' => 'No packages found'], 404);
+            return response()->json(['message' => 'No packages found.'], 404);
         }
 
-        return response()->json(['data' => $packages], 200);
+        return response()->json(['data' => $packages]);
     }
 
     public function liveSearch(LivesearchRequest $request, FlightsAction $flights, HotelsAction $hotels, PackagesAction $packagesAction)
@@ -365,47 +380,55 @@ class PackageController extends Controller
 
     public function hasAvailableReturn(Request $request)
     {
-        $request->validate([
+        $validated = $request->validate([
             'start_date' => ['required', 'date', 'after_or_equal:today'],
+            'destination_id' => ['required', 'exists:destinations,id'],
+            'origin_id' => ['required', 'exists:origins,id'],
         ]);
 
-        $destination_origin =
-            DestinationOrigin::where([
-                ['destination_id', $request->destination_id],
-                ['origin_id', $request->origin_id],
-            ])->first();
+        $destinationOrigin = DestinationOrigin::where([
+            ['destination_id', $validated['destination_id']],
+            ['origin_id', $validated['origin_id']],
+        ])->first();
 
-        if (! $destination_origin) {
+        if (! $destinationOrigin) {
             return response()->json([
-                'data' => 'There is no destination origin',
-            ], 200);
+                'data' => 'No matching destination-origin found.',
+            ], 404);
         }
 
-        $minNightsStay = PackageConfig::query()
-            ->where('destination_origin_id', $destination_origin->id)->first()
-            ->destination_origin->destination->min_nights_stay;
+        $packageConfig = PackageConfig::where('destination_origin_id', $destinationOrigin->id)->first();
 
-        $directFlightDates = DirectFlightAvailability::query()
-            ->where([
-                ['destination_origin_id', $destination_origin->id],
-                ['is_return_flight', 1],
-                ['date', '>=', Carbon::parse($request->start_date)->addDays($minNightsStay)],
-            ])
+        if (! $packageConfig || ! $packageConfig->destination_origin?->destination) {
+            return response()->json([
+                'data' => 'No configuration found for this route.',
+            ], 404);
+        }
+
+        $minNightsStay = $packageConfig->destination_origin->destination->min_nights_stay ?? 0;
+
+        $minReturnDate = Carbon::parse($validated['start_date'])->addDays($minNightsStay);
+
+        $availableReturnDates = DirectFlightAvailability::query()
+            ->where('destination_origin_id', $destinationOrigin->id)
+            ->where('is_return_flight', true)
+            ->whereDate('date', '>=', $minReturnDate)
             ->orderBy('date')
-            ->take(15)
-            ->pluck('date')->toArray();
+            ->limit(15)
+            ->pluck('date')
+            ->toArray();
 
-        if ($directFlightDates) {
+        if (empty($availableReturnDates)) {
             return response()->json([
-                'data' => [
-                    'dates' => $directFlightDates,
-                ],
-            ], 200);
-        } else {
-            return response()->json([
-                'data' => 'There are no available dates',
+                'data' => 'There are no available return flights.',
             ], 200);
         }
+
+        return response()->json([
+            'data' => [
+                'dates' => $availableReturnDates,
+            ],
+        ]);
     }
 
     public function getAvailableDates(Request $request)
