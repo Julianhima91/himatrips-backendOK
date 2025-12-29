@@ -69,6 +69,9 @@ class LiveSearchHotels implements ShouldQueue
      */
     public function handle(): void
     {
+        // Log the nationality being used for this hotel search
+        \Log::channel('livesearch')->info("{$this->batchId} LiveSearchHotels job started - Nationality: {$this->countryCode}");
+        
         // get the hotel IDs
         //        $hotelIds = Hotel::where('destination_id', $this->destination)->pluck('hotel_id');
 
@@ -320,6 +323,9 @@ class LiveSearchHotels implements ShouldQueue
 
     private function sendXmlRequest($boardOptions, $hotelIds, $arrivalDate, $nights, $roomsXml, $countryCode)
     {
+        // Log nationality being used for verification
+        \Log::channel('livesearch')->info("{$this->batchId} Hotel Search - Using Nationality: {$countryCode}");
+        
         $filterRoomBasisesXml = '<FilterRoomBasises>';
 
         if ($boardOptions) {
@@ -354,6 +360,10 @@ class LiveSearchHotels implements ShouldQueue
 </Root>
 XML;
         $this->lastXmlRequest = $xmlRequestBody;
+        
+        // Log a snippet of the XML to verify Nationality is included
+        $nationalitySnippet = "<Nationality>{$countryCode}</Nationality>";
+        \Log::channel('livesearch')->info("{$this->batchId} Hotel Search XML snippet with Nationality: {$nationalitySnippet}");
 
         $header = Soap::header(
             'authentication',

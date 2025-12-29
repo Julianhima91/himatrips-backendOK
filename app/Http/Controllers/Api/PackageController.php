@@ -219,11 +219,12 @@ class PackageController extends Controller
                     }
                     $nationality = strtoupper($countryCode);
                     $countryName = $origin->country ? ($origin->country->name ?? 'N/A') : 'N/A';
-                    $logger->info("$batchId Using nationality: {$nationality} for origin: {$origin->name} (Country: {$countryName})");
+                    $logger->info("$batchId [NATIONALITY] Origin: {$origin->name} | Country: {$countryName} | Country Code: {$countryCode} | Nationality sent to API: {$nationality}");
                     $jobs[] = new LiveSearchHotels($hotelStartDate, $request->nights, $request->destination_id, $totalAdults, $totalChildren, $totalInfants, $request->rooms, $batchId, $nationality);
                 } catch (\Exception $e) {
                     $errorLogger->error("$batchId Error setting nationality for hotel search: {$e->getMessage()}");
                     // Fallback to default
+                    $logger->warning("$batchId [NATIONALITY] Using fallback: AL (default)");
                     $jobs[] = new LiveSearchHotels($hotelStartDate, $request->nights, $request->destination_id, $totalAdults, $totalChildren, $totalInfants, $request->rooms, $batchId, 'AL');
                 }
             }
@@ -428,6 +429,7 @@ class PackageController extends Controller
                         // Use origin's country code for nationality (e.g., IT for Milano-Rome, GB for UK routes)
                         $countryCode = $origin->country && $origin->country->code ? $origin->country->code : 'AL';
                         $nationality = strtoupper($countryCode);
+                        $logger->info("$batchId [NATIONALITY] Long flight - Origin: {$origin->name} | Nationality: {$nationality}");
                         try {
                             LiveSearchHotels::dispatch($hotelCheckInDate, $calculatedNights, $request->destination_id, $totalAdults, $totalChildren, $totalInfants, $request->rooms, $batchId, $nationality);
                             $logger->info("$batchId Dispatched hotel search for long flight destination with check-in: {$hotelCheckInDate}, nights: {$calculatedNights}");
@@ -524,6 +526,7 @@ class PackageController extends Controller
                     // Use origin's country code for nationality (e.g., IT for Milano-Rome, GB for UK routes)
                     $countryCode = $origin->country && $origin->country->code ? $origin->country->code : 'AL';
                     $nationality = strtoupper($countryCode);
+                    $logger->info("$batchId [NATIONALITY] Fallback - Origin: {$origin->name} | Nationality: {$nationality}");
                     LiveSearchHotels::dispatch($fallbackCheckInDate, $request->nights, $request->destination_id, $totalAdults, $totalChildren, $totalInfants, $request->rooms, $batchId, $nationality);
                     
                     // Presim pak më shumë për hotel search fallback
