@@ -19,7 +19,7 @@ class Kernel extends ConsoleKernel
      */
     protected function schedule(Schedule $schedule): void
     {
-        $schedule->job(new CheckDirectFlightForPackageConfigJob)->dailyAt('00:00');
+        $schedule->job(new CheckDirectFlightForPackageConfigJob)->monthlyOn(1, '00:00');
         $schedule->job(new DestinationOriginJob)->dailyAt('00:00');
         $schedule->command('ads:refresh economic')->everyFifteenMinutes();
         $schedule->command('ads:refresh weekend')->everyFifteenMinutes();
