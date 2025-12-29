@@ -11,8 +11,8 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('origins', function (Blueprint $table) {
-            $table->string('country_code', 2)->nullable();
+        Schema::table('countries', function (Blueprint $table) {
+            $table->string('code', 2)->nullable()->after('name');
         });
     }
 
@@ -21,8 +21,9 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('origins', function (Blueprint $table) {
-            $table->dropColumn('country_code');
+        Schema::table('countries', function (Blueprint $table) {
+            $table->dropColumn('code');
         });
     }
 };
+

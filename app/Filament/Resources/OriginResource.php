@@ -56,7 +56,11 @@ class OriginResource extends Resource
                     ->searchable(),
                 TextColumn::make('city')
                     ->searchable(),
-                TextColumn::make('country')
+                TextColumn::make('country.name')
+                    ->label('Country')
+                    ->searchable(),
+                TextColumn::make('country.code')
+                    ->label('Country Code')
                     ->searchable(),
                 TextColumn::make('created_at')
                     ->dateTime()

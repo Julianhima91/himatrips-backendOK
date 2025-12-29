@@ -12,45 +12,49 @@ class CountrySeeder extends Seeder
      */
     public function run(): void
     {
+        // Mapping of country names to ISO 2-letter country codes
         $countries = [
-            'France',
-            'Austri',
-            'Italy',
-            'Spain',
-            'Turqi',
-            'Hungari',
-            'United Emirates',
-            'Austria',
-            'Itali',
-            'Holland',
-            'Egypt',
-            'Greqi',
-            'Maldives',
-            'Belgjike',
-            'Gjermani',
-            'Ceki',
-            'Suedi',
-            'Spanje',
-            'Portugali',
-            'Rumani',
-            'Malta',
-            'Canary',
-            'Egjipt',
-            'Thailand',
-            'UAE',
-            'Shqiperi',
-            'Zvicer',
-            'Angli',
-            'Irelande',
-            'Kosova',
-            'Maqedonia Veriut',
-            'Hollande',
-            'Emirate',
-            'Finland',
+            'France' => 'FR',
+            'Austri' => 'AT',
+            'Italy' => 'IT',
+            'Spain' => 'ES',
+            'Turqi' => 'TR',
+            'Hungari' => 'HU',
+            'United Emirates' => 'AE',
+            'Austria' => 'AT',
+            'Itali' => 'IT',
+            'Holland' => 'NL',
+            'Egypt' => 'EG',
+            'Greqi' => 'GR',
+            'Maldives' => 'MV',
+            'Belgjike' => 'BE',
+            'Gjermani' => 'DE',
+            'Ceki' => 'CZ',
+            'Suedi' => 'SE',
+            'Spanje' => 'ES',
+            'Portugali' => 'PT',
+            'Rumani' => 'RO',
+            'Malta' => 'MT',
+            'Canary' => 'ES', // Canary Islands are part of Spain
+            'Egjipt' => 'EG',
+            'Thailand' => 'TH',
+            'UAE' => 'AE',
+            'Shqiperi' => 'AL',
+            'Zvicer' => 'CH',
+            'Angli' => 'GB',
+            'Irelande' => 'IE',
+            'Kosova' => 'XK', // Kosovo uses XK as ISO code (not official but widely used)
+            'Maqedonia Veriut' => 'MK',
+            'Hollande' => 'NL',
+            'Emirate' => 'AE',
+            'Finland' => 'FI',
         ];
 
-        foreach (array_unique($countries) as $country) {
-            Country::updateOrCreate(['name' => $country]);
+        foreach ($countries as $name => $code) {
+            Country::updateOrCreate(
+                ['name' => $name],
+                ['code' => $code]
+            );
         }
     }
 }

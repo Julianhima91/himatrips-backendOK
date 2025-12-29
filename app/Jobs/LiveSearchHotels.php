@@ -60,7 +60,8 @@ class LiveSearchHotels implements ShouldQueue
         $this->infants = $infants;
         $this->rooms = $rooms;
         $this->batchId = $batchId;
-        $this->countryCode = $countryCode;
+        // Ensure country code is uppercase (ISO 2-letter code, e.g., IT, GB, AL)
+        $this->countryCode = strtoupper($countryCode ?? 'AL');
     }
 
     /**
