@@ -198,6 +198,7 @@ class PackageController extends Controller
             // Use origin's country code for nationality (e.g., IT for Milano-Rome, GB for UK routes)
             if (!$isLongFlightDestination) {
                 $nationality = strtoupper($origin->country?->code ?? 'AL');
+                $logger->info("$batchId Using nationality: {$nationality} for origin: {$origin->name} (Country: {$origin->country?->name ?? 'N/A'})");
                 $jobs[] = new LiveSearchHotels($hotelStartDate, $request->nights, $request->destination_id, $totalAdults, $totalChildren, $totalInfants, $request->rooms, $batchId, $nationality);
             }
 
