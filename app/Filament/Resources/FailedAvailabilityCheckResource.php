@@ -9,13 +9,11 @@ use App\Models\DestinationOrigin;
 use App\Models\FailedAvailabilityCheck;
 use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
-use Filament\Actions\DeleteBulkAction;
 use Filament\Forms;
 use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Tables;
-use Filament\Tables\Actions\DeleteAction;
 use Filament\Tables\Table;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -164,7 +162,6 @@ class FailedAvailabilityCheckResource extends Resource
                                 ->send();
                         }
                     }),
-                DeleteAction::make(),
             ])
             ->bulkActions([
                 BulkActionGroup::make([
@@ -232,7 +229,6 @@ class FailedAvailabilityCheckResource extends Resource
                                 ->body('All failed checks are being retried in the background.')
                                 ->send();
                         }),
-                    DeleteBulkAction::make(),
                 ]),
             ])
             ->defaultSort('created_at', 'desc')
