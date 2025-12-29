@@ -12,6 +12,11 @@ use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Tables;
+use Filament\Tables\Actions\Action;
+use Filament\Tables\Actions\BulkAction;
+use Filament\Tables\Actions\BulkActionGroup;
+use Filament\Tables\Actions\DeleteAction;
+use Filament\Tables\Actions\DeleteBulkAction;
 use Filament\Tables\Table;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -110,7 +115,7 @@ class FailedAvailabilityCheckResource extends Resource
                     }),
             ])
             ->actions([
-                Tables\Actions\Action::make('retry')
+                Action::make('retry')
                     ->label('Retry')
                     ->icon('heroicon-o-arrow-path')
                     ->color('warning')
@@ -160,11 +165,11 @@ class FailedAvailabilityCheckResource extends Resource
                                 ->send();
                         }
                     }),
-                Tables\Actions\DeleteAction::make(),
+                DeleteAction::make(),
             ])
             ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\BulkAction::make('retry_selected')
+                BulkActionGroup::make([
+                    BulkAction::make('retry_selected')
                         ->label('Retry Selected')
                         ->icon('heroicon-o-arrow-path')
                         ->color('warning')
@@ -214,7 +219,7 @@ class FailedAvailabilityCheckResource extends Resource
                                 ->body("Successfully retried: {$successCount}, Failed: {$failCount}")
                                 ->send();
                         }),
-                    Tables\Actions\BulkAction::make('retry_all')
+                    BulkAction::make('retry_all')
                         ->label('Retry All Failed Checks')
                         ->icon('heroicon-o-arrow-path')
                         ->color('danger')
@@ -228,7 +233,7 @@ class FailedAvailabilityCheckResource extends Resource
                                 ->body('All failed checks are being retried in the background.')
                                 ->send();
                         }),
-                    Tables\Actions\DeleteBulkAction::make(),
+                    DeleteBulkAction::make(),
                 ]),
             ])
             ->defaultSort('created_at', 'desc')
