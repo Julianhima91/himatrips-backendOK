@@ -34,6 +34,12 @@ class CountryResource extends Resource
                 TextInput::make('name')
                     ->required()
                     ->maxLength(255),
+                TextInput::make('code')
+                    ->label('Country Code (ISO 2-letter)')
+                    ->maxLength(2)
+                    ->helperText('ISO 2-letter country code (e.g., IT, GB, AL, FR)')
+                    ->placeholder('IT')
+                    ->uppercase(),
             ]);
     }
 
@@ -42,6 +48,10 @@ class CountryResource extends Resource
         return $table
             ->columns([
                 TextColumn::make('name')
+                    ->sortable()
+                    ->searchable(),
+                TextColumn::make('code')
+                    ->label('Country Code')
                     ->sortable()
                     ->searchable(),
                 TextColumn::make('created_at')
