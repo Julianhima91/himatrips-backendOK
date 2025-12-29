@@ -87,7 +87,7 @@ class ClientSearchesResource extends Resource
                 Action::make('Flights Json')
                     ->action(fn (ClientSearches $record) => true)
                     ->fillForm(fn (ClientSearches $record): array => [
-                        'all_flights' => $record->inboundFlight->all_flights,
+                        'all_flights' => $record->inboundFlight?->all_flights ?? 'No flight data available',
                     ])
                     ->schema([
                         TextArea::make('all_flights')

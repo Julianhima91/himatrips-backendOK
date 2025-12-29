@@ -41,27 +41,42 @@ class UpdateClientSearches extends Command
                 continue;
             }
 
+            // Check if destination_origin and its relationships exist
+            if (!$packageConfig->destination_origin || 
+                !$packageConfig->destination_origin->origin || 
+                !$packageConfig->destination_origin->destination) {
+                continue;
+            }
+
             $originName = $packageConfig->destination_origin->origin->name;
             $originId = $packageConfig->destination_origin->origin->id;
             $destinationName = $packageConfig->destination_origin->destination->name;
             $destinationId = $packageConfig->destination_origin->destination->id;
             $hotelData = $package->hotelData;
 
+            // Skip if hotelData is missing
+            if (!$hotelData) {
+                continue;
+            }
+
+            $inboundFlight = $package->inboundFlight;
+            $directFlightsOnly = $inboundFlight && $inboundFlight->stop_count === 0;
+
             $url = config('app.front_url').'/search-'.
                 strtolower(str_replace(' ', '-', $originName)).'-to-'.
                 strtolower(str_replace(' ', '-', $destinationName)).'?'.
                 'query='.base64_encode(http_build_query([
                     'batch_id' => $package->batch_id,
-                    'nights' => $hotelData->number_of_nights,
-                    'checkin_date' => $hotelData->check_in_date,
+                    'nights' => $hotelData->number_of_nights ?? 0,
+                    'checkin_date' => $hotelData->check_in_date ?? '',
                     'origin_id' => $packageConfig->destination_origin->origin->id,
                     'destination_id' => $packageConfig->destination_origin->destination->id,
                     'page' => 1,
-                    'rooms' => $hotelData->room_object,
-                    'directFlightsOnly' => $package->inboundFlight->stop_count === 0 ? 'true' : 'false',
-                    'adults' => $hotelData->adults,
-                    'children' => $hotelData->children,
-                    'infants' => $hotelData->infants,
+                    'rooms' => $hotelData->room_object ?? [],
+                    'directFlightsOnly' => $directFlightsOnly ? 'true' : 'false',
+                    'adults' => $hotelData->adults ?? 0,
+                    'children' => $hotelData->children ?? 0,
+                    'infants' => $hotelData->infants ?? 0,
                     'refresh' => 0,
                 ]));
 
@@ -74,13 +89,13 @@ class UpdateClientSearches extends Command
                 'destination_id' => $destinationId,
                 'package_config_id' => $package->package_config_id,
                 'batch_id' => $package->batch_id,
-                'adults' => $hotelData->adults,
-                'children' => $hotelData->children,
-                'infants' => $hotelData->infants,
-                'number_of_nights' => $hotelData->number_of_nights,
-                'checkin_date' => $hotelData->check_in_date,
-                'rooms' => json_encode($hotelData->room_object),
-                'direct_flights_only' => $package->inboundFlight->stop_count === 0,
+                'adults' => $hotelData->adults ?? 0,
+                'children' => $hotelData->children ?? 0,
+                'infants' => $hotelData->infants ?? 0,
+                'number_of_nights' => $hotelData->number_of_nights ?? 0,
+                'checkin_date' => $hotelData->check_in_date ?? null,
+                'rooms' => json_encode($hotelData->room_object ?? []),
+                'direct_flights_only' => $directFlightsOnly,
                 'url' => $url,
                 'created_at' => Carbon::now(),
                 'updated_at' => Carbon::now(),
