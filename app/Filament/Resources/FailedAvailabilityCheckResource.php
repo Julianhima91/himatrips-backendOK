@@ -28,10 +28,10 @@ class FailedAvailabilityCheckResource extends Resource
 
     protected static ?int $navigationSort = 10;
 
-    public static function form(Form $form): Form
+    public static function form(Schema $schema): Schema
     {
-        return $form
-            ->schema([
+        return $schema
+            ->components([
                 Forms\Components\TextInput::make('year_month')
                     ->label('Year-Month')
                     ->disabled()
