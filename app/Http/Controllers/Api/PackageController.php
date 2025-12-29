@@ -197,8 +197,10 @@ class PackageController extends Controller
             // Për destinacione normale, dispatch-ojmë hotel search menjëherë
             // Use origin's country code for nationality (e.g., IT for Milano-Rome, GB for UK routes)
             if (!$isLongFlightDestination) {
-                $nationality = strtoupper($origin->country?->code ?? 'AL');
-                $logger->info("$batchId Using nationality: {$nationality} for origin: {$origin->name} (Country: {$origin->country?->name ?? 'N/A'})");
+                $countryCode = $origin->country && $origin->country->code ? $origin->country->code : 'AL';
+                $nationality = strtoupper($countryCode);
+                $countryName = $origin->country ? $origin->country->name : 'N/A';
+                $logger->info("$batchId Using nationality: {$nationality} for origin: {$origin->name} (Country: {$countryName})");
                 $jobs[] = new LiveSearchHotels($hotelStartDate, $request->nights, $request->destination_id, $totalAdults, $totalChildren, $totalInfants, $request->rooms, $batchId, $nationality);
             }
 
@@ -400,7 +402,8 @@ class PackageController extends Controller
                         
                         // Dispatch hotel search me datën dhe numrin e netëve të saktë
                         // Use origin's country code for nationality (e.g., IT for Milano-Rome, GB for UK routes)
-                        $nationality = strtoupper($origin->country?->code ?? 'AL');
+                        $countryCode = $origin->country && $origin->country->code ? $origin->country->code : 'AL';
+                        $nationality = strtoupper($countryCode);
                         try {
                             LiveSearchHotels::dispatch($hotelCheckInDate, $calculatedNights, $request->destination_id, $totalAdults, $totalChildren, $totalInfants, $request->rooms, $batchId, $nationality);
                             $logger->info("$batchId Dispatched hotel search for long flight destination with check-in: {$hotelCheckInDate}, nights: {$calculatedNights}");
@@ -495,7 +498,8 @@ class PackageController extends Controller
                     $fallbackCheckInDate = Carbon::parse($date)->addDay()->format('Y-m-d');
                     $logger->info("$batchId Attempting fallback hotel search with date: {$fallbackCheckInDate}");
                     // Use origin's country code for nationality (e.g., IT for Milano-Rome, GB for UK routes)
-                    $nationality = strtoupper($origin->country?->code ?? 'AL');
+                    $countryCode = $origin->country && $origin->country->code ? $origin->country->code : 'AL';
+                    $nationality = strtoupper($countryCode);
                     LiveSearchHotels::dispatch($fallbackCheckInDate, $request->nights, $request->destination_id, $totalAdults, $totalChildren, $totalInfants, $request->rooms, $batchId, $nationality);
                     
                     // Presim pak më shumë për hotel search fallback
