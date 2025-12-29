@@ -128,7 +128,13 @@ class PackageController extends Controller
             ], 400);
         }
 
-        $origin = Origin::with('country')->where('id', $request->origin_id)->first();
+        try {
+            $origin = Origin::with('country')->where('id', $request->origin_id)->first();
+        } catch (\Exception $e) {
+            $errorLogger->error("Error loading origin: {$e->getMessage()}");
+            $origin = Origin::where('id', $request->origin_id)->first();
+        }
+        
         if (! $origin) {
             $errorLogger->error("Origin not found for id: {$request->origin_id}");
 
@@ -136,6 +142,15 @@ class PackageController extends Controller
                 'success' => false,
                 'message' => 'Origin not found.',
             ], 400);
+        }
+        
+        // Ensure country relationship is loaded if not already
+        if (!$origin->relationLoaded('country') && $origin->country_id) {
+            try {
+                $origin->load('country');
+            } catch (\Exception $e) {
+                $errorLogger->warning("Could not load country relationship for origin {$origin->id}: {$e->getMessage()}");
+            }
         }
 
         $destinationOrigin = DestinationOrigin::query()
@@ -197,11 +212,20 @@ class PackageController extends Controller
             // Për destinacione normale, dispatch-ojmë hotel search menjëherë
             // Use origin's country code for nationality (e.g., IT for Milano-Rome, GB for UK routes)
             if (!$isLongFlightDestination) {
-                $countryCode = $origin->country && $origin->country->code ? $origin->country->code : 'AL';
-                $nationality = strtoupper($countryCode);
-                $countryName = $origin->country ? $origin->country->name : 'N/A';
-                $logger->info("$batchId Using nationality: {$nationality} for origin: {$origin->name} (Country: {$countryName})");
-                $jobs[] = new LiveSearchHotels($hotelStartDate, $request->nights, $request->destination_id, $totalAdults, $totalChildren, $totalInfants, $request->rooms, $batchId, $nationality);
+                try {
+                    $countryCode = 'AL'; // default
+                    if ($origin->country) {
+                        $countryCode = $origin->country->code ?? 'AL';
+                    }
+                    $nationality = strtoupper($countryCode);
+                    $countryName = $origin->country ? ($origin->country->name ?? 'N/A') : 'N/A';
+                    $logger->info("$batchId Using nationality: {$nationality} for origin: {$origin->name} (Country: {$countryName})");
+                    $jobs[] = new LiveSearchHotels($hotelStartDate, $request->nights, $request->destination_id, $totalAdults, $totalChildren, $totalInfants, $request->rooms, $batchId, $nationality);
+                } catch (\Exception $e) {
+                    $errorLogger->error("$batchId Error setting nationality for hotel search: {$e->getMessage()}");
+                    // Fallback to default
+                    $jobs[] = new LiveSearchHotels($hotelStartDate, $request->nights, $request->destination_id, $totalAdults, $totalChildren, $totalInfants, $request->rooms, $batchId, 'AL');
+                }
             }
 
             foreach ($jobs as $job) {
