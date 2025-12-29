@@ -37,9 +37,8 @@ class CountryResource extends Resource
                 TextInput::make('code')
                     ->label('Country Code (ISO 2-letter)')
                     ->maxLength(2)
-                    ->helperText('ISO 2-letter country code (e.g., IT, GB, AL, FR)')
-                    ->placeholder('IT')
-                    ->uppercase(),
+                    ->helperText('ISO 2-letter country code (e.g., IT, GB, AL, FR). Will be converted to uppercase automatically.')
+                    ->placeholder('IT'),
             ]);
     }
 

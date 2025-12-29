@@ -9,6 +9,15 @@ class Country extends Model
 {
     protected $guarded = [];
 
+    protected static function booted(): void
+    {
+        static::saving(function ($country) {
+            if ($country->code) {
+                $country->code = strtoupper($country->code);
+            }
+        });
+    }
+
     public function destinations(): HasMany
     {
         return $this->hasMany(Destination::class);
