@@ -1,0 +1,6 @@
+{
+"debug": true,
+"eventLimits": {
+    "maxPayloadInKb": 15000
+        }
+}
