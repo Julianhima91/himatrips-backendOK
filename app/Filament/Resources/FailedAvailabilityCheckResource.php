@@ -20,7 +20,7 @@ class FailedAvailabilityCheckResource extends Resource
 {
     protected static ?string $model = FailedAvailabilityCheck::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-exclamation-triangle';
+    protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-exclamation-triangle';
 
     protected static ?string $navigationLabel = 'Failed Availability Checks';
 
