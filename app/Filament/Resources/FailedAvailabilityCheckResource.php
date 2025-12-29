@@ -7,16 +7,15 @@ use App\Jobs\RetryFailedAvailabilityJob;
 use App\Models\Airport;
 use App\Models\DestinationOrigin;
 use App\Models\FailedAvailabilityCheck;
+use Filament\Actions\Action;
+use Filament\Actions\BulkActionGroup;
+use Filament\Actions\DeleteBulkAction;
 use Filament\Forms;
 use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Tables;
-use Filament\Tables\Actions\Action;
-use Filament\Tables\Actions\BulkAction;
-use Filament\Tables\Actions\BulkActionGroup;
 use Filament\Tables\Actions\DeleteAction;
-use Filament\Tables\Actions\DeleteBulkAction;
 use Filament\Tables\Table;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -114,7 +113,7 @@ class FailedAvailabilityCheckResource extends Resource
                         );
                     }),
             ])
-            ->actions([
+            ->recordActions([
                 Action::make('retry')
                     ->label('Retry')
                     ->icon('heroicon-o-arrow-path')
@@ -169,7 +168,7 @@ class FailedAvailabilityCheckResource extends Resource
             ])
             ->bulkActions([
                 BulkActionGroup::make([
-                    BulkAction::make('retry_selected')
+                    Action::make('retry_selected')
                         ->label('Retry Selected')
                         ->icon('heroicon-o-arrow-path')
                         ->color('warning')
@@ -219,7 +218,7 @@ class FailedAvailabilityCheckResource extends Resource
                                 ->body("Successfully retried: {$successCount}, Failed: {$failCount}")
                                 ->send();
                         }),
-                    BulkAction::make('retry_all')
+                    Action::make('retry_all')
                         ->label('Retry All Failed Checks')
                         ->icon('heroicon-o-arrow-path')
                         ->color('danger')
