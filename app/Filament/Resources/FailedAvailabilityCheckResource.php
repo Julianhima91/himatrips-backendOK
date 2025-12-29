@@ -24,7 +24,7 @@ class FailedAvailabilityCheckResource extends Resource
 
     protected static ?string $navigationLabel = 'Failed Availability Checks';
 
-    protected static ?string $navigationGroup = 'Flight Management';
+    protected static string|\UnitEnum|null $navigationGroup = 'Flight Management';
 
     protected static ?int $navigationSort = 10;
 
