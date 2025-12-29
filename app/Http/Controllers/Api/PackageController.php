@@ -145,11 +145,26 @@ class PackageController extends Controller
         }
         
         // Ensure country relationship is loaded if not already
+        $logger->info("$batchId Origin loaded - ID: {$origin->id}, Name: {$origin->name}, country_id: " . ($origin->country_id ?? 'NULL'));
+        
         if (!$origin->relationLoaded('country') && $origin->country_id) {
             try {
                 $origin->load('country');
+                $logger->info("$batchId Country relationship loaded - country_id: {$origin->country_id}, country: " . ($origin->country ? $origin->country->name : 'NULL'));
             } catch (\Exception $e) {
                 $errorLogger->warning("Could not load country relationship for origin {$origin->id}: {$e->getMessage()}");
+            }
+        } elseif (!$origin->country_id) {
+            $logger->warning("$batchId Origin {$origin->id} ({$origin->name}) does not have country_id set!");
+        }
+        
+        // Debug: Check if country exists in database
+        if ($origin->country_id) {
+            $countryExists = \App\Models\Country::where('id', $origin->country_id)->exists();
+            $logger->info("$batchId Country ID {$origin->country_id} exists in database: " . ($countryExists ? 'YES' : 'NO'));
+            if ($countryExists) {
+                $country = \App\Models\Country::find($origin->country_id);
+                $logger->info("$batchId Country details - Name: {$country->name}, Code: " . ($country->code ?? 'NULL'));
             }
         }
 
