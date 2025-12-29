@@ -12,6 +12,7 @@ class FlightData extends Model
     protected $casts = [
         'departure' => 'datetime',
         'arrival' => 'datetime',
+        'segments' => 'array',
     ];
 
     public function originAirport(): BelongsTo

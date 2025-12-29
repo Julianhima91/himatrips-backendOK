@@ -182,7 +182,8 @@ class PackageController extends Controller
 
             if ($isLongFlightDestination) {
                 $return_date = Carbon::parse($return_date)->addDay()->format('Y-m-d');
-                $hotelStartDate = Carbon::parse($date)->addDay()->format('Y-m-d');
+                // Për long flight destinations, hotel search do të bëhet pasi të marrim datën aktuale të mbërritjes së fluturimit
+                $hotelStartDate = null;
             } else {
                 $hotelStartDate = $date;
             }
@@ -191,8 +192,12 @@ class PackageController extends Controller
                 // new LiveSearchFlightsApi2($origin_airport, $destination_airport, $date, $return_date, $origin_airport, $destination_airport, $totalAdults, $totalChildren, $totalInfants, $batchId),
                 new LiveSearchFlights($date, $return_date, $origin_airport, $destination_airport, $totalAdults, $totalChildren, $totalInfants, $batchId),
                 new LiveSearchFlightsApi3($date, $return_date, $origin_airport, $destination_airport, $totalAdults, $totalChildren, $totalInfants, $batchId),
-                new LiveSearchHotels($hotelStartDate, $request->nights, $request->destination_id, $totalAdults, $totalChildren, $totalInfants, $request->rooms, $batchId, $origin->country_code ?? 'AL'),
             ];
+
+            // Për destinacione normale, dispatch-ojmë hotel search menjëherë
+            if (!$isLongFlightDestination) {
+                $jobs[] = new LiveSearchHotels($hotelStartDate, $request->nights, $request->destination_id, $totalAdults, $totalChildren, $totalInfants, $request->rooms, $batchId, $origin->country_code ?? 'AL');
+            }
 
             foreach ($jobs as $job) {
                 Bus::dispatch($job);
@@ -203,7 +208,14 @@ class PackageController extends Controller
             $startTime = time();
 
             while (time() - $startTime < $maxWaitTime) {
-                if (Cache::get("job_completed_{$batchId}") && Cache::get("hotel_job_completed_{$batchId}")) {
+                // Për long flight destinations, duhet të presim vetëm fluturimet
+                // Për destinacione normale, duhet të presim fluturimet dhe hotelët
+                $flightsCompleted = Cache::get("job_completed_{$batchId}");
+                $hotelsCompleted = Cache::get("hotel_job_completed_{$batchId}");
+                
+                $shouldCheckHotels = !$isLongFlightDestination;
+                
+                if ($flightsCompleted && ($shouldCheckHotels ? $hotelsCompleted : true)) {
                     [$outbound_flight_hydrated, $inbound_flight_hydrated] = $flights->handle($date, $destination, $batchId, $return_date, $request->origin_id, $request->destination_id);
 
                     if (is_null($outbound_flight_hydrated) || is_null($inbound_flight_hydrated)) {
@@ -226,6 +238,200 @@ class PackageController extends Controller
                             'message' => 'No flights found.',
                             'batch_id' => $batchId,
                         ], 400);
+                    }
+
+                    // Për long flight destinations, bëjmë hotel search pasi të kemi fluturimin me datën aktuale të mbërritjes
+                    if ($isLongFlightDestination && !$hotelsCompleted) {
+                        // Verifikojmë që fluturimet janë të vlefshme përpara se të llogarisim datat
+                        if (!$outbound_flight_hydrated || !$inbound_flight_hydrated) {
+                            $logger->error("$batchId Cannot calculate hotel dates - flights are null");
+                            // Kjo nuk duhet të ndodhë sepse kemi kontrolluar më lart, por shtojmë si siguri
+                            continue; // Skip këtë iteration dhe provo përsëri
+                        }
+                        
+                        // Llogarit datën e check-in bazuar në datën aktuale të mbërritjes së fluturimit
+                        // Për fluturime me ndalesë, duhet të marrim datën e segmentit të fundit që arrin në destinacion
+                        $arrivalDate = null;
+                        
+                        // Nëse ka segments, marrim arrival date nga segmenti i fundit (që arrin në destinacion)
+                        // Segments tani është automatikisht array për shkak të cast-imit në FlightData model
+                        $segments = $outbound_flight_hydrated->segments;
+                        
+                        if (is_array($segments) && count($segments) > 0) {
+                            // Segmenti i fundit është ai që arrin në destinacion
+                            $lastSegment = end($segments);
+                            reset($segments); // Reset pointer
+                            
+                            // Kontrollojmë të gjitha formatet e mundshme të arrival
+                            // API 1 dhe API 3 përdorin 'arrival', por kontrollojmë edhe variante të tjera
+                            $arrivalTime = $lastSegment['arrival'] 
+                                ?? $lastSegment['arrival_at'] 
+                                ?? $lastSegment['arrivalDateTime'] 
+                                ?? $lastSegment['arrival_datetime']
+                                ?? null;
+                            
+                            if ($arrivalTime) {
+                                try {
+                                    $arrivalDate = Carbon::parse($arrivalTime);
+                                    $logger->info("$batchId Using last segment arrival date: {$arrivalTime} (Flight has " . count($segments) . " segments, last segment arrives at: {$arrivalDate->format('Y-m-d H:i')})");
+                                } catch (\Exception $e) {
+                                    $logger->warning("$batchId Failed to parse last segment arrival: {$arrivalTime} - {$e->getMessage()}");
+                                }
+                            } else {
+                                $logger->warning("$batchId Last segment does not have arrival time. Segment structure: " . json_encode(array_keys($lastSegment)));
+                            }
+                        }
+                        
+                        // Nëse nuk kemi segments ose nuk mund t'i marrim, përdorim arrival total
+                        if (!$arrivalDate) {
+                            // Verifikojmë që arrival nuk është null
+                            if (!$outbound_flight_hydrated->arrival) {
+                                $logger->error("$batchId Outbound flight arrival is null. Using request date + 1 day as fallback.");
+                                $arrivalDate = Carbon::parse($date)->addDay();
+                            } else {
+                                try {
+                                    $arrivalDate = Carbon::parse($outbound_flight_hydrated->arrival);
+                                    $logger->info("$batchId Using total flight arrival date: {$outbound_flight_hydrated->arrival} (segments not available or parsing failed)");
+                                } catch (\Exception $e) {
+                                    // Nëse edhe arrival total dështon, përdorim datën nga request si fallback dhe shtojmë 1 ditë
+                                    $logger->error("$batchId Failed to parse outbound flight arrival date: {$outbound_flight_hydrated->arrival} - {$e->getMessage()}. Using request date + 1 day as fallback.");
+                                    $arrivalDate = Carbon::parse($date)->addDay();
+                                }
+                            }
+                        }
+                        
+                        // Verifikojmë që arrivalDate është e vlefshme
+                        if (!$arrivalDate || !($arrivalDate instanceof Carbon)) {
+                            $logger->error("$batchId Invalid arrival date after all attempts. Using request date + 1 day as final fallback.");
+                            $arrivalDate = Carbon::parse($date)->addDay();
+                        }
+                        
+                        // Verifikojmë që arrival date nuk është në të shkuarën (relative to today)
+                        // Por lejojmë që të jetë në të kaluarën nëse është vetëm pak (p.sh. për teste)
+                        $hotelCheckInDate = $arrivalDate->format('Y-m-d');
+                        
+                        // Llogarit check-out date bazuar në datën e nisjes së fluturimit kthimit
+                        // Për fluturime me ndalesë, duhet të marrim departure date nga segmenti i parë i inbound flight
+                        $checkOutDate = null;
+                        
+                        // Nëse ka segments për inbound flight, marrim departure date nga segmenti i parë
+                        $inboundSegments = $inbound_flight_hydrated->segments;
+                        
+                        if (is_array($inboundSegments) && count($inboundSegments) > 0) {
+                            // Segmenti i parë është ai që niset nga destinacioni (hotel check-out para kësaj date)
+                            $firstSegment = reset($inboundSegments);
+                            
+                            // Kontrollojmë të gjitha formatet e mundshme të departure
+                            $departureTime = $firstSegment['departure'] 
+                                ?? $firstSegment['departure_at'] 
+                                ?? $firstSegment['departureDateTime'] 
+                                ?? $firstSegment['departure_datetime']
+                                ?? null;
+                            
+                            if ($departureTime) {
+                                try {
+                                    $checkOutDate = Carbon::parse($departureTime);
+                                    $logger->info("$batchId Using first inbound segment departure date: {$departureTime} (Inbound flight has " . count($inboundSegments) . " segments, first segment departs at: {$checkOutDate->format('Y-m-d H:i')})");
+                                } catch (\Exception $e) {
+                                    $logger->warning("$batchId Failed to parse first inbound segment departure: {$departureTime} - {$e->getMessage()}");
+                                }
+                            }
+                        }
+                        
+                        // Nëse nuk kemi segments ose nuk mund t'i marrim, përdorim departure total
+                        if (!$checkOutDate) {
+                            // Verifikojmë që departure nuk është null
+                            if (!$inbound_flight_hydrated->departure) {
+                                $logger->error("$batchId Inbound flight departure is null. Using check-in + request nights as fallback.");
+                                $checkOutDate = $arrivalDate->copy()->addDays($request->nights);
+                            } else {
+                                try {
+                                    $checkOutDate = Carbon::parse($inbound_flight_hydrated->departure);
+                                    $logger->info("$batchId Using total inbound flight departure date: {$inbound_flight_hydrated->departure} (segments not available or parsing failed)");
+                                } catch (\Exception $e) {
+                                    // Nëse edhe departure total dështon, llogarisim bazuar në check-in date + nights
+                                    $logger->error("$batchId Failed to parse inbound flight departure date: {$inbound_flight_hydrated->departure} - {$e->getMessage()}. Using check-in + request nights as fallback.");
+                                    $checkOutDate = $arrivalDate->copy()->addDays($request->nights);
+                                }
+                            }
+                        }
+                        
+                        // Verifikojmë që checkOutDate është e vlefshme
+                        if (!$checkOutDate || !($checkOutDate instanceof Carbon)) {
+                            $logger->error("$batchId Invalid check-out date after all attempts. Using check-in + request nights as final fallback.");
+                            $checkOutDate = $arrivalDate->copy()->addDays($request->nights);
+                        }
+                        
+                        // Verifikojmë që check-out date është pas check-in date
+                        if ($checkOutDate <= $arrivalDate) {
+                            $logger->warning("$batchId Check-out date ({$checkOutDate->format('Y-m-d')}) is not after check-in date ({$arrivalDate->format('Y-m-d')}). Using check-in + request nights.");
+                            $checkOutDate = $arrivalDate->copy()->addDays($request->nights);
+                        }
+                        
+                        // Llogarit numrin e netëve bazuar në check-in dhe check-out dates
+                        // Check-out date zakonisht është ditën e nisjes së fluturimit, por hotel check-out është më herët në atë ditë
+                        // Prandaj, llogarisim diferencën në ditë midis check-in dhe check-out
+                        // Përdorim diff() dhe days për të siguruar rezultat të saktë
+                        $dateDiff = $arrivalDate->diff($checkOutDate);
+                        $calculatedNights = $dateDiff->days;
+                        
+                        // Nëse check-out është para check-in (jo normal, por e mundur), përdorim abs
+                        if ($checkOutDate < $arrivalDate) {
+                            $logger->warning("$batchId Check-out date ({$checkOutDate->format('Y-m-d')}) is before check-in date ({$arrivalDate->format('Y-m-d')}). This shouldn't happen!");
+                            $calculatedNights = abs($calculatedNights);
+                        }
+                        
+                        // Verifikojmë që numri i netëve është i vlefshëm (duhet të jetë pozitiv dhe të paktën 1)
+                        if ($calculatedNights <= 0) {
+                            $logger->warning("$batchId Calculated nights is {$calculatedNights}, using request nights: {$request->nights}");
+                            $calculatedNights = $request->nights; // Fallback në nights nga request
+                        }
+                        
+                        // Verifikojmë që numri i llogaritur i netëve nuk është shumë i ndryshëm nga ai i kërkuar
+                        // Nëse diferenca është më shumë se 2 netë, diçka është gabim
+                        if (abs($calculatedNights - $request->nights) > 2) {
+                            $logger->warning("$batchId Calculated nights ({$calculatedNights}) differs significantly from request nights ({$request->nights}). Using calculated nights but logging warning.");
+                        }
+                        
+                        $logger->info("$batchId Long flight destination - Check-in: {$hotelCheckInDate}, Check-out: {$checkOutDate->format('Y-m-d')}, Calculated nights: {$calculatedNights} (Request nights: {$request->nights})");
+                        
+                        // Dispatch hotel search me datën dhe numrin e netëve të saktë
+                        try {
+                            LiveSearchHotels::dispatch($hotelCheckInDate, $calculatedNights, $request->destination_id, $totalAdults, $totalChildren, $totalInfants, $request->rooms, $batchId, $origin->country_code ?? 'AL');
+                            $logger->info("$batchId Dispatched hotel search for long flight destination with check-in: {$hotelCheckInDate}, nights: {$calculatedNights}");
+                        } catch (\Exception $e) {
+                            $logger->error("$batchId Failed to dispatch hotel search: {$e->getMessage()}");
+                            // Nëse dispatch dështon, përdorim datën origjinale si fallback
+                            $hotelCheckInDate = Carbon::parse($date)->addDay()->format('Y-m-d');
+                            $calculatedNights = $request->nights;
+                            LiveSearchHotels::dispatch($hotelCheckInDate, $calculatedNights, $request->destination_id, $totalAdults, $totalChildren, $totalInfants, $request->rooms, $batchId, $origin->country_code ?? 'AL');
+                            $logger->info("$batchId Retried hotel search with fallback dates");
+                        }
+                        
+                        // Presim që hotel search të mbarojë
+                        $hotelSearchStartTime = time();
+                        $hotelSearchMaxWait = 45; // 45 sekonda për hotel search
+                        $hotelSearchTimedOut = false;
+                        
+                        while (time() - $hotelSearchStartTime < $hotelSearchMaxWait) {
+                            if (Cache::get("hotel_job_completed_{$batchId}")) {
+                                $logger->info("$batchId Hotel search completed successfully");
+                                break;
+                            }
+                            usleep($pollInterval * 1000000);
+                        }
+                        
+                        if (!Cache::get("hotel_job_completed_{$batchId}")) {
+                            $hotelSearchTimedOut = true;
+                            $logger->warning("$batchId Hotel search timeout for long flight destination after {$hotelSearchMaxWait} seconds");
+                            // Vazhdojmë përpara sepse mund të kemi pak rezultate në cache
+                        }
+                        
+                        // Nëse hotel search dështoi kompletisht, nuk ka rezultate
+                        if ($hotelSearchTimedOut && empty(Cache::get("hotels:{$batchId}"))) {
+                            $logger->error("$batchId Hotel search failed completely - no results in cache");
+                            // Në këtë rast, do të kthehemi më poshtë me hotels null dhe do të broadcast-ojmë failure
+                        }
                     }
 
                     $package_ids = $hotels->handle($destination, $outbound_flight_hydrated, $inbound_flight_hydrated, $batchId, $request->origin_id, $request->destination_id, $request->input('rooms'));
@@ -264,6 +470,48 @@ class PackageController extends Controller
                 usleep($pollInterval * 1000000); // microseconds
             }
 
+            // Nëse kemi arritur timeout dhe për long flight destinations hotel search nuk ka filluar akoma
+            // Por vetëm nëse fluturimet kanë mbaruar
+            $flightsCompletedAtTimeout = Cache::get("job_completed_{$batchId}");
+            if ($isLongFlightDestination && $flightsCompletedAtTimeout && !Cache::get("hotel_job_completed_{$batchId}") && empty(Cache::get("hotels:{$batchId}"))) {
+                $logger->error("Live search timeout for batch: $batchId (Long flight destination - flights completed but hotel search not started)");
+                
+                // Mund të provojmë të bëjmë hotel search me fallback dates
+                // Por vetëm nëse fluturimet kanë mbaruar me sukses
+                try {
+                    // Përpiqemi të marrim fluturimet nga cache për të llogaritur datat
+                    $cachedFlights = Cache::get("batch:{$batchId}:flights");
+                    if ($cachedFlights) {
+                        // Mund të provojmë të marrim fluturimin e parë dhe të llogarisim datat
+                        $logger->info("$batchId Attempting fallback hotel search with cached flights");
+                        // Në këtë rast, do të përdorim datën e request + 1 ditë si fallback
+                    }
+                    
+                    $fallbackCheckInDate = Carbon::parse($date)->addDay()->format('Y-m-d');
+                    $logger->info("$batchId Attempting fallback hotel search with date: {$fallbackCheckInDate}");
+                    LiveSearchHotels::dispatch($fallbackCheckInDate, $request->nights, $request->destination_id, $totalAdults, $totalChildren, $totalInfants, $request->rooms, $batchId, $origin->country_code ?? 'AL');
+                    
+                    // Presim pak më shumë për hotel search fallback
+                    $fallbackWaitTime = 30;
+                    $fallbackStartTime = time();
+                    while (time() - $fallbackStartTime < $fallbackWaitTime) {
+                        if (Cache::get("hotel_job_completed_{$batchId}")) {
+                            $logger->info("$batchId Fallback hotel search completed successfully");
+                            break;
+                        }
+                        usleep($pollInterval * 1000000);
+                    }
+                    
+                    if (!Cache::get("hotel_job_completed_{$batchId}")) {
+                        $logger->warning("$batchId Fallback hotel search also timed out");
+                    }
+                } catch (\Exception $e) {
+                    $logger->error("$batchId Fallback hotel search failed: {$e->getMessage()}");
+                }
+            } elseif ($isLongFlightDestination && !$flightsCompletedAtTimeout) {
+                $logger->error("Live search timeout for batch: $batchId (Long flight destination - flights did not complete in time)");
+            }
+            
             $this->cleanupCache($batchId);
             $logger->error("Live search timeout for batch: $batchId");
             broadcast(new LiveSearchFailed('Search timeout', $batchId));
