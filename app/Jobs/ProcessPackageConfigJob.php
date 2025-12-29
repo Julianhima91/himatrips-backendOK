@@ -61,8 +61,16 @@ class ProcessPackageConfigJob implements ShouldQueue
 
             $logger->info("Checking flights for PackageConfig ID {$this->packageConfig->id} - Month $yearMonth");
 
-            $this->checkFlights($originAirport, $destinationAirport, $yearMonth, $this->packageConfig->destination_origin_id, false);
-            $this->checkFlights($destinationAirport, $originAirport, $yearMonth, $this->packageConfig->destination_origin_id, true);
+            // Kontrollo të dyja anët (outbound dhe return) dhe ruaj rezultatin
+            $outboundSuccess = $this->checkFlights($originAirport, $destinationAirport, $yearMonth, $this->packageConfig->destination_origin_id, false);
+            $returnSuccess = $this->checkFlights($destinationAirport, $originAirport, $yearMonth, $this->packageConfig->destination_origin_id, true);
+
+            // Log rezultatin për debugging
+            if ($outboundSuccess || $returnSuccess) {
+                $logger->info("Successfully processed month {$yearMonth} - Outbound: " . ($outboundSuccess ? 'YES' : 'NO') . ", Return: " . ($returnSuccess ? 'YES' : 'NO'));
+            } else {
+                $logger->warning("Failed to process month {$yearMonth} - Both outbound and return failed or no flights available.");
+            }
 
             $startDate->modify('first day of next month');
         }
@@ -72,14 +80,14 @@ class ProcessPackageConfigJob implements ShouldQueue
         $logger->info('|===========================================================|');
     }
 
-    protected function checkFlights($originAirport, $destinationAirport, $yearMonth, $destinationOriginId, $isReturnFlight)
+    protected function checkFlights($originAirport, $destinationAirport, $yearMonth, $destinationOriginId, $isReturnFlight): bool
     {
         $logger = Log::channel('directdates');
+        $flightType = $isReturnFlight ? 'RETURN' : 'OUTBOUND';
 
         if (! $originAirport || ! $destinationAirport) {
-            $logger->warning("Missing airport data. Skipping check. From: {$originAirport?->id}, To: {$destinationAirport?->id}");
-
-            return;
+            $logger->warning("Missing airport data for {$flightType} - From: {$originAirport?->id}, To: {$destinationAirport?->id}");
+            return false;
         }
 
         $flightRequest = new OneWayDirectFlightCalendarRequest;
@@ -94,8 +102,14 @@ class ProcessPackageConfigJob implements ShouldQueue
             $response = $flightRequest->send();
             $grids = $response->json()['data']['PriceGrids']['Grid'][0] ?? [];
 
+            if (empty($grids)) {
+                $logger->warning("No grid data returned for {$flightType} - Month: {$yearMonth}");
+                return false;
+            }
+
+            $datesAdded = 0;
             foreach ($grids as $index => $grid) {
-                if (! empty($grid['DirectOutboundAvailable'])) {
+                if (isset($grid['DirectOutboundAvailable']) && $grid['DirectOutboundAvailable'] === true) {
                     [$year, $month] = explode('-', $yearMonth);
                     $date = new DateTime;
                     $date->setDate((int) $year, (int) $month, $index + 1);
@@ -106,11 +120,21 @@ class ProcessPackageConfigJob implements ShouldQueue
                         'is_return_flight' => $isReturnFlight,
                     ]);
 
-                    $logger->info("Date: {$date->format('Y-m-d')} (Is Return: ".($isReturnFlight ? 'Yes' : 'No').')');
+                    $datesAdded++;
+                    $logger->info("Added {$flightType} flight - Date: {$date->format('Y-m-d')}");
                 }
             }
+
+            if ($datesAdded > 0) {
+                $logger->info("Successfully added {$datesAdded} {$flightType} flight dates for month {$yearMonth}");
+                return true;
+            } else {
+                $logger->info("No direct flights available for {$flightType} - Month: {$yearMonth}");
+                return false; // Nuk ka fluturime, por kjo nuk është error - thjesht nuk ka disponueshmëri
+            }
         } catch (Exception $e) {
-            $logger->error("Failed to check flights for $yearMonth. Error: ".$e->getMessage());
+            $logger->error("!!!ERROR!!! Failed to check {$flightType} flights for month {$yearMonth}");
+            $logger->error("Error message: {$e->getMessage()}");
 
             DB::table('failed_availability_checks')->insert([
                 'origin_airport_id' => $originAirport->id,
@@ -122,6 +146,8 @@ class ProcessPackageConfigJob implements ShouldQueue
                 'created_at' => now(),
                 'updated_at' => now(),
             ]);
+
+            return false;
         }
     }
 }

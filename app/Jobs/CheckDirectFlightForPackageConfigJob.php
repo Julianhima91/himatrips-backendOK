@@ -74,24 +74,39 @@ class CheckDirectFlightForPackageConfigJob implements ShouldQueue
                 $lastProcessedMonthDate = Carbon::createFromFormat('Y-m', $lastProcessedMonth);
 
                 if ($yearMonthDate->greaterThan($lastProcessedMonthDate)) {
-                    Log::info('Calling API for year month '.$yearMonth);
+                    Log::info("Calling API for year month {$yearMonth} - PackageConfig ID: {$packageConfig->id}");
 
-                    $this->checkFlights($originAirport, $destinationAirport, $yearMonth, $packageConfig->destination_origin_id, false);
-                    $this->checkFlights($destinationAirport, $originAirport, $yearMonth, $packageConfig->destination_origin_id, true);
+                    // Kontrollo të dyja anët (outbound dhe return) dhe ruaj rezultatin
+                    $outboundSuccess = $this->checkFlights($originAirport, $destinationAirport, $yearMonth, $packageConfig->destination_origin_id, false);
+                    $returnSuccess = $this->checkFlights($destinationAirport, $originAirport, $yearMonth, $packageConfig->destination_origin_id, true);
 
-                    $packageConfig->last_processed_month = $yearMonth;
-                    $packageConfig->save();
+                    // Ruaj last_processed_month VETËM nëse të dyja anët janë të suksesshme
+                    // Ose nëse të paktën njëra anë ka të dhëna (p.sh. nëse return nuk ka fluturime, por outbound ka)
+                    if ($outboundSuccess || $returnSuccess) {
+                        $packageConfig->last_processed_month = $yearMonth;
+                        $packageConfig->save();
+                        Log::info("Successfully processed month {$yearMonth} - Outbound: " . ($outboundSuccess ? 'YES' : 'NO') . ", Return: " . ($returnSuccess ? 'YES' : 'NO'));
+                    } else {
+                        Log::warning("Failed to process month {$yearMonth} - Both outbound and return failed. Will retry next time.");
+                    }
                 } else {
                     Log::info("Skipping ... Latest processed month for package: {$packageConfig->id} is {$lastProcessedMonth}. Current year-month: {$yearMonth}");
                 }
             } else {
                 Log::info('No last processed month found, calling API for year month '.$yearMonth);
 
-                $this->checkFlights($originAirport, $destinationAirport, $yearMonth, $packageConfig->destination_origin_id, false);
-                $this->checkFlights($destinationAirport, $originAirport, $yearMonth, $packageConfig->destination_origin_id, true);
+                // Kontrollo të dyja anët (outbound dhe return) dhe ruaj rezultatin
+                $outboundSuccess = $this->checkFlights($originAirport, $destinationAirport, $yearMonth, $packageConfig->destination_origin_id, false);
+                $returnSuccess = $this->checkFlights($destinationAirport, $originAirport, $yearMonth, $packageConfig->destination_origin_id, true);
 
-                $packageConfig->last_processed_month = $yearMonth;
-                $packageConfig->save();
+                // Ruaj last_processed_month VETËM nëse të dyja anët janë të suksesshme ose të paktën njëra ka të dhëna
+                if ($outboundSuccess || $returnSuccess) {
+                    $packageConfig->last_processed_month = $yearMonth;
+                    $packageConfig->save();
+                    Log::info("Successfully processed month {$yearMonth} - Outbound: " . ($outboundSuccess ? 'YES' : 'NO') . ", Return: " . ($returnSuccess ? 'YES' : 'NO'));
+                } else {
+                    Log::warning("Failed to process month {$yearMonth} - Both outbound and return failed. Will retry next time.");
+                }
             }
 
             $startDate->modify('first day of next month');
@@ -114,27 +129,39 @@ class CheckDirectFlightForPackageConfigJob implements ShouldQueue
         }
     }
 
-    private function checkFlights($originAirport, $destinationAirport, $yearMonth, $destinationOriginId, $isReturnFlight)
+    private function checkFlights($originAirport, $destinationAirport, $yearMonth, $destinationOriginId, $isReturnFlight): bool
     {
+        $flightType = $isReturnFlight ? 'RETURN' : 'OUTBOUND';
+        
+        // Kontrollo nëse ka airport data
+        if (!$originAirport || !$destinationAirport) {
+            Log::warning("Missing airport data for {$flightType} - From: {$originAirport?->id}, To: {$destinationAirport?->id}");
+            return false;
+        }
+
         $flightRequest = new OneWayDirectFlightCalendarRequest;
 
         $flightRequest->query()->merge([
-            'fromEntityId' => $originAirport?->rapidapi_id ?? null,
-            'toEntityId' => $destinationAirport?->rapidapi_id ?? null,
+            'fromEntityId' => $originAirport->rapidapi_id,
+            'toEntityId' => $destinationAirport->rapidapi_id,
             'yearMonth' => $yearMonth,
         ]);
 
         try {
             $response = $flightRequest->send();
+            $grids = $response->json()['data']['PriceGrids']['Grid'][0] ?? [];
 
-            $grids = $response->json()['data']['PriceGrids']['Grid'][0];
+            if (empty($grids)) {
+                Log::warning("No grid data returned for {$flightType} - Month: {$yearMonth}");
+                return false;
+            }
 
+            $datesAdded = 0;
             foreach ($grids as $index => $grid) {
-
-                if ($grid['DirectOutboundAvailable'] === true) {
+                if (isset($grid['DirectOutboundAvailable']) && $grid['DirectOutboundAvailable'] === true) {
                     [$year, $month] = explode('-', $yearMonth);
                     $date = new DateTime;
-                    $date->setDate($year, $month, $index + 1);
+                    $date->setDate((int) $year, (int) $month, $index + 1);
 
                     $directFlightAvailability = DirectFlightAvailability::updateOrCreate([
                         'date' => $date->format('Y-m-d'),
@@ -142,12 +169,23 @@ class CheckDirectFlightForPackageConfigJob implements ShouldQueue
                         'is_return_flight' => $isReturnFlight,
                     ]);
 
-                    Log::info("Added ID: {$directFlightAvailability->id}");
+                    $datesAdded++;
+                    Log::info("Added {$flightType} flight - Date: {$date->format('Y-m-d')}, ID: {$directFlightAvailability->id}");
                 }
             }
+
+            if ($datesAdded > 0) {
+                Log::info("Successfully added {$datesAdded} {$flightType} flight dates for month {$yearMonth}");
+                return true;
+            } else {
+                Log::info("No direct flights available for {$flightType} - Month: {$yearMonth}");
+                return false; // Nuk ka fluturime, por kjo nuk është error - thjesht nuk ka disponueshmëri
+            }
         } catch (Exception $e) {
-            Log::error('!!!ERROR!!!');
-            Log::error($e->getMessage());
+            Log::error("!!!ERROR!!! Failed to check {$flightType} flights for month {$yearMonth}");
+            Log::error("Error message: {$e->getMessage()}");
+            Log::error("Stack trace: {$e->getTraceAsString()}");
+            return false;
         }
     }
 }

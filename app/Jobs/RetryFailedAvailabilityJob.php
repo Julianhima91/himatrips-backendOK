@@ -63,7 +63,7 @@ class RetryFailedAvailabilityJob implements ShouldQueue
         $logger->info('Retry completed.');
     }
 
-    protected function retryFlightCheck($originAirport, $destinationAirport, $yearMonth, $destinationOriginId, $isReturnFlight, $failedCheckId): bool
+    public function retryFlightCheck($originAirport, $destinationAirport, $yearMonth, $destinationOriginId, $isReturnFlight, $failedCheckId): bool
     {
         $logger = Log::channel('directdates');
 
