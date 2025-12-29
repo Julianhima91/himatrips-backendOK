@@ -8,7 +8,6 @@ use App\Models\Airport;
 use App\Models\DestinationOrigin;
 use App\Models\FailedAvailabilityCheck;
 use Filament\Forms;
-use Filament\Forms\Form;
 use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Tables;
