@@ -25,3 +25,6 @@ yarn-error.log
 CLAUDE.md
 .DS_Store
 backup.sql.gz
+
+# Markdown documentation files
+*.md
