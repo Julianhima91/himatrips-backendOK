@@ -15,6 +15,7 @@
         "laravel/framework": "^11.28",
         "laravel/sanctum": "^4.0",
         "laravel/tinker": "^2.8",
+        "predis/predis": "^3.3",
         "pusher/pusher-php-server": "^7.2",
         "ricorocks-digital-agency/soap": "*",
         "saloonphp/laravel-plugin": "^3.0",
