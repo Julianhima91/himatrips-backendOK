@@ -27,6 +27,12 @@ class Kernel extends ConsoleKernel
         $schedule->command('check:package-hotels')->dailyAt('01:00');
         $schedule->command('check:package-flights')->dailyAt('01:00');
         $schedule->command('flights:truncate')->monthlyOn(1, '00:00');
+        
+        // Clean up old search data (packages, flights, hotels) older than 10 days
+        $schedule->command('search-data:cleanup --days=10')
+                 ->dailyAt('02:00')
+                 ->withoutOverlapping()
+                 ->runInBackground();
     }
 
     /**
