@@ -167,31 +167,24 @@ class CleanupOldSearchData extends Command
     }
 
     /**
-     * Clean up orphaned flight_data (not used by any packages)
-     * Optimized query using LEFT JOIN instead of whereNotExists for better performance
+     * Clean up old flight_data based on date only (much faster)
+     * Since we delete packages older than cutoff date, their flight_data will be orphaned anyway
      */
     private function cleanupOrphanedFlights($cutoffDate, $dryRun, $chunkSize = 5000): int
     {
-        // Optimized approach: Use LEFT JOIN to find orphaned flights
-        // This is much faster than whereNotExists with millions of packages
-        $countQuery = DB::table('flight_data as fd')
-            ->leftJoin('packages as p', function ($join) {
-                $join->on('p.outbound_flight_id', '=', 'fd.id')
-                     ->orOn('p.inbound_flight_id', '=', 'fd.id');
-            })
-            ->where('fd.created_at', '<', $cutoffDate)
-            ->whereNull('p.id')
-            ->select(DB::raw('COUNT(DISTINCT fd.id) as count'));
+        // Simple approach: Delete all flight_data older than cutoff date
+        // This is much faster than checking if orphaned, and safe since we delete old packages first
+        $countQuery = DB::table('flight_data')
+            ->where('created_at', '<', $cutoffDate);
 
-        $result = $countQuery->first();
-        $count = $result ? (int) $result->count : 0;
+        $count = $countQuery->count();
 
         if ($count === 0) {
-            $this->line("  No orphaned flight data found.");
+            $this->line("  No old flight data found.");
             return 0;
         }
 
-        $this->line("  Found {$count} orphaned flight records to delete.");
+        $this->line("  Found {$count} old flight records to delete.");
 
         if ($dryRun) {
             return $count;
@@ -199,23 +192,14 @@ class CleanupOldSearchData extends Command
 
         // Delete in larger batches for better performance
         $deleted = 0;
-        $chunkSize = 5000;
         $totalChunks = ceil($count / $chunkSize);
         $currentChunk = 0;
 
         $this->line("  Processing in chunks of {$chunkSize}...");
 
         while (true) {
-            // Use optimized LEFT JOIN query instead of whereNotExists
-            $ids = DB::table('flight_data as fd')
-                ->leftJoin('packages as p', function ($join) {
-                    $join->on('p.outbound_flight_id', '=', 'fd.id')
-                         ->orOn('p.inbound_flight_id', '=', 'fd.id');
-                })
-                ->where('fd.created_at', '<', $cutoffDate)
-                ->whereNull('p.id')
-                ->select('fd.id')
-                ->distinct()
+            $ids = DB::table('flight_data')
+                ->where('created_at', '<', $cutoffDate)
                 ->limit($chunkSize)
                 ->pluck('id')
                 ->toArray();
@@ -240,28 +224,25 @@ class CleanupOldSearchData extends Command
     }
 
     /**
-     * Clean up orphaned hotel_data (not used by any packages)
+     * Clean up old hotel_data based on date only (much faster)
      * hotel_offers will be deleted automatically due to cascade
-     * Optimized query using LEFT JOIN instead of whereNotExists
+     * Since we delete packages older than cutoff date, their hotel_data will be orphaned anyway
      */
     private function cleanupOrphanedHotels($cutoffDate, $dryRun, $chunkSize = 5000): int
     {
-        // Optimized approach: Use LEFT JOIN to find orphaned hotels
-        $countQuery = DB::table('hotel_data as hd')
-            ->leftJoin('packages as p', 'p.hotel_data_id', '=', 'hd.id')
-            ->where('hd.created_at', '<', $cutoffDate)
-            ->whereNull('p.id')
-            ->select(DB::raw('COUNT(DISTINCT hd.id) as count'));
+        // Simple approach: Delete all hotel_data older than cutoff date
+        // This is much faster than checking if orphaned, and safe since we delete old packages first
+        $countQuery = DB::table('hotel_data')
+            ->where('created_at', '<', $cutoffDate);
 
-        $result = $countQuery->first();
-        $count = $result ? (int) $result->count : 0;
+        $count = $countQuery->count();
 
         if ($count === 0) {
-            $this->line("  No orphaned hotel data found.");
+            $this->line("  No old hotel data found.");
             return 0;
         }
 
-        $this->line("  Found {$count} orphaned hotel records to delete.");
+        $this->line("  Found {$count} old hotel records to delete.");
 
         if ($dryRun) {
             return $count;
@@ -276,13 +257,8 @@ class CleanupOldSearchData extends Command
         $this->line("  Processing in chunks of {$chunkSize}...");
 
         while (true) {
-            // Use optimized LEFT JOIN query instead of whereNotExists
-            $ids = DB::table('hotel_data as hd')
-                ->leftJoin('packages as p', 'p.hotel_data_id', '=', 'hd.id')
-                ->where('hd.created_at', '<', $cutoffDate)
-                ->whereNull('p.id')
-                ->select('hd.id')
-                ->distinct()
+            $ids = DB::table('hotel_data')
+                ->where('created_at', '<', $cutoffDate)
                 ->limit($chunkSize)
                 ->pluck('id')
                 ->toArray();
