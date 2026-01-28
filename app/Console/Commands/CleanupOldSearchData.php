@@ -36,7 +36,9 @@ class CleanupOldSearchData extends Command
         $chunkSize = (int) $this->option('chunk-size');
         $cutoffDate = now()->subDays($days);
 
-        $this->info("Starting cleanup of data older than {$days} days (before {$cutoffDate->format('Y-m-d H:i:s')})...");
+        $this->info("Starting cleanup of data older than {$days} days...");
+        $this->info("Cutoff date: {$cutoffDate->format('Y-m-d H:i:s')} (will delete records created BEFORE this date)");
+        $this->info("Today's date: " . now()->format('Y-m-d H:i:s'));
         $this->info("Using chunk size: {$chunkSize} records per batch");
         
         if ($dryRun) {
